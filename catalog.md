@@ -88,7 +88,7 @@ Props are parsed from `packages/ui/src/primitives.tsx`; the primitives are shipp
 
 - `children`: any
 - `style`: any
-- `mode`: any
+- `theme`: any
 
 ### RgAppbar
 
@@ -373,7 +373,7 @@ Full token values (both colour modes, the light and dark theme objects, elevatio
 | CSS_UNSUPPORTED | A CSS property is outside the supported subset; the declaration was dropped. |
 | STYLE_OFF_SCALE | A spacing, radius or font-size value is off its design-token scale; the generated style uses the nearest on-scale value. |
 | GEN_UNKNOWN_TAG | A template tag is not a known Rangular block; it was emitted as <View>. |
-| GEN_FIELD | A field has a non-literal initializer and was not hoisted into the generated component. |
+| GEN_FIELD | A field has a non-literal initializer that cannot be emitted verbatim into the generated component (it references this, or the field is assigned in a method); it is declared as undefined there so the output still compiles. A never-assigned non-literal initializer without this (new Date(), Date.now(), an expression over literals) is emitted verbatim and does not warn. |
 | GEN_FIELD_STATE | A field is assigned in a method but has a non-literal initializer, so it cannot become useState yet. |
 | GEN_NGIF_ELSE_TODO | *ngIf with else/then microsyntax is not generated yet; the element was emitted unconditionally. |
 | GEN_STRUCTURAL_TODO | A structural directive other than *ngIf/*ngFor is not supported yet; the element was emitted unconditionally. |

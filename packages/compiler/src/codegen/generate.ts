@@ -16,9 +16,9 @@ import {
   ValidatorSpec,
   validatorsOf,
 } from '../template/forms';
-import { isLiteralSource } from '../template/literal';
+import { initializerUsesThis, isLiteralSource } from '../template/literal';
 import { parseNgFor, parseNgIf } from '../template/structural';
-import { analyzeMutatedFields, setterName, translateMethods } from './methods';
+import { analyzeMutatedFields, MethodHost, setterName, translateMethods } from './methods';
 import { makeSourceMap, SourceMapV3, SourceSegment } from './sourceMap';
 
 export interface GenerateResult {
@@ -125,6 +125,35 @@ export const TAG_MAP: Record<string, TagMapping> = {
 /** True when an initializer source text is a plain literal we may hoist. */
 export function isLiteralInitializer(init: string): boolean {
   return isLiteralSource(init);
+}
+
+/**
+ * Fields the generated component declares by emitting their initializer
+ * verbatim as a plain const (proof fix): a field whose initializer is
+ * not a literal and not a reactive form instance, which no method
+ * assigns (mutation calls included), and whose initializer does not
+ * reference `this` (a generated function component has no `this` to
+ * resolve). The classic case is `today = new Date()` read by a date
+ * pipe: before this fix it warned GEN_FIELD, emitted only a TODO
+ * comment, and the generated code referenced a name it never declared.
+ * The preview rebuilds exactly these fields from their initializer
+ * source, so the two sides cannot drift.
+ */
+export function verbatimInitFields(
+  component: MethodHost,
+): { name: string; initializer: string }[] {
+  const mutated = analyzeMutatedFields(component);
+  const out: { name: string; initializer: string }[] = [];
+  for (const field of component.fields) {
+    if (field.isInput || field.isOutput) continue;
+    if (!field.initializer) continue;
+    if (isLiteralInitializer(field.initializer)) continue;
+    if (isFormInitializer(field.initializer)) continue;
+    if (mutated.has(field.name)) continue;
+    if (initializerUsesThis(field.initializer)) continue;
+    out.push({ name: field.name, initializer: field.initializer });
+  }
+  return out;
 }
 
 /** StyleSheet keys must be valid JS identifiers: `card-note` -> `cardNote`. */
@@ -2464,6 +2493,13 @@ class Generator {
     }
 
     // --- Fields: state hoisting (M3) ------------------------------------------
+    // A non-literal initializer that is never assigned and does not
+    // reference `this` is emitted verbatim as a plain const (proof
+    // fix): `today = new Date()` becomes `const today = new Date();`.
+    // Anything else non-literal still cannot be placed, but it is
+    // ALWAYS declared, as undefined with a TODO, so generated code
+    // never references a name it does not declare.
+    const verbatimInits = new Map(verbatimInitFields(component).map((f) => [f.name, f.initializer]));
     const fieldLines: string[] = [];
     for (const field of component.fields) {
       if (field.isInput || field.isOutput) continue;
@@ -2474,9 +2510,12 @@ class Generator {
         } else {
           fieldLines.push(`  const ${field.name} = ${field.initializer};`);
         }
+      } else if (field.initializer && verbatimInits.has(field.name)) {
+        fieldLines.push(`  const ${field.name} = ${verbatimInits.get(field.name)};`);
       } else if (field.initializer) {
-        fieldLines.push(`  // TODO: field '${forLineComment(field.name)}' has a non-literal initializer (${forLineComment(field.initializer)}), not hoisted; wire it up manually for now.`);
-        diagnostics.push(warning('GEN_FIELD', `Field '${field.name}' has a non-literal initializer; not hoisted`, undefined, undefined, `Initialise '${field.name}' with a literal (including arrays/objects of literals) or wire the value up manually in the generated component`));
+        fieldLines.push(`  // TODO: field '${forLineComment(field.name)}' has a non-literal initializer (${forLineComment(field.initializer)}) that cannot be emitted verbatim; it is declared as undefined so this file still compiles, wire the value up manually for now.`);
+        fieldLines.push(`  const ${field.name} = undefined;`);
+        diagnostics.push(warning('GEN_FIELD', `Field '${field.name}' has a non-literal initializer that cannot be emitted verbatim (it references 'this', or the field is assigned in a method); it is declared as undefined in the generated component`, undefined, undefined, `Initialise '${field.name}' with a literal (including arrays/objects of literals), or with a value that does not reference 'this' (for example new Date() or Date.now()), or wire the value up manually in the generated component`));
       }
     }
 

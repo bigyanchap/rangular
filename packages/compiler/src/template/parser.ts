@@ -177,7 +177,9 @@ export function parseTemplate(source: string): ParseResult {
             'TPL_MISMATCH',
             `Expected </${untilTag}> but found </${closing}>`,
             at.line, at.column,
-            `Close <${untilTag}> with </${untilTag}>, check for a missing or mis-nested closing tag above`,
+            VOID_TAGS.has(closing.toLowerCase())
+              ? `<${closing}> is a void element and takes no closing tag; remove the </${closing}>`
+              : `Close <${untilTag}> with </${untilTag}>, check for a missing or mis-nested closing tag above`,
           ));
         }
         return nodes;

@@ -73,6 +73,7 @@ const nameModel = { value: name, errors: nameErrors, valid: nameErrors === null,
 **Rules used**
 
 - **Two-way binding is input only.** `[(ngModel)]` works on `<input>`. On any other element it is a `GEN_NGMODEL_TARGET` error. The explicit pair form works too: `[ngModel]="email"` plus `(ngModelChange)="onEmail($event)"`.
+- **`<input>` is a void element.** Like HTML's input, it takes no closing tag: the Source above writes `<input ...>` with no `</input>`, and a stray closing tag is a `TPL_MISMATCH` error whose fix line says input takes no closing tag.
 - **Validators are attributes.** `required`, `minlength="3"`, `maxlength`, `email` and `pattern="..."` on the input. `type="email"` only chooses the keyboard; it does not validate, exactly as in Angular. Write the separate `email` attribute when you want the email validator.
 - **`type` picks the field form.** `type="password"` compiles to the `secure` prop, `type="email"` to `keyboardType="email-address"`, `type="number"` to `keyboardType="numeric"`.
 - **Refs are template only.** `#email="ngModel"` exposes `email.valid`, `email.invalid`, `email.touched`, `email.errors` and `email.value` to template expressions (interpolation, `*ngIf`, `[disabled]`). Method bodies do not see refs; read the fields there.

@@ -87,7 +87,12 @@ export function parsePrimitives(source: string, fileName = 'primitives.tsx'): Ca
         const typeText = param.type ? param.type.getText(sf) : 'any';
         if (ts.isObjectBindingPattern(param.name)) {
           for (const el of param.name.elements) {
-            props.push({ name: el.name.getText(sf), type: typeText });
+            // A renamed destructure (`{ theme: mode }`) declares the
+            // prop `theme` and binds it locally as `mode`; the catalog
+            // lists the prop name callers actually pass, which is the
+            // propertyName when one is written.
+            const propName = el.propertyName ? el.propertyName.getText(sf) : el.name.getText(sf);
+            props.push({ name: propName, type: typeText });
           }
         }
       }

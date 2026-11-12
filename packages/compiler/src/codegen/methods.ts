@@ -71,6 +71,31 @@ function isThisProperty(node: ts.Node): { name: string } | undefined {
 }
 
 /**
+ * The array methods that mutate their receiver in place. A call of one
+ * of these on `this.<field>` changes the field's value, so the field
+ * counts as mutated (proof fix): without this, `this.items.push(x)`
+ * compiled silently against a plain const and the generated app never
+ * re-rendered, while the preview (whose state is a mutable object)
+ * did, a direct parity break.
+ */
+export const MUTATING_ARRAY_METHODS = new Set([
+  'push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'fill',
+]);
+
+/** If `node` is a call `this.<field>.<method>(...)`, name its parts. */
+function thisMethodCall(node: ts.Node): { field: string; method: string } | undefined {
+  if (!ts.isCallExpression(node) || !ts.isPropertyAccessExpression(node.expression)) return undefined;
+  const self = isThisProperty(node.expression.expression);
+  if (!self) return undefined;
+  return { field: self.name, method: node.expression.name.text };
+}
+
+/** The fix line that teaches the assignment form for array changes. */
+export function arrayAssignmentFix(field: string): string {
+  return `Assign a new array instead: this.${field} = [...this.${field}, item] to add, this.${field} = this.${field}.filter(...) to remove, this.${field} = this.${field}.slice(...) to copy a range; push, pop and shift written as plain statements are translated for you`;
+}
+
+/**
  * First pass: which fields are assigned anywhere inside any method?
  * Those fields become React state (useState) in codegen.
  */
@@ -89,6 +114,10 @@ export function analyzeMutatedFields(component: MethodHost): Set<string> {
         (node.operator === ts.SyntaxKind.PlusPlusToken || node.operator === ts.SyntaxKind.MinusMinusToken)) {
         const target = isThisProperty(node.operand);
         if (target && fieldNames.has(target.name)) mutated.add(target.name);
+      }
+      const call = thisMethodCall(node);
+      if (call && fieldNames.has(call.field) && MUTATING_ARRAY_METHODS.has(call.method)) {
+        mutated.add(call.field);
       }
       ts.forEachChild(node, walk);
     };
@@ -118,13 +147,16 @@ interface Ctx {
   formFields?: Set<string>;
   /** Set when the current statement uses an unsupported construct. */
   unsupported?: string;
+  /** A statement specific fix line for the unsupported construct, when set. */
+  unsupportedFix?: string;
 }
 
 class Translator {
   constructor(private ctx: Ctx) {}
 
-  private fail(what: string): string {
+  private fail(what: string, fix?: string): string {
     this.ctx.unsupported = what;
+    if (fix !== undefined) this.ctx.unsupportedFix = fix;
     return 'undefined';
   }
 
@@ -147,6 +179,23 @@ class Translator {
       return `${this.expr(node.expression)}[${this.expr(node.argumentExpression)}]`;
     }
     if (ts.isCallExpression(node)) {
+      // An array mutation method on a field, reached in expression
+      // position (its result is used, or it sits inside a larger
+      // expression): generated code holds fields in consts and state
+      // setters, so there is no faithful translation; refuse it and
+      // teach the assignment form (proof fix). Statement position is
+      // handled separately in statement(), where push, pop and shift
+      // do translate. State, service and pipe modes keep the native
+      // call: their fields really are mutable properties.
+      if (c.mode === 'react') {
+        const call = thisMethodCall(node);
+        if (call && c.fieldNames.has(call.field) && MUTATING_ARRAY_METHODS.has(call.method)) {
+          return this.fail(
+            `array mutation method '${call.method}' on field 'this.${call.field}' used as a value`,
+            arrayAssignmentFix(call.field),
+          );
+        }
+      }
       // @Output: this.saved.emit(x) -> onSaved?.(x) / props.onSaved?.(x).
       if (ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === 'emit') {
         const self = isThisProperty(node.expression.expression);
@@ -263,19 +312,65 @@ class Translator {
     return lines;
   }
 
-  private unsupportedLine(indent: string, what: string): string[] {
+  private unsupportedLine(indent: string, what: string, fix?: string): string[] {
     this.ctx.diagnostics.push(warning(
       'METHOD_UNSUPPORTED',
       `Method '${this.ctx.methodName}': ${what} is not in the Stage 2 translation subset, left as a TODO`,
       undefined, undefined,
-      'Rewrite with the supported subset: this.field assignments (+=, ++, =), this.method() calls, if/else, return, local const/let, or move the unsupported logic out of the method',
+      fix ?? this.ctx.unsupportedFix
+        ?? 'Rewrite with the supported subset: this.field assignments (+=, ++, =), this.method() calls, if/else, return, local const/let, or move the unsupported logic out of the method',
     ));
     return [`${indent}/* TODO(Rangular): unsupported in method '${this.ctx.methodName}': ${what} */`];
+  }
+
+  /**
+   * A statement that is exactly an array mutation call on a field,
+   * in react mode (proof fix). push becomes a concat assignment
+   * through the state setter; pop and shift with no arguments (their
+   * return values unused by construction in statement position)
+   * become slice assignments. The remaining mutating methods
+   * (unshift, splice, sort, reverse, fill) have no honest one-line
+   * setter form, so they degrade to METHOD_UNSUPPORTED with the
+   * assignment form as the fix. Returns undefined when the statement
+   * is not such a call, or the mode keeps native mutation (state
+   * mode mutates the preview state object; services and pipes are
+   * real classes).
+   */
+  private arrayMutationStatement(e: ts.Expression, indent: string): string[] | undefined {
+    const c = this.ctx;
+    if (c.mode !== 'react' || !ts.isCallExpression(e)) return undefined;
+    const call = thisMethodCall(e);
+    if (!call || !c.fieldNames.has(call.field) || !MUTATING_ARRAY_METHODS.has(call.method)) {
+      return undefined;
+    }
+    const { field, method } = call;
+    if (!c.stateFields.has(field)) {
+      return this.unsupportedLine(
+        indent,
+        `array mutation method '${method}' on field '${field}', which was not hoisted to React state`,
+        arrayAssignmentFix(field),
+      );
+    }
+    const set = setterName(field);
+    if (method === 'push') {
+      const args = e.arguments.map((a) => this.expr(a)).join(', ');
+      if (c.unsupported) return this.unsupportedLine(indent, c.unsupported);
+      return [`${indent}${set}(${field}.concat(${args}));`];
+    }
+    if ((method === 'pop' || method === 'shift') && e.arguments.length === 0) {
+      return [`${indent}${set}(${method === 'pop' ? `${field}.slice(0, -1)` : `${field}.slice(1)`});`];
+    }
+    return this.unsupportedLine(
+      indent,
+      `array mutation method '${method}' on field 'this.${field}' as a statement`,
+      arrayAssignmentFix(field),
+    );
   }
 
   private statement(node: ts.Statement, indent: string): string[] {
     const c = this.ctx;
     c.unsupported = undefined;
+    c.unsupportedFix = undefined;
 
     if (ts.isBlock(node)) return this.statements([...node.statements], indent);
 
@@ -344,6 +439,10 @@ class Translator {
           return [`${indent}${setterName(target.name)}(${target.name} ${delta});`];
         }
       }
+      // A bare array mutation call on a field: push/pop/shift
+      // translate to setter calls (proof fix), the rest degrade.
+      const mutation = this.arrayMutationStatement(e, indent);
+      if (mutation) return mutation;
       const code = this.expr(e);
       if (c.unsupported) return this.unsupportedLine(indent, c.unsupported);
       return [`${indent}${code};`];

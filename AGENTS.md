@@ -161,7 +161,12 @@ node dist/packages/cli/src/cli.js doctor examples/showcase/showcase.component.ts
   and its `size` rides the icon scale (`GEN_SPINNER_SIZE`).
 - **Chips and badge.** `<chip icon removable (remove)>` in a
   `<chips>` row; remove a chip with a filter assignment in a
-  method (`this.filters = this.filters.filter(...)` compiles).
+  method (`this.filters = this.filters.filter(...)` compiles),
+  add with a spread or concat assignment
+  (`this.filters = [...this.filters, name]`). List state changes
+  by assignment in general: `push`, `pop` and `shift` written as
+  plain statements on a field translate to setter calls, the
+  other array mutation methods warn `METHOD_UNSUPPORTED`.
   `badge` is an attribute on `<button>`, `<row>` and `<icon>`
   only; 0 or empty renders nothing, above 99 renders `99+`, other
   hosts warn `GEN_BADGE_HOST`. Full detail in the Data display

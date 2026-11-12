@@ -7,13 +7,13 @@ import { ComponentField, ComponentInfo, DirectiveInfo, PipeInfo, ServiceInfo } f
 import { DirectiveStyleAssign, directiveStyles } from '../class/parseDirective';
 import { ResolvedRoute } from '../class/parseRoutes';
 import { evaluateFormInitializer, isFormInitializer } from '../class/formInit';
-import { ChildUnitInput, outputPropName } from '../codegen/generate';
+import { ChildUnitInput, outputPropName, verbatimInitFields } from '../codegen/generate';
 import { translateMethods } from '../codegen/methods';
 import { nearestOnScale } from '../style/css';
 import { ElementNode, TemplateNode, TemplateRoot } from '../template/ast';
 import { evaluateExpression, PipeFunctions, Scope } from '../template/evaluate';
 import { ngModelBindingOf, plainFieldOf, ValidatorSpec, validatorsOf } from '../template/forms';
-import { literalValue } from '../template/literal';
+import { evaluateExprInitializer, literalValue } from '../template/literal';
 import { parseNgFor, parseNgIf } from '../template/structural';
 
 /**
@@ -80,6 +80,33 @@ function addFormInstances(state: Record<string, unknown>, fields: ComponentField
   }
 }
 
+/**
+ * Add the verbatim-initializer fields of a component to a preview
+ * state (proof fix): the fields codegen declares by emitting their
+ * initializer verbatim (`today = new Date()` is the classic case).
+ * Only the scope-free shapes evaluateExprInitializer supports land a
+ * value; anything richer leaves the field unset, so reads of it yield
+ * undefined here exactly as the generated fallback declares it there.
+ */
+function addExprInstances(
+  state: Record<string, unknown>,
+  component: { fields: ComponentField[]; methods: string[]; methodDetails: ComponentInfo['methodDetails'] },
+): void {
+  for (const f of verbatimInitFields(component)) {
+    const built = evaluateExprInitializer(f.initializer);
+    if (built.ok) state[f.name] = built.value;
+  }
+}
+
+/** The verbatim-initializer fields of a host, field name -> source text. */
+function exprInitsOf(component: {
+  fields: ComponentField[]; methods: string[]; methodDetails: ComponentInfo['methodDetails'];
+}): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const f of verbatimInitFields(component)) out[f.name] = f.initializer;
+  return out;
+}
+
 /** The preview state: every field whose initializer is a literal structure. */
 export function componentState(component: ComponentInfo): Record<string, unknown> {
   const state: Record<string, unknown> = {};
@@ -89,6 +116,7 @@ export function componentState(component: ComponentInfo): Record<string, unknown
     if (v !== undefined) state[f.name] = v;
   }
   addFormInstances(state, component.fields);
+  addExprInstances(state, component);
   return state;
 }
 
@@ -510,6 +538,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
    */
   const renderChild = (el: ElementNode, def: ChildUnitInput, parentScope: Scope): string => {
     const scope: Scope = { ...stateWithInputs(def.info) };
+    addExprInstances(scope, def.info);
     const inputNames = new Set(def.info.fields.filter((f) => f.isInput).map((f) => f.name));
     for (const b of el.propBindings) {
       if (!inputNames.has(b.name)) continue;
@@ -1109,7 +1138,11 @@ export function previewScript(
     }
     // Form instances cannot be JSON serialized; the page rebuilds them
     // from the initializer source with its own mini evaluator (Stage 8).
+    // Verbatim-initializer fields (proof fix) travel the same way: a
+    // Date would degrade to a string in JSON, so the page rebuilds
+    // them from source with __evalExprInit.
     const childFormInits = formInitsOf(child.info);
+    const childExprInits = exprInitsOf(child.info);
     const childState = stateWithInputs(child.info);
     for (const k of Object.keys(childFormInits)) delete childState[k];
     componentEntries.push(
@@ -1117,6 +1150,7 @@ export function previewScript(
       `    "template": ${jsonForScript(child.ast)},\n` +
       `    "state": ${jsonForScript(childState)},\n` +
       `    "formInits": ${jsonForScript(childFormInits)},\n` +
+      `    "exprInits": ${jsonForScript(childExprInits)},\n` +
       `    "deps": ${jsonForScript(depsOf(child.info.constructorDeps))},\n` +
       `    "inputs": ${jsonForScript(child.info.fields.filter((f) => f.isInput).map((f) => f.name))},\n` +
       `    "outputs": ${jsonForScript(child.info.fields.filter((f) => f.isOutput).map((f) => f.name))},\n` +
@@ -1156,9 +1190,13 @@ export function previewScript(
   const declaredTheme = declaredThemeOf(ast);
   // Root form instances: excluded from the serialized state (instances
   // do not survive JSON) and rebuilt in the page from FORM_INITS.
+  // Verbatim-initializer fields (proof fix) are excluded the same way
+  // and rebuilt from EXPR_INITS, so a Date stays a Date in the page.
   const rootFormInits = formInitsOf(component);
+  const rootExprInits = exprInitsOf(component);
   const serialState: Record<string, unknown> = { ...state };
   for (const k of Object.keys(rootFormInits)) delete serialState[k];
+  for (const k of Object.keys(rootExprInits)) delete serialState[k];
 
   return `// Rangular interactive preview runtime (Stage 2).
 // State and methods are live: (click) handlers mutate state and re-render.
@@ -1166,6 +1204,7 @@ const TEMPLATE = ${jsonForScript(ast)};
 const ICONS = ${jsonForScript(ICON_PATHS)};
 const state = ${jsonForScript(serialState)};
 const FORM_INITS = ${jsonForScript(rootFormInits)};
+const EXPR_INITS = ${jsonForScript(rootExprInits)};
 const methods = {
 ${methodEntries.join(',\n')}
 };
@@ -1186,7 +1225,7 @@ const ROUTES = ${jsonForScript((data.routes ?? []).map((r) => ({
   })))};
 const ROOT_DEPS = ${jsonForScript(rootDeps)};
 const ROOT_ONINIT = ${rootOnInit};
-${PAGE_RUNTIME}${needsWiring ? `\n${ROOT_WIRING}` : ''}${Object.keys(rootFormInits).length ? `\n${ROOT_FORM_WIRING}` : ''}
+${PAGE_RUNTIME}${needsWiring ? `\n${ROOT_WIRING}` : ''}${Object.keys(rootFormInits).length ? `\n${ROOT_FORM_WIRING}` : ''}${Object.keys(rootExprInits).length ? `\n${ROOT_EXPR_WIRING}` : ''}
 ${themeWiring(declaredTheme)}`;
 }
 
@@ -1245,6 +1284,20 @@ const ROOT_FORM_WIRING = String.raw`
 // Root form instances (Stage 8): build the FormGroup/FormControl fields
 // from their initializers, then re-render with live values and validity.
 Object.keys(FORM_INITS).forEach(function (k) { state[k] = __evalFormInit(FORM_INITS[k]); });
+__render();
+`;
+
+/**
+ * Appended after the page runtime when the root component has
+ * verbatim-initializer fields (proof fix): the values the generated
+ * app computes by running the initializer (a Date, a timestamp) are
+ * rebuilt here from the same source, then the screen re-renders.
+ */
+const ROOT_EXPR_WIRING = String.raw`
+// Root verbatim-initializer fields (proof fix): rebuild the values
+// codegen emits verbatim (new Date(), Date.now(), literal expressions)
+// from their initializers, then re-render with the real values.
+Object.keys(EXPR_INITS).forEach(function (k) { state[k] = __evalExprInit(EXPR_INITS[k]); });
 __render();
 `;
 
@@ -2421,6 +2474,31 @@ function __evalFormInit(src) {
     return undefined;
   }
 }
+function __evalExprInit(src) {
+  // Verbatim field initializers (proof fix): the page rebuilds the
+  // fields codegen declares by emitting the initializer verbatim.
+  // Supported shapes mirror the compiler side evaluator: new Date(...)
+  // with literal arguments, Date.now(), and plain expressions over
+  // literals, which run through the page expression evaluator against
+  // an empty scope. Anything else yields undefined, the same safe
+  // fallback the generated code declares for initializers it cannot
+  // place. A Date stays a Date here, never a JSON string.
+  var s = String(src).replace(/^\s+|\s+$/g, '');
+  try {
+    var m = /^new\s+Date\s*\(([\s\S]*)\)$/.exec(s);
+    if (m) {
+      var inner = m[1].replace(/^\s+|\s+$/g, '');
+      if (!inner) return new Date();
+      var args = __eval(__parse('[' + inner + ']'), {});
+      return new (Date.bind.apply(Date, [null].concat(args)))();
+    }
+    if (/^Date\.now\s*\(\s*\)$/.test(s)) return Date.now();
+    return __eval(__parse(s), {});
+  } catch (err) {
+    console.warn('preview: cannot evaluate field initializer', err);
+    return undefined;
+  }
+}
 function __refsFor(nodes, stateObj, touched, scope) {
   var refs = {};
   function walk(list) {
@@ -3174,6 +3252,7 @@ function __childInstance(path, def, props) {
     inst = { state: st, props: {}, methods: {}, fresh: true, touched: {} };
     Object.keys(def.deps).forEach(function (k) { st[k] = __resolveDep(def.deps[k]); });
     Object.keys(def.formInits || {}).forEach(function (k) { st[k] = __evalFormInit(def.formInits[k]); });
+    Object.keys(def.exprInits || {}).forEach(function (k) { st[k] = __evalExprInit(def.exprInits[k]); });
     inst.methods = __bind(def, inst);
     __instances[path] = inst;
   }

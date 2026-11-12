@@ -195,7 +195,12 @@ through them) **without guessing**, see [docs/VIBE_CODING.md](docs/VIBE_CODING.m
   `examples/profile/README.md`, `examples/favourite/README.md`,
   `examples/shared-inbox/README.md`, `examples/showcase/README.md`,
   `examples/dinacharya-row/README.md`, `examples/settings/README.md`,
-  `examples/icons/README.md`: Intent /
+  `examples/icons/README.md`, `examples/signup-form/README.md`,
+  `examples/profile-form/README.md`, `examples/mini-mail/README.md`,
+  `examples/reminder/README.md`, `examples/mailbox-pro/README.md`,
+  `examples/pipes-demo/README.md`,
+  `examples/directives-demo/README.md`,
+  `examples/projection-demo/README.md`: Intent /
   Source / What it compiles to / Rules used / Common mistakes.
 - **Proof test (Stage 2.5)**, `examples/profile/` was written by a fresh
   AI agent given only AGENTS.md, llms.txt, the catalog and the recipe

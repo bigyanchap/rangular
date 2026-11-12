@@ -307,7 +307,7 @@
           "type": "any"
         },
         {
-          "name": "mode",
+          "name": "theme",
           "type": "any"
         }
       ]
@@ -1455,7 +1455,7 @@
     },
     {
       "code": "GEN_FIELD",
-      "meaning": "A field has a non-literal initializer and was not hoisted into the generated component."
+      "meaning": "A field has a non-literal initializer that cannot be emitted verbatim into the generated component (it references this, or the field is assigned in a method); it is declared as undefined there so the output still compiles. A never-assigned non-literal initializer without this (new Date(), Date.now(), an expression over literals) is emitted verbatim and does not warn."
     },
     {
       "code": "GEN_FIELD_STATE",

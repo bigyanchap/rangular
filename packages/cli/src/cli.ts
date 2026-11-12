@@ -359,12 +359,24 @@ Then scan the QR code with Expo Go. Your component is
 
 ## Recompile after editing the component
 
-From the Rangular repo root (the folder you cloned):
+Run this from the Rangular repo root (the folder you cloned; every
+path in the command is relative to that folder):
 
-    node dist/packages/cli/src/cli.js build ${path.relative(process.cwd(), entryAbs).split(path.sep).join('/')} --out ${path.relative(process.cwd(), path.join(srcDir, 'AppRoot.tsx')).split(path.sep).join('/')}
+    node dist/packages/cli/src/cli.js build ${path.relative(repoRoot, entryAbs).split(path.sep).join('/')} --out ${path.relative(repoRoot, path.join(srcDir, 'AppRoot.tsx')).split(path.sep).join('/')}
 
 Or run the same command with \`watch\` instead of \`build\` and it
 recompiles on every save.
+
+## Preview in a browser, no phone needed
+
+The dev preview renders any app component as a phone-width page you
+can click through. From the Rangular repo root:
+
+    node dist/packages/cli/src/cli.js preview ${path.relative(repoRoot, entryAbs).split(path.sep).join('/')} --out ${path.relative(repoRoot, path.join(appDir, 'preview.html')).split(path.sep).join('/')}
+
+Then open \`preview.html\` in this app folder in a browser. The
+preview is interactive: handlers run and lists respond, exactly as
+the generated app behaves.
 
 ## How the pieces fit
 
