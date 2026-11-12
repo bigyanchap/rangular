@@ -112,7 +112,7 @@ export function UnreadBadge() {
   return (
     <>
       {loaded && (
-        <Text variant="body">{mail.unreadCount()} unread</Text>
+        <RgText variant="bodyLarge">{mail.unreadCount()} unread</RgText>
       )}
     </>
   );

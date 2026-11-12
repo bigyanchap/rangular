@@ -932,31 +932,34 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .preview-chrome button { background: #ffffff; color: #0b57d0; border: 1px solid #dadce0; border-radius: 9999px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
   .preview-nav-back { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 16px 0; padding: 8px 12px; border: 1px dashed #b3261e; border-radius: 12px; color: #b3261e; font-size: 12px; background: #ffffff; }
   .preview-nav-back button { background: #b3261e; color: #ffffff; border: none; border-radius: 9999px; padding: 4px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
-  .screen { position: relative; width: 360px; max-width: 100%; min-height: 640px; background: var(--screen-bg); color: var(--text); border-radius: 28px; overflow: hidden; box-shadow: 0 10px 28px rgba(0,0,0,.18); padding-bottom: ${t.spacing.xxl}px; }
-  .appbar { display: flex; align-items: center; gap: ${t.spacing.md}px; margin: ${t.spacing.md}px; background: var(--surface-variant); border-radius: ${t.radius.full}px; padding: 10px ${t.spacing.lg}px; }
+  /* The screen owns the layout grid, mirroring RgScreen: one
+     horizontal margin (spacing.lg) as padding, one vertical rhythm
+     (spacing.md) as the gap between stacked blocks. Blocks carry no
+     horizontal margins of their own, in either renderer. */
+  .screen { position: relative; width: 360px; max-width: 100%; min-height: 640px; background: var(--screen-bg); color: var(--text); border-radius: 28px; overflow: hidden; box-shadow: 0 10px 28px rgba(0,0,0,.18); padding: ${t.spacing.md}px ${t.spacing.lg}px ${t.spacing.xxl}px; display: flex; flex-direction: column; gap: ${t.spacing.md}px; }
+  .appbar { display: flex; align-items: center; gap: ${t.spacing.md}px; background: var(--surface-variant); border-radius: ${t.radius.full}px; padding: 10px ${t.spacing.lg}px; }
   .search { flex: 1; color: var(--text-muted); font-size: 14px; }
   .appbar-title { flex: 1; font-size: ${t.typography.title.fontSize}px; font-weight: 600; }
   .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--avatar); color: var(--on-avatar); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
   .avatar-lg { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; }
   .icon { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
   .icon svg { display: block; }
-  .display { font-size: ${t.typography.display.fontSize}px; line-height: ${t.typography.display.lineHeight}px; font-weight: 700; margin: ${t.spacing.lg}px ${t.spacing.lg}px ${t.spacing.sm}px; }
-  .heading { font-size: ${t.typography.heading.fontSize}px; line-height: ${t.typography.heading.lineHeight}px; font-weight: 700; margin: 0 0 ${t.spacing.sm}px; }
-  .title { font-size: ${t.typography.title.fontSize}px; line-height: ${t.typography.title.lineHeight}px; font-weight: 600; margin: 0 0 ${t.spacing.sm}px; }
-  .body { font-size: ${t.typography.bodyLarge.fontSize}px; line-height: ${t.typography.bodyLarge.lineHeight}px; color: var(--text-muted); margin: 0 ${t.spacing.lg}px ${t.spacing.lg}px; }
-  .label { display: block; font-size: ${t.typography.label.fontSize}px; line-height: ${t.typography.label.lineHeight}px; font-weight: 600; letter-spacing: .4px; margin: 0 ${t.spacing.lg}px ${t.spacing.sm}px; }
+  .display { font-size: ${t.typography.display.fontSize}px; line-height: ${t.typography.display.lineHeight}px; font-weight: 700; margin: 0; }
+  .heading { font-size: ${t.typography.heading.fontSize}px; line-height: ${t.typography.heading.lineHeight}px; font-weight: 700; margin: 0; }
+  .title { font-size: ${t.typography.title.fontSize}px; line-height: ${t.typography.title.lineHeight}px; font-weight: 600; margin: 0; }
+  .body { font-size: ${t.typography.bodyLarge.fontSize}px; line-height: ${t.typography.bodyLarge.lineHeight}px; margin: 0; }
+  .label { display: block; font-size: ${t.typography.label.fontSize}px; line-height: ${t.typography.label.lineHeight}px; font-weight: 600; letter-spacing: .4px; margin: 0; }
   .badge { display: inline-block; background: var(--primary-container); color: var(--on-primary-container); border-radius: ${t.radius.full}px; padding: 4px 12px; font-size: ${t.typography.caption.fontSize}px; font-weight: 700; }
-  .card { background: var(--surface-variant); border: 1px solid var(--border); border-radius: ${t.radius.lg}px; padding: ${t.spacing.lg}px; margin: 0 ${t.spacing.lg}px ${t.spacing.lg}px; }
-  .card .body { margin: 0; font-size: ${t.typography.body.fontSize}px; }
-  .btn { display: block; margin: ${t.spacing.sm}px ${t.spacing.lg}px 0; background: var(--primary); color: var(--on-primary); border: none; border-radius: ${t.radius.full}px; padding: 0 ${t.spacing.xxl}px; min-height: 48px; font-size: ${t.typography.label.fontSize}px; font-weight: 600; cursor: pointer; }
+  .card { background: var(--surface-variant); border: 1px solid var(--border); border-radius: ${t.radius.lg}px; padding: ${t.spacing.lg}px; margin: 0; display: flex; flex-direction: column; gap: ${t.spacing.md}px; }
+  .btn { display: block; margin: 0; background: var(--primary); color: var(--on-primary); border: none; border-radius: ${t.radius.full}px; padding: 0 ${t.spacing.xxl}px; min-height: 48px; font-size: ${t.typography.label.fontSize}px; font-weight: 600; cursor: pointer; }
   .btn[disabled] { opacity: .38; cursor: default; }
   .form { display: flex; flex-direction: column; }
-  .field { display: flex; flex-direction: column; gap: ${t.spacing.xs}px; margin: ${t.spacing.sm}px ${t.spacing.lg}px 0; }
+  .field { display: flex; flex-direction: column; gap: ${t.spacing.xs}px; margin: ${t.spacing.md}px 0 0; }
   .field-label { font-size: ${t.typography.label.fontSize}px; font-weight: 600; color: var(--text-muted); }
   .field-input { font: inherit; font-size: ${t.typography.bodyLarge.fontSize}px; color: var(--text); background: var(--role-surface); border: 1px solid var(--border); border-radius: ${t.radius.sm}px; padding: 10px ${t.spacing.md}px; }
   .field-input[disabled] { opacity: .38; }
   .field-error { color: var(--role-error); font-size: ${t.typography.caption.fontSize}px; }
-  .switch, .checkbox { display: flex; align-items: center; gap: ${t.spacing.md}px; width: calc(100% - ${t.spacing.lg * 2}px); margin: ${t.spacing.sm}px ${t.spacing.lg}px 0; padding: ${t.spacing.sm}px 0; background: transparent; border: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  .switch, .checkbox { display: flex; align-items: center; gap: ${t.spacing.md}px; margin: ${t.spacing.sm}px 0 0; padding: ${t.spacing.sm}px 0; background: transparent; border: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
   .switch[disabled], .checkbox[disabled], .switcher-option[disabled], .radio-option[disabled] { opacity: .38; cursor: default; }
   .switch-track { position: relative; width: 52px; height: 32px; flex: 0 0 52px; border: 2px solid var(--border); border-radius: ${t.radius.full}px; background: var(--surface-variant); transition: background-color .16s linear, border-color .16s linear; }
   .switch.on .switch-track { background: var(--primary); border-color: var(--primary); }
@@ -966,27 +969,26 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .checkbox-box { width: 24px; height: 24px; flex: 0 0 24px; border: 2px solid var(--text-muted); border-radius: ${t.radius.sm}px; display: inline-flex; align-items: center; justify-content: center; color: var(--on-primary); }
   .checkbox.on .checkbox-box { background: var(--primary); border-color: var(--primary); }
   .checkbox-mark { font-size: ${t.typography.bodyLarge.fontSize}px; font-weight: 700; line-height: 1; }
-  .switcher { display: flex; gap: ${t.spacing.xs}px; padding: ${t.spacing.xs}px; margin: ${t.spacing.sm}px ${t.spacing.lg}px 0; background: var(--surface-variant); border: 1px solid var(--border); border-radius: ${t.radius.full}px; }
+  .switcher { display: flex; gap: ${t.spacing.xs}px; padding: ${t.spacing.xs}px; margin: ${t.spacing.sm}px 0 0; background: var(--surface-variant); border: 1px solid var(--border); border-radius: ${t.radius.full}px; }
   .switcher-option { flex: 1; min-height: 40px; border: none; border-radius: ${t.radius.full}px; background: transparent; color: var(--text); padding: 0 ${t.spacing.md}px; font-size: ${t.typography.label.fontSize}px; cursor: pointer; }
   .switcher-option.selected { background: var(--primary-container); color: var(--on-primary-container); font-weight: 600; }
-  .radio-option { display: flex; align-items: center; gap: ${t.spacing.md}px; width: calc(100% - ${t.spacing.lg * 2}px); margin: 0 ${t.spacing.lg}px; padding: ${t.spacing.sm}px 0; background: transparent; border: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  .radio-option { display: flex; align-items: center; gap: ${t.spacing.md}px; margin: 0; padding: ${t.spacing.sm}px 0; background: transparent; border: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
   .radio-circle { width: 24px; height: 24px; flex: 0 0 24px; border: 2px solid var(--text-muted); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
   .radio-option.selected .radio-circle { border-color: var(--primary); }
   .radio-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--primary); }
   .list { border-top: 1px solid var(--border); }
-  .row { display: flex; gap: ${t.spacing.md}px; align-items: flex-start; padding: 11px ${t.spacing.lg}px; border-bottom: 1px solid var(--border); }
+  .row { display: flex; gap: ${t.spacing.md}px; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid var(--border); }
   .row-main { flex: 1; display: flex; flex-direction: column; }
   .row-title { font-weight: 600; font-size: 14px; }
   .row-sub { font-size: 13px; }
   .row-detail { font-size: 12.5px; color: var(--text-muted); }
   .row-time { font-size: 11px; color: var(--text-muted); }
-  .fab { display: inline-block; float: right; margin: ${t.spacing.sm}px ${t.spacing.lg}px 0 0; background: var(--primary-container); color: var(--on-primary-container); border-radius: ${t.radius.lg}px; padding: 13px 18px; font-size: 14px; font-weight: 600; box-shadow: 0 3px 8px rgba(0,0,0,.25); }
+  .fab { display: inline-block; align-self: flex-end; margin: 0; background: var(--primary-container); color: var(--on-primary-container); border-radius: ${t.radius.lg}px; padding: 13px 18px; font-size: 14px; font-weight: 600; box-shadow: 0 3px 8px rgba(0,0,0,.25); }
   .overlay { position: absolute; inset: 0; z-index: 10; display: flex; align-items: flex-end; }
   .overlay-center { align-items: center; justify-content: center; padding: 0 ${t.spacing.lg}px; }
   .overlay-backdrop { position: absolute; inset: 0; background: var(--role-scrim); opacity: .32; }
   .sheet { position: relative; width: 100%; background: var(--role-surface); border-radius: ${t.radius.xl}px ${t.radius.xl}px 0 0; padding: ${t.spacing.sm}px ${t.spacing.lg}px ${t.spacing.xxl}px; box-shadow: 0 -4px 18px rgba(0,0,0,.18); animation: sheet-up .22s linear; max-height: 88%; overflow-y: auto; }
-  .sheet .body, .dialog .body, .sheet .label, .dialog .label { margin-left: 0; margin-right: 0; }
-  .sheet .btn, .dialog .btn, .sheet .radio-option { width: 100%; margin-left: 0; margin-right: 0; }
+  .sheet .btn, .dialog .btn { width: 100%; }
   .sheet-handle { width: 36px; height: 4px; border-radius: ${t.radius.full}px; background: var(--border); margin: 0 auto ${t.spacing.md}px; }
   @keyframes sheet-up { from { transform: translateY(24px); } to { transform: translateY(0); } }
   .dialog { position: relative; width: 100%; background: var(--role-surface); border-radius: ${t.radius.xl}px; padding: ${t.spacing.xl}px; box-shadow: 0 10px 28px rgba(0,0,0,.25); animation: dialog-in .15s linear; }
@@ -1009,40 +1011,38 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
      class: .badge above is the older showcase pill. */
   .btn, .row { position: relative; }
   .badge-dot { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; border-radius: ${t.radius.full}px; background: var(--role-error); color: var(--role-on-error); font-size: ${t.typography.caption.fontSize}px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; padding: 0 4px; z-index: 2; }
-  .row .badge-dot { top: 6px; right: 12px; }
+  .row .badge-dot { top: 6px; right: 0; }
   .icon-badge { position: relative; display: inline-flex; }
   .icon-badge .badge-dot { top: -4px; right: -4px; }
-  .tab-headers { display: flex; border-bottom: 1px solid var(--border); margin: 0 ${t.spacing.lg}px; }
+  .tab-headers { display: flex; border-bottom: 1px solid var(--border); margin: 0; }
   .tab-header { flex: 1; min-height: 48px; display: flex; align-items: center; justify-content: center; position: relative; padding: 0 ${t.spacing.sm}px; cursor: pointer; }
   .tab-label { font-size: ${t.typography.label.fontSize}px; color: var(--text-muted); }
   .tab-header.selected .tab-label { color: var(--primary); font-weight: 600; }
   .tab-indicator { position: absolute; left: ${t.spacing.md}px; right: ${t.spacing.md}px; bottom: 0; height: 3px; background: var(--primary); border-radius: ${t.radius.sm}px ${t.radius.sm}px 0 0; }
   .panel { border-bottom: 1px solid var(--border); }
-  .panel-header { display: flex; align-items: center; gap: ${t.spacing.md}px; min-height: 48px; padding: ${t.spacing.sm}px ${t.spacing.lg}px; cursor: pointer; }
+  .panel-header { display: flex; align-items: center; gap: ${t.spacing.md}px; min-height: 48px; padding: ${t.spacing.sm}px 0; cursor: pointer; }
   .panel-titles { flex: 1; }
   .panel-title { font-size: ${t.typography.body.fontSize}px; font-weight: 600; color: var(--text); }
   .panel-subtitle { font-size: ${t.typography.caption.fontSize}px; color: var(--text-muted); }
   .panel-chevron { display: inline-flex; transform: rotate(90deg); }
   .panel-chevron.open { transform: rotate(-90deg); }
-  .panel-body { padding: 0 ${t.spacing.lg}px ${t.spacing.lg}px; }
-  .panel-body .body, .panel-body .label { margin-left: 0; margin-right: 0; }
-  .panel-body .progress, .panel-body .slider { margin-left: 0; margin-right: 0; }
-  .table { margin: 0 ${t.spacing.lg}px ${t.spacing.lg}px; }
+  .panel-body { padding: 0 0 ${t.spacing.lg}px; }
+  .table { margin: 0; }
   .table-row { display: flex; gap: ${t.spacing.md}px; padding: 11px 0; border-bottom: 1px solid var(--border); }
   .table-cell { flex: 1; font-size: ${t.typography.body.fontSize}px; color: var(--text); }
   .table-cell.head { font-size: ${t.typography.label.fontSize}px; font-weight: 600; color: var(--text-muted); }
   .table-empty { font-size: ${t.typography.body.fontSize}px; color: var(--text-muted); padding: 11px 0; }
-  .slider { margin: 0 ${t.spacing.lg}px; padding: ${t.spacing.md}px 0; }
+  .slider { margin: 0; padding: ${t.spacing.md}px 0; }
   .slider-track { position: relative; height: 4px; border-radius: ${t.radius.full}px; background: var(--surface-variant); }
   .slider-fill { position: absolute; left: 0; top: 0; height: 4px; border-radius: ${t.radius.full}px; background: var(--primary); }
   .slider-thumb { position: absolute; top: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: var(--primary); }
   .slider-ticks { position: relative; height: 20px; }
   .slider-tick { position: absolute; top: 6px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--border); border: none; cursor: pointer; padding: 0; }
   button.slider-tick { background: var(--primary); opacity: .55; }
-  .progress { height: 4px; border-radius: ${t.radius.full}px; background: var(--surface-variant); margin: ${t.spacing.sm}px ${t.spacing.lg}px; overflow: hidden; }
+  .progress { height: 4px; border-radius: ${t.radius.full}px; background: var(--surface-variant); margin: ${t.spacing.sm}px 0 0; overflow: hidden; }
   .progress-fill { height: 4px; border-radius: ${t.radius.full}px; background: var(--primary); }
   .spinner { display: inline-flex; vertical-align: middle; }
-  .chips { display: flex; flex-wrap: wrap; gap: ${t.spacing.sm}px; margin: ${t.spacing.sm}px ${t.spacing.lg}px; }
+  .chips { display: flex; flex-wrap: wrap; gap: ${t.spacing.sm}px; margin: ${t.spacing.sm}px 0 0; }
   .chip { display: inline-flex; align-items: center; gap: ${t.spacing.xs}px; background: var(--surface-variant); border: 1px solid var(--border); border-radius: ${t.radius.full}px; padding: 6px ${t.spacing.md}px; font-size: ${t.typography.label.fontSize}px; color: var(--text); }
   .chip-remove { display: inline-flex; cursor: pointer; }
   .auto-anchor { position: relative; }

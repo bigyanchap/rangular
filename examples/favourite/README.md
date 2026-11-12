@@ -80,8 +80,8 @@ export function QuoteCard({ quote = '', author = '', onFavourited }: { quote?: a
   };
   return (
     <RgCard>
-      <Text variant="body">{quote}</Text>
-      <Text variant="title">{author}</Text>
+      <RgText variant="bodyLarge">{quote}</RgText>
+      <RgText variant="title">{author}</RgText>
       <RgButton onPress={() => save()}>Save</RgButton>
     </RgCard>
   );

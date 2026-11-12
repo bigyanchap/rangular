@@ -4,9 +4,6 @@ import { SnackBar } from '@angular/material/snack-bar';
 @Component({
   selector: 'app-reminder',
   templateUrl: './reminder.component.html',
-  styles: [`
-    .dialog-btn { margin-left: 0; margin-right: 0; }
-  `],
 })
 export class ReminderComponent {
   title = '';

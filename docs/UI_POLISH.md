@@ -174,6 +174,47 @@ What parity means in practice today:
   JSX element, or a style property outside the supported CSS subset
   leaks into generated code.
 
+## Addendum (default polish pass, 2026-11-12)
+
+Bigyan ran the scaffolded starter app on his phone and judged it
+unpolished. He was right, and the diagnosis found real system gaps,
+not taste issues:
+
+- The preview applied the type scale to headings and paragraphs,
+  but generated code compiled them to plain React Native `Text`
+  with a `variant` prop RN ignores, so the phone rendered them at
+  the default size and weight. The preview was promising a polish
+  the app did not have, exactly what the parity principle forbids.
+- Every block carried its own horizontal margin (appbar 12, card
+  16, bare text 0), so a screen had three different left edges.
+- Card children had no spacing rhythm in generated code at all:
+  gaps the preview showed through CSS margins did not exist in the
+  app, and the button inside a card was inset from the card's text
+  column by its own margin.
+
+The defaults now, all values from the existing token scales, in the
+primitives and mirrored in the preview renderer:
+
+- **One screen grid.** `RgScreen` content carries the `spacing.lg`
+  (16) horizontal padding and a `spacing.md` (12) gap between
+  stacked blocks. Primitives carry no horizontal margins, so every
+  top level block shares the same edges. A card stacks its
+  children with the same 12 gap inside its 16 padding, and a
+  button inside a card spans the card's content column exactly.
+- **The type scale is real in generated code.** `h1`/`h2`/`h3`/`p`
+  and `<label>` compile to `RgText` at the display (32/700),
+  heading (24/700), title (20/600), bodyLarge (16) and label steps,
+  in the theme's on-surface colour. `<span>` stays plain `Text`
+  and inherits inline.
+- **Rows take their inset from their container** (no private
+  horizontal padding), so row text sits on the grid and dividers
+  align to the grid edges in screens, cards and tab panels alike.
+- **The starter itself was redesigned** to the composed form: a
+  title appbar (no search box by default), the display headline,
+  and one card whose heading, paragraph, button and counter line
+  are separated by the single rhythm. The starter component
+  carries no custom styles; the look is entirely the defaults.
+
 ## One-line version
 
 **Don't translate CSS, translate intent, onto tokens and pre-polished

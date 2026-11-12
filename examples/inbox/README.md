@@ -49,14 +49,14 @@ export default function Inbox() {
   return (
     <RgScreen>
       <RgAppbar title="Mail" search="Search in mail" />
-      <Text variant="display">{title}</Text>
+      <RgText variant="display">{title}</RgText>
       <RgList>
         {mails.map((m, i) => (           {/* *ngFor -> keyed .map(...) */}
           <RgRow key={m?.id ?? i} avatar title={m.from} subtitle={m.subject} detail={m.snippet} time={m.time} />
         ))}
       </RgList>
       {(mails.length === 0) && (          {/* *ngIf empty state */}
-        <Text variant="body">No mail. Enjoy the quiet.</Text>
+        <RgText variant="bodyLarge">No mail. Enjoy the quiet.</RgText>
       )}
     </RgScreen>
   );

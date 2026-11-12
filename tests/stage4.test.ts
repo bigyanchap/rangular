@@ -141,9 +141,9 @@ test('<screen theme="dark"> compiles to <RgScreen theme="dark">', () => {
   assert.match(light.code, /<RgScreen>/);
 });
 
-test('<label> compiles to Text with the label variant', () => {
+test('<label> compiles to RgText with the label variant', () => {
   const { code } = compileSnippet('<screen><label>Text variants</label></screen>');
-  assert.match(code, /<Text variant="label">Text variants<\/Text>/);
+  assert.match(code, /<RgText variant="label">Text variants<\/RgText>/);
 });
 
 // --- Showcase (D) ------------------------------------------------------------------

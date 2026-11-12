@@ -27,8 +27,8 @@
   <dialog [open]="confirmOpen" (close)="closeConfirm()" title="Delete this reminder?">
     <p>This cannot be kept in the list after deletion. You can undo it from the message that follows.</p>
     <actions>
-      <button class="dialog-btn" (click)="closeConfirm()">Cancel</button>
-      <button class="dialog-btn" (click)="deleteReminder()">Delete</button>
+      <button (click)="closeConfirm()">Cancel</button>
+      <button (click)="deleteReminder()">Delete</button>
     </actions>
   </dialog>
 </screen>

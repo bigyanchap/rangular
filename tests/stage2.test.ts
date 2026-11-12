@@ -54,14 +54,14 @@ test('(click) on a row emits onPress too', () => {
 test('*ngIf wraps the element in a conditional', () => {
   const { code } = compileSnippet('<p *ngIf="count >= 5">Past five</p>', 'count = 0;');
   assert.match(code, /\{\(count >= 5\) && \(/);
-  assert.match(code, /<Text variant="body">Past five<\/Text>/);
+  assert.match(code, /<RgText variant="bodyLarge">Past five<\/RgText>/);
 });
 
 test('*ngIf with else microsyntax degrades to a TODO warning, not broken code', () => {
   const result = compileSnippet('<p *ngIf="ready; else alt">x</p>', 'ready = true;');
   assert.ok(result.diagnostics.some((d) => d.code === 'GEN_NGIF_ELSE_TODO'));
   assert.equal(hasErrors(result.diagnostics), false);
-  assert.match(result.code, /<Text variant="body">x<\/Text>/);
+  assert.match(result.code, /<RgText variant="bodyLarge">x<\/RgText>/);
 });
 
 test('*ngFor emits a keyed map with loop-variable bindings intact', () => {

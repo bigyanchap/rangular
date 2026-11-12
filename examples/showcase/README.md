@@ -44,7 +44,7 @@ export class ShowcaseComponent {
   <label>Text variants</label>
   <h2>Heading, at the heading step</h2>
   <h3>Title, at the title step</h3>
-  <p>Body text at the body step, muted by colour role, never by a hand-picked grey.</p>
+  <p>Body text at the body-large step, in the on-surface colour role, never by a hand-picked grey.</p>
   <card>
     <h3>Inside a card</h3>
     <p class="card-note">A card note: body step, muted colour, from a .class rule in the component styles.</p>
@@ -66,8 +66,8 @@ export class ShowcaseComponent {
 Key lines of the generated `showcase.component.tsx`:
 
 ```tsx
-<Text variant="label">Text variants</Text>          // <label> = Text with the label variant
-<Text variant="body" style={styles.cardNote}>…</Text>
+<RgText variant="label">Text variants</RgText>          // <label> = RgText with the label variant
+<RgText variant="bodyLarge" style={styles.cardNote}>…</RgText>
 <RgRow title="System" subtitle="Theme tokens" time="Now">
   <Text style={styles.badge}>{unread} unread</Text> // badge = a styled span inside a row
 </RgRow>

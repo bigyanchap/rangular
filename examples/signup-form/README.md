@@ -63,7 +63,7 @@ const nameModel = { value: name, errors: nameErrors, valid: nameErrors === null,
 
 <RgInput label="Full name" placeholder="e.g. Bigyan Chapagain" value={name} onChangeText={($event) => setName($event)} onBlur={() => setNameTouched(true)} />
 {(nameModel.invalid && nameModel.touched) && (
-  <Text variant="body">Name is required and needs at least 3 characters.</Text>
+  <RgText variant="bodyLarge">Name is required and needs at least 3 characters.</RgText>
 )}
 <RgButton disabled={(((nameModel.invalid || emailModel.invalid) || passwordModel.invalid) || !terms)} onPress={() => { setNameTouched(true); setEmailTouched(true); setPasswordTouched(true); save(); }}>Create account</RgButton>
 ```

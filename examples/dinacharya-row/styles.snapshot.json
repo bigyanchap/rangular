@@ -18,8 +18,8 @@
         "row": {
           "borderColor": "#dadce0",
           "gap": 12,
-          "paddingLeft": 16,
-          "paddingRight": 16
+          "paddingLeft": 0,
+          "paddingRight": 0
         },
         "screen": {
           "background": "#ffffff",
@@ -28,7 +28,7 @@
         "textBody": {
           "fontSize": 16,
           "lineHeight": 24,
-          "color": "#5f6368"
+          "color": "#1f1f1f"
         },
         "textLabel": {
           "fontSize": 14,
@@ -81,8 +81,8 @@
         "row": {
           "borderColor": "#444746",
           "gap": 12,
-          "paddingLeft": 16,
-          "paddingRight": 16
+          "paddingLeft": 0,
+          "paddingRight": 0
         },
         "screen": {
           "background": "#131314",
@@ -91,7 +91,7 @@
         "textBody": {
           "fontSize": 16,
           "lineHeight": 24,
-          "color": "#9aa0a6"
+          "color": "#e3e3e3"
         },
         "textLabel": {
           "fontSize": 14,

@@ -83,11 +83,18 @@ export const TAG_MAP: Record<string, TagMapping> = {
   section: { component: 'View', fromUi: false },
   header: { component: 'View', fromUi: false },
   span: { component: 'Text', fromUi: false },
-  p: { component: 'Text', fromUi: false, variant: 'body' },
-  label: { component: 'Text', fromUi: false, variant: 'label' },
-  h1: { component: 'Text', fromUi: false, variant: 'display' },
-  h2: { component: 'Text', fromUi: false, variant: 'heading' },
-  h3: { component: 'Text', fromUi: false, variant: 'title' },
+  // Text with a meaning compiles to RgText (default polish pass):
+  // the primitive applies the token type step (size, line height,
+  // weight) and the theme's on-surface colour, so the app renders
+  // the same type scale the preview shows. Plain RN Text ignored
+  // the variant prop, so headings reached the phone unstyled.
+  // <span> stays plain Text: it is the inline element, nested inside
+  // a text block and inheriting from it.
+  p: { component: 'RgText', fromUi: true, variant: 'bodyLarge' },
+  label: { component: 'RgText', fromUi: true, variant: 'label' },
+  h1: { component: 'RgText', fromUi: true, variant: 'display' },
+  h2: { component: 'RgText', fromUi: true, variant: 'heading' },
+  h3: { component: 'RgText', fromUi: true, variant: 'title' },
   button: { component: 'RgButton', fromUi: true },
   screen: { component: 'RgScreen', fromUi: true },
   appbar: { component: 'RgAppbar', fromUi: true },

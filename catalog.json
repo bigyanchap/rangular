@@ -24,32 +24,32 @@
     },
     {
       "tag": "p",
-      "component": "Text",
-      "from": "react-native",
-      "variant": "body"
+      "component": "RgText",
+      "from": "@rangular/ui",
+      "variant": "bodyLarge"
     },
     {
       "tag": "label",
-      "component": "Text",
-      "from": "react-native",
+      "component": "RgText",
+      "from": "@rangular/ui",
       "variant": "label"
     },
     {
       "tag": "h1",
-      "component": "Text",
-      "from": "react-native",
+      "component": "RgText",
+      "from": "@rangular/ui",
       "variant": "display"
     },
     {
       "tag": "h2",
-      "component": "Text",
-      "from": "react-native",
+      "component": "RgText",
+      "from": "@rangular/ui",
       "variant": "heading"
     },
     {
       "tag": "h3",
-      "component": "Text",
-      "from": "react-native",
+      "component": "RgText",
+      "from": "@rangular/ui",
       "variant": "title"
     },
     {

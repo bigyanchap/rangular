@@ -49,8 +49,12 @@ function allRoles(mode: ThemeMode): Record<string, StyleRecord> {
     button: { background: c.primary, color: c.onPrimary, borderRadius: t.radius.full, minHeight: 48 },
     list: { borderColor: c.border },
     row: {
+      // A row carries no horizontal padding of its own (default
+      // polish pass): its inset comes from the container grid
+      // (the screen's spacing.lg padding, a card's padding, and
+      // so on), so the row's own recorded padding is 0.
       borderColor: c.border, gap: t.spacing.md,
-      paddingLeft: t.spacing.lg, paddingRight: t.spacing.lg,
+      paddingLeft: 0, paddingRight: 0,
     },
     badge: {
       background: c.primaryContainer, color: c.onPrimaryContainer,
@@ -122,7 +126,7 @@ function allRoles(mode: ThemeMode): Record<string, StyleRecord> {
     textDisplay: { fontSize: ty.display.fontSize, lineHeight: ty.display.lineHeight, fontWeight: 700 },
     textHeading: { fontSize: ty.heading.fontSize, lineHeight: ty.heading.lineHeight, fontWeight: 700 },
     textTitle: { fontSize: ty.title.fontSize, lineHeight: ty.title.lineHeight, fontWeight: 600 },
-    textBody: { fontSize: ty.bodyLarge.fontSize, lineHeight: ty.bodyLarge.lineHeight, color: c.textMuted },
+    textBody: { fontSize: ty.bodyLarge.fontSize, lineHeight: ty.bodyLarge.lineHeight, color: c.text },
     textLabel: { fontSize: ty.label.fontSize, lineHeight: ty.label.lineHeight, fontWeight: 600 },
   };
 }

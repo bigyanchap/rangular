@@ -1015,10 +1015,30 @@ See `examples/mailbox-pro/` and its recipe card.
   value, plus a `STYLE_OFF_SCALE` warning whose fix names the snapped
   value: `margin-bottom: 13px` becomes 12. On-scale values and 0 pass
   silently; ties go to the lower value; colours are never snapped.
-- **Text by meaning, not by number.** `h1`/`h2`/`h3`/`p` map to the
-  display/heading/title/body steps, and `<label>` (new in Stage 4)
-  maps to the label step. See `examples/showcase/` and its recipe
-  card for the whole system on one screen.
+- **Text by meaning, not by number.** `h1`/`h2`/`h3`/`p` compile to
+  `RgText` at the display/heading/title/bodyLarge steps, and
+  `<label>` (new in Stage 4) maps to the label step. `RgText`
+  applies the step's size, line height and weight plus the theme's
+  on-surface colour, so the type scale the preview shows is the
+  scale the app renders. (Before the default polish pass these
+  compiled to plain React Native `Text`, which ignores the variant
+  prop: headings reached the phone unstyled while the preview
+  showed them styled.) `<span>` stays plain `Text`: it is the
+  inline element and inherits from the text block around it. See
+  `examples/showcase/` and its recipe card for the whole system on
+  one screen.
+- **One screen grid, one rhythm (default polish pass).** `RgScreen`
+  owns the layout grid: its content carries `spacing.lg` (16)
+  horizontal padding, `spacing.md` (12) on top, and stacked blocks
+  are separated by a 12 gap; a card stacks its children with the
+  same 12 gap inside its 16 padding. Primitives carry no horizontal
+  margins of their own, so the appbar pill, a card, a bare heading
+  and a button all land on the same left and right edges, and a
+  button inside a card spans the card's content column exactly.
+  Rows carry no horizontal padding either: a row takes its inset
+  from its container (screen, card, tab panel), which puts row
+  text on the same grid and the hairline on the grid edges. The
+  preview renderer mirrors every one of these values.
 
 ## Tooling (Stage 5)
 

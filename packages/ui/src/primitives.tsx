@@ -115,7 +115,7 @@ export function badgeTextOf(badge: unknown): string | null {
 /**
  * The badge count dot itself (Stage 11), internal: an error coloured
  * pill at the host's top end corner. Hosts pass their own offset,
- * because a full width row wants the dot inside its padding while a
+ * because a full width row wants the dot on its grid edge while a
  * button or icon lets it overlap the corner.
  */
 function BadgeDot({ value, styles, offset }: any) {
@@ -149,10 +149,21 @@ function buildStyles(t: Theme) {
   const c = t.colors;
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: c.background },
-    screenContent: { paddingBottom: t.spacing.xxl },
+    // The screen owns the layout grid (default polish pass): one
+    // horizontal margin (spacing.lg) applied here as content padding,
+    // and one vertical rhythm (spacing.md) applied as the gap between
+    // stacked blocks. Primitives carry no horizontal margins of their
+    // own, so every top level block, the appbar pill, a card, a bare
+    // heading, lands on the same left and right edges, and a block
+    // nested in a card or panel takes its inset from that container's
+    // padding instead. The preview renderer mirrors these values.
+    screenContent: {
+      paddingHorizontal: t.spacing.lg, paddingTop: t.spacing.md,
+      paddingBottom: t.spacing.xxl, gap: t.spacing.md,
+    },
     appbar: {
       flexDirection: 'row', alignItems: 'center', gap: t.spacing.md,
-      margin: t.spacing.md, paddingHorizontal: t.spacing.lg, paddingVertical: 10,
+      paddingHorizontal: t.spacing.lg, paddingVertical: 10,
       backgroundColor: c.surfaceVariant, borderRadius: t.radius.full,
     },
     appbarTitle: { flex: 1, fontSize: t.typography.title.fontSize, fontWeight: '600', color: c.text },
@@ -160,18 +171,21 @@ function buildStyles(t: Theme) {
     card: {
       backgroundColor: c.surfaceVariant, borderColor: c.border, borderWidth: 1,
       borderRadius: t.radius.lg, padding: t.spacing.lg,
-      marginHorizontal: t.spacing.lg, marginBottom: t.spacing.lg,
+      // Children stack with the one rhythm gap, so a heading, a
+      // paragraph, a button and a counter line inside a card are
+      // separated by the same space, the button spanning the card's
+      // content column exactly (no margins of its own).
+      gap: t.spacing.md,
     },
     button: {
       backgroundColor: c.primary, borderRadius: t.radius.full,
       minHeight: 48, paddingHorizontal: t.spacing.xxl,
       alignItems: 'center', justifyContent: 'center',
-      marginHorizontal: t.spacing.lg,
     },
     buttonPressed: { opacity: 0.85 },
     buttonDisabled: { opacity: 0.38 },
     buttonLabel: { color: c.onPrimary, fontSize: t.typography.label.fontSize, fontWeight: '600' },
-    inputWrap: { marginHorizontal: t.spacing.lg, marginBottom: t.spacing.md },
+    inputWrap: { marginBottom: t.spacing.md },
     inputLabel: {
       fontSize: t.typography.label.fontSize, fontWeight: '600',
       color: c.textMuted, marginBottom: t.spacing.xs,
@@ -188,7 +202,7 @@ function buildStyles(t: Theme) {
     inputDisabled: { opacity: 0.38 },
     controlRow: {
       minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: t.spacing.md,
-      paddingVertical: t.spacing.sm, paddingHorizontal: t.spacing.lg,
+      paddingVertical: t.spacing.sm,
     },
     controlLabel: { flex: 1, fontSize: t.typography.body.fontSize, color: c.text },
     controlDisabled: { opacity: 0.38 },
@@ -209,7 +223,7 @@ function buildStyles(t: Theme) {
     checkboxBoxOn: { backgroundColor: c.primary, borderColor: c.primary },
     switcher: {
       flexDirection: 'row', gap: t.spacing.xs, padding: t.spacing.xs,
-      marginHorizontal: t.spacing.lg, marginVertical: t.spacing.sm,
+      marginTop: t.spacing.sm,
       backgroundColor: c.surfaceVariant, borderColor: c.border, borderWidth: 1,
       borderRadius: t.radius.full,
     },
@@ -227,8 +241,12 @@ function buildStyles(t: Theme) {
     radioOuterSelected: { borderColor: c.primary },
     radioDot: { width: 12, height: 12, borderRadius: t.radius.full, backgroundColor: c.primary },
     row: {
+      // No horizontal padding of its own: a row takes its inset from
+      // the container grid (screen padding, a card's padding, a tab
+      // panel), so row text aligns with every other block and the
+      // hairline sits on the grid edges.
       flexDirection: 'row', gap: t.spacing.md, alignItems: 'flex-start',
-      paddingVertical: 11, paddingHorizontal: t.spacing.lg,
+      paddingVertical: 11,
       borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border,
     },
     rowTitle: { fontSize: t.typography.body.fontSize, fontWeight: '600', color: c.text },
@@ -335,7 +353,7 @@ function buildStyles(t: Theme) {
     // selected label in the primary colour with a 3px indicator bar.
     tabsHeader: {
       flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: c.border, marginHorizontal: t.spacing.lg,
+      borderBottomColor: c.border,
     },
     tabHeader: {
       flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center',
@@ -353,15 +371,15 @@ function buildStyles(t: Theme) {
     panel: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border },
     panelHeader: {
       flexDirection: 'row', alignItems: 'center', gap: t.spacing.md,
-      minHeight: 48, paddingVertical: t.spacing.sm, paddingHorizontal: t.spacing.lg,
+      minHeight: 48, paddingVertical: t.spacing.sm,
     },
     panelTitles: { flex: 1 },
     panelTitle: { fontSize: t.typography.body.fontSize, fontWeight: '600', color: c.text },
     panelSubtitle: { fontSize: t.typography.caption.fontSize, color: c.textMuted },
-    panelBody: { paddingHorizontal: t.spacing.lg, paddingBottom: t.spacing.lg },
+    panelBody: { paddingBottom: t.spacing.lg },
     // Table (Stage 11): header labels over hairline separated rows,
     // every column an equal share, the plain Material table look.
-    table: { marginHorizontal: t.spacing.lg, marginBottom: t.spacing.lg },
+    table: {},
     tableRow: {
       flexDirection: 'row', gap: t.spacing.md,
       paddingVertical: 11, borderBottomWidth: StyleSheet.hairlineWidth,
@@ -374,7 +392,7 @@ function buildStyles(t: Theme) {
     tableEmpty: { fontSize: t.typography.body.fontSize, color: c.textMuted, paddingVertical: 11 },
     // Slider (Stage 11): a 4px track, a filled portion and a round
     // thumb, Material slider proportions.
-    slider: { marginHorizontal: t.spacing.lg, paddingVertical: t.spacing.md },
+    slider: { paddingVertical: t.spacing.md },
     sliderTrackArea: { height: 24, justifyContent: 'center' },
     sliderTrack: { height: 4, borderRadius: t.radius.full, backgroundColor: c.surfaceVariant },
     sliderFill: { position: 'absolute', left: 0, top: 10, height: 4, borderRadius: t.radius.full, backgroundColor: c.primary },
@@ -387,13 +405,13 @@ function buildStyles(t: Theme) {
     // SVG arc, sized on the icon scale.
     progressTrack: {
       height: 4, borderRadius: t.radius.full, backgroundColor: c.surfaceVariant,
-      marginHorizontal: t.spacing.lg, marginVertical: t.spacing.sm, overflow: 'hidden',
+      marginTop: t.spacing.sm, overflow: 'hidden',
     },
     progressFill: { height: 4, borderRadius: t.radius.full, backgroundColor: c.primary },
     // Chips (Stage 11): pills in a wrapping row.
     chips: {
       flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm,
-      marginHorizontal: t.spacing.lg, marginVertical: t.spacing.sm,
+      marginTop: t.spacing.sm,
     },
     chip: {
       flexDirection: 'row', alignItems: 'center', gap: t.spacing.xs,
@@ -441,7 +459,10 @@ export function RgText({ children, variant = 'body', style }: any) {
   const t = useRgTheme();
   const step = (t.typography as any)[variant] ?? t.typography.body;
   return (
-    <Text style={[{ fontSize: step.fontSize, lineHeight: step.lineHeight, color: t.colors.text }, style]}>
+    <Text style={[{
+      fontSize: step.fontSize, lineHeight: step.lineHeight,
+      fontWeight: step.fontWeight, color: t.colors.text,
+    }, style]}>
       {children}
     </Text>
   );
@@ -713,7 +734,7 @@ export function RgRow({ title, subtitle, detail, time, avatar, onPress, badge, c
         {children}
       </View>
       {time ? <Text style={{ fontSize: 11, color: c.textMuted }}>{time}</Text> : null}
-      <BadgeDot value={badge} styles={styles} offset={{ top: 8, right: t.spacing.lg }} />
+      <BadgeDot value={badge} styles={styles} offset={{ top: 8, right: 0 }} />
     </>
   );
   // A row with an onPress (a (click) handler or a routerLink in the
@@ -841,11 +862,10 @@ export function RgDialog({ open, onClose, title, children, style }: any) {
 /**
  * A right-aligned row of action buttons (Stage 10), the layout
  * Angular Material dialogs and sheets put their buttons in. It only
- * arranges its children; the buttons keep their own behaviour. A
- * button's own horizontal margins can be zeroed with a component
- * class (margin-left / margin-right win over the button's margin
- * defaults in React Native style resolution), as the reminder
- * example's recipe card shows.
+ * arranges its children; the buttons keep their own behaviour.
+ * Buttons carry no horizontal margins of their own (the screen grid
+ * and container padding own every inset), so they sit directly in
+ * the row's gap rhythm.
  */
 export function RgActions({ children, style }: any) {
   const styles = stylesFor(useRgTheme());

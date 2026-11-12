@@ -51,8 +51,8 @@ export default function Hello() {
   return (
     <RgScreen>
       <RgAppbar title="Rangular" search="Search" />
-      <Text variant="display" style={styles.h1}>{title}</Text>   {/* {{ title }} -> {title} */}
-      <Text variant="body">{subtitle}</Text>
+      <RgText variant="display" style={styles.h1}>{title}</RgText>   {/* {{ title }} -> {title} */}
+      <RgText variant="bodyLarge">{subtitle}</RgText>
       <RgCard>...</RgCard>                                       {/* <card> -> RgCard */}
       <RgButton disabled={actionDisabled}>Get started</RgButton> {/* [disabled] -> disabled={...} */}
     </RgScreen>
@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
 
 **Rules used**
 
-- Every template tag resolves through the one tag→component mapping (`catalog.md`): `screen → RgScreen`, `card → RgCard`, `h1 → Text variant="display"`, `p → Text variant="body"`.
+- Every template tag resolves through the one tag→component mapping (`catalog.md`): `screen → RgScreen`, `card → RgCard`, `h1 → RgText variant="display"`, `p → RgText variant="bodyLarge"`.
 - Fields with literal initializers are hoisted as `const`, they only become `useState` if a method assigns them (see the counter recipe).
 - `{{ expr }}` inside text becomes `{expr}`; `[prop]="expr"` becomes `prop={expr}`.
 - Component `styles` are parsed by the CSS subset: element selectors (`h1`) and single `.class` selectors only, kebab-case properties camelCased, `8px` → `8`.

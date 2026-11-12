@@ -31,7 +31,7 @@
         "textBody": {
           "fontSize": 16,
           "lineHeight": 24,
-          "color": "#5f6368"
+          "color": "#1f1f1f"
         },
         "textDisplay": {
           "fontSize": 32,
@@ -85,7 +85,7 @@
         "textBody": {
           "fontSize": 16,
           "lineHeight": 24,
-          "color": "#9aa0a6"
+          "color": "#e3e3e3"
         },
         "textDisplay": {
           "fontSize": 32,

@@ -25,12 +25,12 @@ test('div maps to View and text stays text', () => {
 test('div wrapping text uses View with a Text child shape', () => {
   const code = compileSnippet('<div><p>Hello</p></div>');
   assert.match(code, /<View>/);
-  assert.match(code, /<Text variant="body">Hello<\/Text>/);
+  assert.match(code, /<RgText variant="bodyLarge">Hello<\/RgText>/);
 });
 
-test('h1 maps to Text with the display variant', () => {
+test('h1 maps to RgText with the display variant', () => {
   const code = compileSnippet('<h1>Title</h1>');
-  assert.match(code, /<Text variant="display">Title<\/Text>/);
+  assert.match(code, /<RgText variant="display">Title<\/RgText>/);
 });
 
 test('interpolation becomes a JSX expression', () => {

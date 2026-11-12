@@ -153,9 +153,6 @@ const STARTER_TS = `import { Component } from '@angular/core';
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
-  styles: [\`
-    h1 { color: #0b57d0; margin-bottom: 8px; }
-  \`],
 })
 export class AppComponent {
   title = 'Welcome to Rangular';
@@ -168,7 +165,7 @@ export class AppComponent {
 `;
 
 const STARTER_HTML = `<screen>
-  <appbar title="Rangular" search="Search"></appbar>
+  <appbar title="Rangular"></appbar>
   <h1>{{ title }}</h1>
   <card>
     <h3>Your first screen</h3>
@@ -445,9 +442,6 @@ function initProject(dirArg: string): void {
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
-  styles: [\`
-    h1 { color: #0b57d0; margin-bottom: 8px; }
-  \`],
 })
 export class AppComponent {
   title = 'Welcome to Rangular';
@@ -459,7 +453,7 @@ export class AppComponent {
 }
 `);
   fs.writeFileSync(path.join(srcDir, 'app.component.html'), `<screen>
-  <appbar title="Rangular" search="Search"></appbar>
+  <appbar title="Rangular"></appbar>
   <h1>{{ title }}</h1>
   <card>
     <h3>Your first screen</h3>

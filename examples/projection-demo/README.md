@@ -72,8 +72,8 @@ export function Panel({ children }: { children?: any }) {
 }
 
 <Panel>
-  <Text variant="title">Inside the panel</Text>
-  <Text variant="body">This content was written in the parent and projected into the child's card.</Text>
+  <RgText variant="title">Inside the panel</RgText>
+  <RgText variant="bodyLarge">This content was written in the parent and projected into the child's card.</RgText>
   <RgButton onPress={() => note()}>Note it</RgButton>
 </Panel>
 ```

@@ -65,9 +65,9 @@ export default function Counter() {
   return (
     <RgScreen>
       <RgAppbar title="Counter" />
-      <Text variant="display">{count}</Text>
+      <RgText variant="display">{count}</RgText>
       {(count >= 5) && (                   {/* *ngIf -> {cond && (...)} */}
-        <Text variant="body">Past five, keep going</Text>
+        <RgText variant="bodyLarge">Past five, keep going</RgText>
       )}
       <RgButton onPress={() => increment()}>Increment</RgButton>                    {/* (click) -> onPress */}
       <RgButton disabled={(count === 0)} onPress={() => decrement()}>Decrement</RgButton>

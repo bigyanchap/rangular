@@ -54,9 +54,9 @@ export class DirectivesDemoComponent {
 Key lines of the generated `directives-demo.component.tsx`:
 
 ```tsx
-<Text variant="body" style={{ backgroundColor: (("yellow" || '') || 'transparent') }}>A static highlight, straight from the attribute.</Text>
-<Text variant="body" style={{ backgroundColor: ((color || "violet") || 'transparent') }}>A bound highlight with a fallback colour.</Text>
-<Text variant="body">No directive here.</Text>
+<RgText variant="bodyLarge" style={{ backgroundColor: (("yellow" || '') || 'transparent') }}>A static highlight, straight from the attribute.</RgText>
+<RgText variant="bodyLarge" style={{ backgroundColor: ((color || "violet") || 'transparent') }}>A bound highlight with a fallback colour.</RgText>
+<RgText variant="bodyLarge">No directive here.</RgText>
 ```
 
 There is no directive object at runtime. The compiler reads the directive class, extracts the style assignments from `ngOnInit` (or from a setter for one input), and folds them into a style object computed at the host element, with each input replaced by the value the host gives it: a binding first, then a static attribute, then a declared field initializer. The directive's attributes are consumed by the directive and never reach the generated component as props.

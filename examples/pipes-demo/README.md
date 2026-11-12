@@ -77,12 +77,12 @@ export class ExclaimPipe {
 }
 const __pipeExclaimPipe = new ExclaimPipe();
 
-<Text variant="body">Short: {pipe('date', day, 'shortDate')}</Text>
-<Text variant="body">Amount: {pipe('number', amount, '1.2-2')}</Text>
-<Text variant="body">{__pipeExclaimPipe.transform(name, 3)}</Text>
+<RgText variant="bodyLarge">Short: {pipe('date', day, 'shortDate')}</RgText>
+<RgText variant="bodyLarge">Amount: {pipe('number', amount, '1.2-2')}</RgText>
+<RgText variant="bodyLarge">{__pipeExclaimPipe.transform(name, 3)}</RgText>
 {pipe('keyvalue', facts).map((fact, index) => (
   <View key={fact?.id ?? index}>
-    <Text variant="body">{fact.key}: {fact.value}</Text>
+    <RgText variant="bodyLarge">{fact.key}: {fact.value}</RgText>
   </View>
 ))}
 ```
