@@ -39,6 +39,8 @@
   .card { background: var(--surface-variant); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin: 0; display: flex; flex-direction: column; gap: 12px; }
   .btn { display: block; margin: 0; background: var(--primary); color: var(--on-primary); border: none; border-radius: 9999px; padding: 0 24px; min-height: 48px; font-size: 14px; font-weight: 600; cursor: pointer; }
   .btn[disabled] { opacity: .38; cursor: default; }
+  .stack { display: flex; flex-direction: column; gap: 12px; }
+  .btn-text { background: transparent; color: var(--primary); text-align: left; padding: 0 8px; }
   .form { display: flex; flex-direction: column; }
   .field { display: flex; flex-direction: column; gap: 4px; margin: 12px 0 0; }
   .field-label { font-size: 14px; font-weight: 600; color: var(--text-muted); }
@@ -142,7 +144,7 @@
 <body>
 <div class="preview-chrome"><span>Rangular preview</span><button id="theme-toggle" type="button">Switch to dark theme</button></div>
 <div id="app">
-<div class="screen"><header class="appbar"><span class="icon" style="color: var(--role-text-muted)"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></span><span class="appbar-title">Counter</span><span class="avatar">C</span></header>
+<div class="screen"><header class="appbar"><span class="appbar-title">Counter</span></header>
 <h1 class="display">0</h1>
 
 <button class="btn" >Increment</button>
@@ -1861,16 +1863,19 @@ function __buildCore(el, scope, path, form) {
     case 'appbar': {
       var bar = document.createElement('header');
       bar.className = 'appbar';
-      bar.appendChild(__icon('menu', 24, 'textMuted'));
+      if (el.booleanAttrs.indexOf('menu') >= 0) bar.appendChild(__icon('menu', 24, 'textMuted'));
       var search = __attr(el, 'search', scope);
       var mid = document.createElement('span');
       if (search) { mid.className = 'search'; mid.textContent = String(search); }
       else { mid.className = 'appbar-title'; mid.textContent = title ? String(title) : ''; }
       bar.appendChild(mid);
-      var av = document.createElement('span');
-      av.className = 'avatar';
-      av.textContent = (title ? String(title) : 'R').charAt(0);
-      bar.appendChild(av);
+      var avatar = __attr(el, 'avatar', scope);
+      if (avatar) {
+        var av = document.createElement('span');
+        av.className = 'avatar';
+        av.textContent = String(avatar).charAt(0);
+        bar.appendChild(av);
+      }
       return [bar];
     }
     case 'h1': return wrap('h1', 'display');
@@ -1892,7 +1897,7 @@ function __buildCore(el, scope, path, form) {
     case 'chips': return wrap('div', 'chips');
     case 'button': {
       var b = document.createElement('button');
-      b.className = 'btn';
+      b.className = el.attrs['variant'] === 'text' ? 'btn btn-text' : 'btn';
       if (__binding(el, 'disabled', scope)) b.disabled = true;
       kids.forEach(function (k) { b.appendChild(k); });
       var btnDot = __badgeDot(el, scope);
@@ -2072,8 +2077,9 @@ function __buildCore(el, scope, path, form) {
       __attachNav(f, el, scope);
       return [f];
     }
-    case 'header': return wrap('header', '');
-    case 'section': return wrap('section', '');
+    case 'header': return wrap('header', 'stack');
+    case 'section': return wrap('section', 'stack');
+    case 'div': return wrap('div', 'stack');
     default: return wrap('div', '');
   }
 }

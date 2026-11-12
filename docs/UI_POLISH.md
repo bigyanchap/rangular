@@ -219,3 +219,22 @@ primitives and mirrored in the preview renderer:
 
 **Don't translate CSS, translate intent, onto tokens and pre-polished
 primitives, then prove it with screenshots.**
+
+## Addendum, 2026-11-12, late: containers are stacks, the app bar is opt-in
+
+Found by the first real routed app built on Rangular, the Rangular
+Tutorial app, from screenshots on a real phone:
+
+- The grid above only applied to direct children of the screen.
+  A routed screen roots in a `<section>`, which compiled to a bare
+  View with no gap, so its cards and blocks rendered attached edge
+  to edge. Now `<section>`, `<div>` and `<header>` compile to
+  `RgSection`, a column with the same 12 rhythm gap, in the app
+  and in the preview.
+- The app bar always drew a menu icon and an avatar built from the
+  title's first letter, in every app, even apps with no menu and
+  no signed in user. Both are now opt-in: the boolean `menu`
+  attribute and the `avatar` text attribute.
+- Buttons gained a quiet form, `variant="text"`, for back links
+  and secondary actions, so not every action has to shout like a
+  primary button.

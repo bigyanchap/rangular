@@ -1039,6 +1039,20 @@ See `examples/mailbox-pro/` and its recipe card.
   from its container (screen, card, tab panel), which puts row
   text on the same grid and the hairline on the grid edges. The
   preview renderer mirrors every one of these values.
+- **Containers are stacks, and the app bar is opt-in (2026-11-12,
+  found by the Rangular Tutorial app).** `<section>`, `<div>` and
+  `<header>` compile to `RgSection`, a column with the same 12
+  rhythm gap, so a routed screen rooted in a section spaces its
+  blocks exactly like a flat screen. They used to compile to a
+  bare View with no gap, and routed screens rendered their cards
+  attached edge to edge. The app bar draws a menu button only
+  with the boolean `menu` attribute, and an avatar only when
+  `avatar` text is passed: `<appbar title="Mail" menu
+  avatar="M">`. It used to draw both unconditionally, a dead menu
+  and a fake user taken from the title's first letter. A button
+  with `variant="text"` is the quiet form, for back links and
+  secondary actions: no fill, primary coloured label, left
+  aligned, same 48 high target.
 
 ## Tooling (Stage 5)
 

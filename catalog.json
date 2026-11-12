@@ -4,18 +4,18 @@
   "tags": [
     {
       "tag": "div",
-      "component": "View",
-      "from": "react-native"
+      "component": "RgSection",
+      "from": "@rangular/ui"
     },
     {
       "tag": "section",
-      "component": "View",
-      "from": "react-native"
+      "component": "RgSection",
+      "from": "@rangular/ui"
     },
     {
       "tag": "header",
-      "component": "View",
-      "from": "react-native"
+      "component": "RgSection",
+      "from": "@rangular/ui"
     },
     {
       "tag": "span",
@@ -322,6 +322,27 @@
         {
           "name": "search",
           "type": "any"
+        },
+        {
+          "name": "menu",
+          "type": "any"
+        },
+        {
+          "name": "avatar",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgSection",
+      "props": [
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
         }
       ]
     },
@@ -376,6 +397,10 @@
         },
         {
           "name": "style",
+          "type": "any"
+        },
+        {
+          "name": "variant",
           "type": "any"
         }
       ]

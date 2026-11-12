@@ -26,7 +26,7 @@ export class IconsComponent {
 
 ```html
 <screen>
-  <appbar title="Icons"></appbar>
+  <appbar title="Icons" menu></appbar>
 
   <label>The set</label>
   <div class="icon-cell" *ngFor="let name of names">

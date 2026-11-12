@@ -34,7 +34,7 @@ export class MiniMailComponent {}
 
 ```html
 <screen>
-  <appbar title="Mini Mail"></appbar>
+  <appbar title="Mini Mail" menu avatar="M"></appbar>
   <router-outlet></router-outlet>
 </screen>
 ```

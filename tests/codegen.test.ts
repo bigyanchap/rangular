@@ -16,15 +16,15 @@ function compileSnippet(template: string, extraClass = ''): string {
   return result.code;
 }
 
-test('div maps to View and text stays text', () => {
+test('div maps to RgSection and text stays text', () => {
   const code = compileSnippet('<div>Hello</div>');
-  assert.match(code, /import \{ View \} from 'react-native';/);
-  assert.match(code, /<View>Hello<\/View>/);
+  assert.match(code, /RgSection/);
+  assert.match(code, /<RgSection>Hello<\/RgSection>/);
 });
 
-test('div wrapping text uses View with a Text child shape', () => {
+test('div wrapping text uses RgSection with a Text child shape', () => {
   const code = compileSnippet('<div><p>Hello</p></div>');
-  assert.match(code, /<View>/);
+  assert.match(code, /<RgSection>/);
   assert.match(code, /<RgText variant="bodyLarge">Hello<\/RgText>/);
 });
 

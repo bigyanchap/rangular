@@ -768,11 +768,12 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
         return `<div class="screen">${inner}</div>`;
       case 'appbar': {
         const search = bound(el, 'search', scope);
-        return `<header class="appbar">${iconSvg('menu', 24, 'textMuted')}` +
+        const avatar = bound(el, 'avatar', scope);
+        return `<header class="appbar">${el.booleanAttrs.includes('menu') ? iconSvg('menu', 24, 'textMuted') : ''}` +
           (search
             ? `<span class="search">${escapeHtml(search)}</span>`
             : `<span class="appbar-title">${escapeHtml(title)}</span>`) +
-          `<span class="avatar">${escapeHtml((title || 'R').charAt(0))}</span></header>`;
+          (avatar ? `<span class="avatar">${escapeHtml(String(avatar).charAt(0))}</span>` : '') + `</header>`;
       }
       case 'h1': return `<h1 class="display"${dirStyle}>${inner}</h1>`;
       case 'h2': return `<h2 class="heading"${dirStyle}>${inner}</h2>`;
@@ -798,7 +799,8 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
       case 'button': {
         const dis = el.propBindings.find((b) => b.name === 'disabled');
         const disabled = dis ? evalSafe(dis.expression, scope) === true : false;
-        return `<button class="btn" ${disabled ? 'disabled' : ''}>${inner}${badgeHtml(el, scope)}</button>`;
+        const cls = el.attrs['variant'] === 'text' ? 'btn btn-text' : 'btn';
+        return `<button class="${cls}" ${disabled ? 'disabled' : ''}>${inner}${badgeHtml(el, scope)}</button>`;
       }
       case 'slider': {
         const min = numOf(el, 'min', scope, 0);
@@ -903,9 +905,9 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
         return dot ? `<span class="icon-badge">${svg}${dot}</span>` : svg;
       }
       case 'fab': return `<div class="fab">${inner || escapeHtml(bound(el, 'label', scope) ?? 'Compose')}</div>`;
-      case 'header': return `<header${dirStyle}>${inner}</header>`;
-      case 'section': return `<section${dirStyle}>${inner}</section>`;
-      default: return `<div${dirStyle}>${inner}</div>`;
+      case 'header': return `<header class="stack"${dirStyle}>${inner}</header>`;
+      case 'section': return `<section class="stack"${dirStyle}>${inner}</section>`;
+      default: return `<div class="stack"${dirStyle}>${inner}</div>`;
     }
   };
 
@@ -953,6 +955,8 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .card { background: var(--surface-variant); border: 1px solid var(--border); border-radius: ${t.radius.lg}px; padding: ${t.spacing.lg}px; margin: 0; display: flex; flex-direction: column; gap: ${t.spacing.md}px; }
   .btn { display: block; margin: 0; background: var(--primary); color: var(--on-primary); border: none; border-radius: ${t.radius.full}px; padding: 0 ${t.spacing.xxl}px; min-height: 48px; font-size: ${t.typography.label.fontSize}px; font-weight: 600; cursor: pointer; }
   .btn[disabled] { opacity: .38; cursor: default; }
+  .stack { display: flex; flex-direction: column; gap: ${t.spacing.md}px; }
+  .btn-text { background: transparent; color: var(--primary); text-align: left; padding: 0 ${t.spacing.sm}px; }
   .form { display: flex; flex-direction: column; }
   .field { display: flex; flex-direction: column; gap: ${t.spacing.xs}px; margin: ${t.spacing.md}px 0 0; }
   .field-label { font-size: ${t.typography.label.fontSize}px; font-weight: 600; color: var(--text-muted); }
@@ -2986,16 +2990,19 @@ function __buildCore(el, scope, path, form) {
     case 'appbar': {
       var bar = document.createElement('header');
       bar.className = 'appbar';
-      bar.appendChild(__icon('menu', 24, 'textMuted'));
+      if (el.booleanAttrs.indexOf('menu') >= 0) bar.appendChild(__icon('menu', 24, 'textMuted'));
       var search = __attr(el, 'search', scope);
       var mid = document.createElement('span');
       if (search) { mid.className = 'search'; mid.textContent = String(search); }
       else { mid.className = 'appbar-title'; mid.textContent = title ? String(title) : ''; }
       bar.appendChild(mid);
-      var av = document.createElement('span');
-      av.className = 'avatar';
-      av.textContent = (title ? String(title) : 'R').charAt(0);
-      bar.appendChild(av);
+      var avatar = __attr(el, 'avatar', scope);
+      if (avatar) {
+        var av = document.createElement('span');
+        av.className = 'avatar';
+        av.textContent = String(avatar).charAt(0);
+        bar.appendChild(av);
+      }
       return [bar];
     }
     case 'h1': return wrap('h1', 'display');
@@ -3017,7 +3024,7 @@ function __buildCore(el, scope, path, form) {
     case 'chips': return wrap('div', 'chips');
     case 'button': {
       var b = document.createElement('button');
-      b.className = 'btn';
+      b.className = el.attrs['variant'] === 'text' ? 'btn btn-text' : 'btn';
       if (__binding(el, 'disabled', scope)) b.disabled = true;
       kids.forEach(function (k) { b.appendChild(k); });
       var btnDot = __badgeDot(el, scope);
@@ -3197,8 +3204,9 @@ function __buildCore(el, scope, path, form) {
       __attachNav(f, el, scope);
       return [f];
     }
-    case 'header': return wrap('header', '');
-    case 'section': return wrap('section', '');
+    case 'header': return wrap('header', 'stack');
+    case 'section': return wrap('section', 'stack');
+    case 'div': return wrap('div', 'stack');
     default: return wrap('div', '');
   }
 }

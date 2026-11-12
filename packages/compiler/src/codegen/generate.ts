@@ -79,9 +79,14 @@ export interface TagMapping {
  * codegen renders from this table and the catalog is generated from it.
  */
 export const TAG_MAP: Record<string, TagMapping> = {
-  div: { component: 'View', fromUi: false },
-  section: { component: 'View', fromUi: false },
-  header: { component: 'View', fromUi: false },
+  // Plain containers compile to RgSection, the stack primitive: a
+  // column with the rhythm gap, so blocks inside a section are spaced
+  // exactly like blocks directly under the screen. They used to
+  // compile to a bare View with no gap, and every routed screen
+  // (rooted in a section) rendered its cards attached edge to edge.
+  div: { component: 'RgSection', fromUi: true },
+  section: { component: 'RgSection', fromUi: true },
+  header: { component: 'RgSection', fromUi: true },
   span: { component: 'Text', fromUi: false },
   // Text with a meaning compiles to RgText (default polish pass):
   // the primitive applies the token type step (size, line height,

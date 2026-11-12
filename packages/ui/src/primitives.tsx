@@ -166,6 +166,15 @@ function buildStyles(t: Theme) {
       paddingHorizontal: t.spacing.lg, paddingVertical: 10,
       backgroundColor: c.surfaceVariant, borderRadius: t.radius.full,
     },
+    // A plain container (section, div, header) is a stack: it stacks
+    // its children in a column with the one rhythm gap, the same gap
+    // the screen and the card use. Before this fix containers compiled
+    // to a bare View with no gap, so every routed screen (whose root
+    // is a section inside the screen) stacked its cards and blocks
+    // with zero space between them, attached edge to edge. Only flat
+    // screens whose blocks were direct children of the screen got the
+    // rhythm. Found by the Rangular Tutorial app, 2026-11-12.
+    section: { flexDirection: 'column', gap: t.spacing.md },
     appbarTitle: { flex: 1, fontSize: t.typography.title.fontSize, fontWeight: '600', color: c.text },
     searchText: { flex: 1, fontSize: t.typography.body.fontSize, color: c.textMuted },
     card: {
@@ -185,6 +194,16 @@ function buildStyles(t: Theme) {
     buttonPressed: { opacity: 0.85 },
     buttonDisabled: { opacity: 0.38 },
     buttonLabel: { color: c.onPrimary, fontSize: t.typography.label.fontSize, fontWeight: '600' },
+    // The text variant (variant="text"): a quiet action, for back
+    // links and secondary choices that should not shout like a
+    // primary button. No fill, primary coloured label, left aligned,
+    // same 48 high touch target.
+    buttonText: {
+      backgroundColor: 'transparent', borderRadius: t.radius.full,
+      minHeight: 48, paddingHorizontal: t.spacing.sm,
+      alignItems: 'flex-start', justifyContent: 'center',
+    },
+    buttonTextLabel: { color: c.primary, fontSize: t.typography.label.fontSize, fontWeight: '600' },
     inputWrap: { marginBottom: t.spacing.md },
     inputLabel: {
       fontSize: t.typography.label.fontSize, fontWeight: '600',
@@ -435,19 +454,32 @@ export function RgScreen({ children, style, theme: mode }: any) {
   );
 }
 
-export function RgAppbar({ title, search }: any) {
+export function RgAppbar({ title, search, menu, avatar }: any) {
   const t = useRgTheme();
   const c = t.colors;
   const styles = stylesFor(t);
+  // Menu and avatar are opt-in. An app bar shows a menu button only
+  // when the app asks for one (the boolean `menu` attribute), and an
+  // avatar only when the app passes `avatar` text. Before this fix the
+  // bar always drew both: a dead menu icon, and a user avatar built
+  // from the title's first letter in apps with no users and no sign
+  // in at all (found by the Rangular Tutorial app, 2026-11-12).
   return (
     <View style={styles.appbar}>
-      <RgIcon name="menu" size={24} color="textMuted" />
+      {menu ? <RgIcon name="menu" size={24} color="textMuted" /> : null}
       {search ? <Text style={styles.searchText}>{search}</Text> : <Text style={styles.appbarTitle}>{title}</Text>}
-      <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: c.avatar, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: c.onAvatar, fontSize: 12, fontWeight: '600' }}>{(title || 'R').charAt(0)}</Text>
-      </View>
+      {avatar ? (
+        <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: c.avatar, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ color: c.onAvatar, fontSize: 12, fontWeight: '600' }}>{String(avatar).charAt(0)}</Text>
+        </View>
+      ) : null}
     </View>
   );
+}
+
+export function RgSection({ children, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  return <View style={[styles.section, style]}>{children}</View>;
 }
 
 export function RgCard({ children, style }: any) {
@@ -468,20 +500,21 @@ export function RgText({ children, variant = 'body', style }: any) {
   );
 }
 
-export function RgButton({ children, disabled, onPress, badge, style }: any) {
+export function RgButton({ children, disabled, onPress, badge, style, variant }: any) {
   const styles = stylesFor(useRgTheme());
+  const text = variant === 'text';
   return (
     <Pressable
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
-        styles.button,
+        text ? styles.buttonText : styles.button,
         pressed && styles.buttonPressed,
         disabled && styles.buttonDisabled,
         style,
       ]}
     >
-      <Text style={styles.buttonLabel}>{children}</Text>
+      <Text style={text ? styles.buttonTextLabel : styles.buttonLabel}>{children}</Text>
       <BadgeDot value={badge} styles={styles} offset={{ top: -6, right: -6 }} />
     </Pressable>
   );
