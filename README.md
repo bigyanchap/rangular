@@ -25,6 +25,36 @@ diagnostic, never as a preview-only success. A parity guard test scans
 every example's generated `.tsx` and fails if a web-only API, a web
 tag, or an out-of-subset style property leaks into generated code.
 
+## Install and your first app
+
+Rangular is installed and used the Angular way: install the CLI once,
+create an app with one command, then serve it and watch it run. Expo
+Go on your phone plays the browser's role.
+
+```sh
+# 1. Install the CLI, once (Angular: npm install -g @angular/cli)
+npm install -g @rangular/cli
+
+# 2. Create the app (Angular: ng new my-app). The name is the
+#    argument; the command creates the folder and installs the
+#    app's dependencies itself. A starter Hello World is inside.
+rangular new my-habit-app
+
+# 3. Go into the app
+cd my-habit-app
+
+# 4. Serve it (Angular: ng serve). Scan the QR code with Expo Go;
+#    saving a file recompiles and refreshes the phone.
+rangular serve
+```
+
+Then open `src/app.component.html`, change the greeting, save, and
+watch the phone update. The full guide, including the project naming
+rules and how to rename an app later, is in
+[INSTALLATION.md](INSTALLATION.md). One status note: the packages are
+not on npm yet, so until the first publish the same journey runs from
+a clone, as the Status today section of INSTALLATION.md spells out.
+
 ## Install and run
 
 Prerequisites: **Node.js 20+ and npm** (the compiler itself has exactly
