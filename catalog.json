@@ -88,6 +88,36 @@
       "from": "@rangular/ui"
     },
     {
+      "tag": "switch",
+      "component": "RgSwitch",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "switcher",
+      "component": "RgSwitcher",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "option",
+      "component": "RgOption",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "checkbox",
+      "component": "RgCheckbox",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "radio-group",
+      "component": "RgRadioGroup",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "radio",
+      "component": "RgRadio",
+      "from": "@rangular/ui"
+    },
+    {
       "tag": "input",
       "component": "TextInput",
       "from": "react-native"
@@ -199,6 +229,132 @@
         },
         {
           "name": "onPress",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgSwitch",
+      "props": [
+        {
+          "name": "checked",
+          "type": "any"
+        },
+        {
+          "name": "disabled",
+          "type": "any"
+        },
+        {
+          "name": "onChange",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgCheckbox",
+      "props": [
+        {
+          "name": "checked",
+          "type": "any"
+        },
+        {
+          "name": "disabled",
+          "type": "any"
+        },
+        {
+          "name": "onChange",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgOption",
+      "props": [
+        {
+          "name": "value",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgSwitcher",
+      "props": [
+        {
+          "name": "value",
+          "type": "any"
+        },
+        {
+          "name": "disabled",
+          "type": "any"
+        },
+        {
+          "name": "onChange",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgRadio",
+      "props": [
+        {
+          "name": "value",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgRadioGroup",
+      "props": [
+        {
+          "name": "value",
+          "type": "any"
+        },
+        {
+          "name": "disabled",
+          "type": "any"
+        },
+        {
+          "name": "onChange",
+          "type": "any"
+        },
+        {
+          "name": "children",
           "type": "any"
         },
         {
@@ -734,6 +890,10 @@
     {
       "code": "GEN_STRUCTURAL_TODO",
       "meaning": "A structural directive other than *ngIf/*ngFor is not supported yet; the element was emitted unconditionally."
+    },
+    {
+      "code": "GEN_CONTROL_NESTING",
+      "meaning": "A control declaration is nested in the wrong parent; option belongs in switcher and radio belongs in radio-group, and those groups accept only their own declarations."
     },
     {
       "code": "METHOD_UNSUPPORTED",

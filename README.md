@@ -96,6 +96,8 @@ flowchart TB
 | M6 | Injected service + lifecycle + HttpClient | ✅ Done (Stage 3) |
 | - | **Stage 4: Polish lock-in** - complete token set (light + dark), themed primitives, CSS snapping (`STYLE_OFF_SCALE`), preview Light/Dark toggle, showcase example | ✅ Done |
 | M7 | CLI, source maps, error messages, Awaken Me dogfood | ✅ Done (Stage 5) |
+| - | **Stage 6: Controls**, Material style switch, checkbox, segmented page switcher and radio group, settings example | ✅ Done |
+| - | Stages 7 to 12: icons, forms, routing, pickers and overlays, data display, language completeness and app readiness | Planned, see [docs/ROADMAP.md](docs/ROADMAP.md) |
 
 ## Packages
 
@@ -103,7 +105,7 @@ flowchart TB
 |---|---|
 | `@rangular/compiler` | Template parser + expression (Pratt) parser, `@Component` extractor (TypeScript compiler API), CSS-subset parser, RN code generator, HTML preview renderer |
 | `@rangular/runtime` | Pure-TypeScript helpers for generated apps: `EventEmitter`, `signal()`, DI `Container`, `ReactiveService` (service reactivity base), `HttpClient` (Observable-lite over fetch), `pipe()` |
-| `@rangular/ui` | Rangular Material: `tokens.ts` (pure TS) + shipped-source RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`) |
+| `@rangular/ui` | Rangular Material: `tokens.ts` (pure TS) + shipped-source RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`, `RgSwitch`, `RgCheckbox`, `RgSwitcher`, `RgOption`, `RgRadioGroup`, `RgRadio`) |
 | `@rangular/cli` | `rangular build`, `rangular ast`, `rangular preview`, `rangular catalog`, `rangular watch`, `rangular init`, `rangular doctor` (build/preview/doctor accept `--json`; build accepts `--source-map`) |
 
 > Note: `@rangular/ui` primitives and other shipped-source files for generated
@@ -125,6 +127,8 @@ flowchart TB
   visual proof.
 - [docs/VIBE_CODING.md](docs/VIBE_CODING.md), the AI-facing layer plus
   the full delta tables (Rangular vs Angular, Rangular vs React).
+- [docs/ROADMAP.md](docs/ROADMAP.md), the approved plan for Stages 6
+  to 12, each stage grounded in the Angular feature it mirrors.
 - [SECURITY.md](SECURITY.md), the security audit: what was tested,
   what was found and fixed, and the project root boundary rule for
   files the compiler reads.
@@ -155,7 +159,7 @@ through them) **without guessing**, see [docs/VIBE_CODING.md](docs/VIBE_CODING.m
   `examples/counter/README.md`, `examples/inbox/README.md`,
   `examples/profile/README.md`, `examples/favourite/README.md`,
   `examples/shared-inbox/README.md`, `examples/showcase/README.md`,
-  `examples/dinacharya-row/README.md`: Intent /
+  `examples/dinacharya-row/README.md`, `examples/settings/README.md`: Intent /
   Source / What it compiles to / Rules used / Common mistakes.
 - **Proof test (Stage 2.5)**, `examples/profile/` was written by a fresh
   AI agent given only AGENTS.md, llms.txt, the catalog and the recipe
@@ -369,6 +373,41 @@ the featured row toggles it, in the preview and in the generated code.
 Its recipe card states plainly what matches the real app and what is
 simplified.
 
+## Stage 6: controls
+
+One more example:
+
+- `examples/settings/`, a settings screen using all four new
+  controls against real state: a Wi-Fi switch, a Notifications
+  checkbox, a List and Statistics switcher that swaps the panel
+  below it with `*ngIf`, and a radio group for text size.
+
+**The controls set.** Four blocks mirror the Angular Material
+components Angular applications already use: `switch` mirrors
+`mat-slide-toggle`, `checkbox` mirrors `mat-checkbox`, `switcher`
+mirrors `mat-button-toggle-group`, and `radio-group` mirrors
+`mat-radio-group`. Each takes a bound value (`[checked]` or
+`[value]`) and emits the next value through `(change)` as `$event`;
+a component method receives the value and assigns it to the field,
+so templates never contain assignment expressions. `switch` also
+accepts `[disabled]`.
+
+**Declaration children.** A switcher contains only `option`
+elements and a radio group contains only `radio` elements. The
+generated `RgOption` and `RgRadio` elements stay inside their
+group, and the group primitive reads each child's `value` and
+label, the way a select element reads its options. Wrong nesting
+earns a `GEN_CONTROL_NESTING` warning with a fix line.
+
+**The switcher is view state, not routing.** It changes a field on
+the same screen; routing is Stage 9 in
+[docs/ROADMAP.md](docs/ROADMAP.md).
+
+**Switch motion.** The knob only ever moves toward its target:
+the React Native primitive uses a plain linear timing move, never
+a spring, so it cannot overshoot or bounce back, and the preview
+uses a linear CSS transition between the same two end states.
+
 ## v1 is complete
 
 What v1 is: an Angular-style component, template, service and DI
@@ -377,7 +416,8 @@ system in light and dark, an interactive preview that behaves like the
 app, machine-readable diagnostics with fixes, a full CLI, and a recipe
 card proving every capability on a tiny example.
 
-Deliberately post-v1: forms and two-way binding, routing (React
-Navigation), animations, the full RxJS surface, content projection,
-per-expression source maps, device screenshot goldens, and following
-the OS dark mode setting by default.
+Deliberately post-v1: forms and two-way binding (Stage 8), routing
+(Stage 9), animations, the full RxJS surface, content projection
+(Stage 12), per-expression source maps, device screenshot goldens,
+and following the OS dark mode setting by default. The full
+sequence is in [docs/ROADMAP.md](docs/ROADMAP.md).

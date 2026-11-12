@@ -191,6 +191,19 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
     return el.attrs[name];
   };
 
+  /** A [prop] binding in its real JS type (Stage 6 controls need booleans). */
+  const rawBound = (el: ElementNode, name: string, scope: Scope): unknown => {
+    const b = el.propBindings.find((x) => x.name === name);
+    if (b) {
+      const v = evalSafe(b.expression, scope);
+      if (v !== UNSET) return v;
+    }
+    if (el.booleanAttrs.includes(name)) return true;
+    return el.attrs[name];
+  };
+
+  const truthy = (value: unknown): boolean => value === true || value === 'true';
+
   const renderElement = (el: ElementNode, scope: Scope): string => {
     if (el.structural?.name === 'ngIf') {
       const parts = parseNgIf(el.structural.expression);
@@ -268,6 +281,42 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
         const disabled = dis ? evalSafe(dis.expression, scope) === true : false;
         return `<button class="btn" ${disabled ? 'disabled' : ''}>${inner}</button>`;
       }
+      case 'switch': {
+        const checked = truthy(rawBound(el, 'checked', scope));
+        const disabled = truthy(rawBound(el, 'disabled', scope));
+        return `<button type="button" class="switch${checked ? ' on' : ''}" ${disabled ? 'disabled' : ''}><span class="switch-track"><span class="switch-knob"></span></span><span class="control-label">${inner}</span></button>`;
+      }
+      case 'checkbox': {
+        const checked = truthy(rawBound(el, 'checked', scope));
+        const disabled = truthy(rawBound(el, 'disabled', scope));
+        return `<button type="button" class="checkbox${checked ? ' on' : ''}" ${disabled ? 'disabled' : ''}><span class="checkbox-box">${checked ? '<span class="checkbox-mark">✓</span>' : ''}</span><span class="control-label">${inner}</span></button>`;
+      }
+      case 'switcher': {
+        const current = rawBound(el, 'value', scope);
+        const disabled = truthy(rawBound(el, 'disabled', scope));
+        const options = el.children
+          .filter((n): n is ElementNode => n.type === 'element' && n.tag === 'option')
+          .map((option) => {
+            const value = rawBound(option, 'value', scope);
+            const selected = String(value ?? '') === String(current ?? '');
+            return `<button type="button" class="switcher-option${selected ? ' selected' : ''}" ${disabled ? 'disabled' : ''}>${renderNodes(option.children, scope)}</button>`;
+          })
+          .join('');
+        return `<div class="switcher">${options}</div>`;
+      }
+      case 'radio-group': {
+        const current = rawBound(el, 'value', scope);
+        const disabled = truthy(rawBound(el, 'disabled', scope));
+        const options = el.children
+          .filter((n): n is ElementNode => n.type === 'element' && n.tag === 'radio')
+          .map((option) => {
+            const value = rawBound(option, 'value', scope);
+            const selected = String(value ?? '') === String(current ?? '');
+            return `<button type="button" class="radio-option${selected ? ' selected' : ''}" ${disabled ? 'disabled' : ''}><span class="radio-circle">${selected ? '<span class="radio-dot"></span>' : ''}</span><span class="control-label">${renderNodes(option.children, scope)}</span></button>`;
+          })
+          .join('');
+        return `<div class="radio-group">${options}</div>`;
+      }
       case 'list': return `<div class="list">${inner}</div>`;
       case 'row': {
         const titleBound = bound(el, 'title', scope);
@@ -330,6 +379,23 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .card .body { margin: 0; font-size: ${t.typography.body.fontSize}px; }
   .btn { display: block; margin: ${t.spacing.sm}px ${t.spacing.lg}px 0; background: var(--primary); color: var(--on-primary); border: none; border-radius: ${t.radius.full}px; padding: 0 ${t.spacing.xxl}px; min-height: 48px; font-size: ${t.typography.label.fontSize}px; font-weight: 600; cursor: pointer; }
   .btn[disabled] { opacity: .38; cursor: default; }
+  .switch, .checkbox { display: flex; align-items: center; gap: ${t.spacing.md}px; width: calc(100% - ${t.spacing.lg * 2}px); margin: ${t.spacing.sm}px ${t.spacing.lg}px 0; padding: ${t.spacing.sm}px 0; background: transparent; border: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  .switch[disabled], .checkbox[disabled], .switcher-option[disabled], .radio-option[disabled] { opacity: .38; cursor: default; }
+  .switch-track { position: relative; width: 52px; height: 32px; flex: 0 0 52px; border: 2px solid var(--border); border-radius: ${t.radius.full}px; background: var(--surface-variant); transition: background-color .16s linear, border-color .16s linear; }
+  .switch.on .switch-track { background: var(--primary); border-color: var(--primary); }
+  .switch-knob { position: absolute; top: 2px; left: 2px; width: 24px; height: 24px; border-radius: 50%; background: var(--text-muted); transition: left .16s linear, background-color .16s linear; }
+  .switch.on .switch-knob { left: 22px; background: var(--on-primary); }
+  .control-label { flex: 1; font-size: ${t.typography.body.fontSize}px; }
+  .checkbox-box { width: 24px; height: 24px; flex: 0 0 24px; border: 2px solid var(--text-muted); border-radius: ${t.radius.sm}px; display: inline-flex; align-items: center; justify-content: center; color: var(--on-primary); }
+  .checkbox.on .checkbox-box { background: var(--primary); border-color: var(--primary); }
+  .checkbox-mark { font-size: ${t.typography.bodyLarge.fontSize}px; font-weight: 700; line-height: 1; }
+  .switcher { display: flex; gap: ${t.spacing.xs}px; padding: ${t.spacing.xs}px; margin: ${t.spacing.sm}px ${t.spacing.lg}px 0; background: var(--surface-variant); border: 1px solid var(--border); border-radius: ${t.radius.full}px; }
+  .switcher-option { flex: 1; min-height: 40px; border: none; border-radius: ${t.radius.full}px; background: transparent; color: var(--text); padding: 0 ${t.spacing.md}px; font-size: ${t.typography.label.fontSize}px; cursor: pointer; }
+  .switcher-option.selected { background: var(--primary-container); color: var(--on-primary-container); font-weight: 600; }
+  .radio-option { display: flex; align-items: center; gap: ${t.spacing.md}px; width: calc(100% - ${t.spacing.lg * 2}px); margin: 0 ${t.spacing.lg}px; padding: ${t.spacing.sm}px 0; background: transparent; border: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  .radio-circle { width: 24px; height: 24px; flex: 0 0 24px; border: 2px solid var(--text-muted); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
+  .radio-option.selected .radio-circle { border-color: var(--primary); }
+  .radio-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--primary); }
   .list { border-top: 1px solid var(--border); }
   .row { display: flex; gap: ${t.spacing.md}px; align-items: flex-start; padding: 11px ${t.spacing.lg}px; border-bottom: 1px solid var(--border); }
   .row-main { flex: 1; display: flex; flex-direction: column; }
@@ -818,6 +884,31 @@ function __runHandler(src, scope, event) {
     __eval(e, s);
   } catch (err) { console.warn(err); }
 }
+function __truthy(value) { return value === true || value === 'true'; }
+function __controlValue(el, name, scope) {
+  var bound = __binding(el, name, scope);
+  if (bound !== undefined) return bound;
+  if (el.booleanAttrs.indexOf(name) >= 0) return true;
+  return el.attrs[name];
+}
+function __runChange(el, scope, value) {
+  el.eventBindings.forEach(function (ev) {
+    if (ev.name !== 'change') return;
+    var s = __extend(scope, { $event: value });
+    try {
+      var e = __parse(ev.expression);
+      if (e.type === 'call') { __eval(e, s); return; }
+      if (e.type === 'identifier') {
+        var fn = s[e.name];
+        if (typeof fn === 'function') { fn(value); return; }
+        console.warn('preview: change handler ' + e.name + ' is not a method');
+        return;
+      }
+      __eval(e, s);
+    } catch (err) { console.warn(err); }
+  });
+  __render();
+}
 function __buildCore(el, scope, path) {
   if (COMPONENTS[el.tag]) return __buildChild(el, scope, path);
   var kids = __buildNodes(el.children, scope, path);
@@ -865,6 +956,95 @@ function __buildCore(el, scope, path) {
       kids.forEach(function (k) { b.appendChild(k); });
       __attachEvents(b, el, scope);
       return [b];
+    }
+    case 'switch': {
+      var switchChecked = __truthy(__controlValue(el, 'checked', scope));
+      var sw = document.createElement('button');
+      sw.type = 'button';
+      sw.className = 'switch' + (switchChecked ? ' on' : '');
+      var swTrack = document.createElement('span');
+      swTrack.className = 'switch-track';
+      var swKnob = document.createElement('span');
+      swKnob.className = 'switch-knob';
+      swTrack.appendChild(swKnob);
+      sw.appendChild(swTrack);
+      var swLabel = document.createElement('span');
+      swLabel.className = 'control-label';
+      kids.forEach(function (k) { swLabel.appendChild(k); });
+      sw.appendChild(swLabel);
+      if (__truthy(__controlValue(el, 'disabled', scope))) sw.disabled = true;
+      else sw.addEventListener('click', function () { __runChange(el, scope, !switchChecked); });
+      return [sw];
+    }
+    case 'checkbox': {
+      var checkboxChecked = __truthy(__controlValue(el, 'checked', scope));
+      var checkbox = document.createElement('button');
+      checkbox.type = 'button';
+      checkbox.className = 'checkbox' + (checkboxChecked ? ' on' : '');
+      var checkboxBox = document.createElement('span');
+      checkboxBox.className = 'checkbox-box';
+      if (checkboxChecked) {
+        var checkboxMark = document.createElement('span');
+        checkboxMark.className = 'checkbox-mark';
+        checkboxMark.textContent = '✓';
+        checkboxBox.appendChild(checkboxMark);
+      }
+      checkbox.appendChild(checkboxBox);
+      var checkboxLabel = document.createElement('span');
+      checkboxLabel.className = 'control-label';
+      kids.forEach(function (k) { checkboxLabel.appendChild(k); });
+      checkbox.appendChild(checkboxLabel);
+      if (__truthy(__controlValue(el, 'disabled', scope))) checkbox.disabled = true;
+      else checkbox.addEventListener('click', function () { __runChange(el, scope, !checkboxChecked); });
+      return [checkbox];
+    }
+    case 'switcher': {
+      var switcher = document.createElement('div');
+      switcher.className = 'switcher';
+      var switcherValue = __controlValue(el, 'value', scope);
+      var switcherDisabled = __truthy(__controlValue(el, 'disabled', scope));
+      el.children.forEach(function (child, childIndex) {
+        if (child.type !== 'element' || child.tag !== 'option') return;
+        var optionValue = __controlValue(child, 'value', scope);
+        var segment = document.createElement('button');
+        segment.type = 'button';
+        segment.className = 'switcher-option' + (String(switcherValue) === String(optionValue) ? ' selected' : '');
+        __buildNodes(child.children, scope, path + '/option' + childIndex).forEach(function (k) { segment.appendChild(k); });
+        if (switcherDisabled) segment.disabled = true;
+        else segment.addEventListener('click', function () { __runChange(el, scope, optionValue); });
+        switcher.appendChild(segment);
+      });
+      return [switcher];
+    }
+    case 'radio-group': {
+      var radioGroup = document.createElement('div');
+      radioGroup.className = 'radio-group';
+      var radioValue = __controlValue(el, 'value', scope);
+      var radioDisabled = __truthy(__controlValue(el, 'disabled', scope));
+      el.children.forEach(function (child, childIndex) {
+        if (child.type !== 'element' || child.tag !== 'radio') return;
+        var choiceValue = __controlValue(child, 'value', scope);
+        var selected = String(radioValue) === String(choiceValue);
+        var choice = document.createElement('button');
+        choice.type = 'button';
+        choice.className = 'radio-option' + (selected ? ' selected' : '');
+        var circle = document.createElement('span');
+        circle.className = 'radio-circle';
+        if (selected) {
+          var dot = document.createElement('span');
+          dot.className = 'radio-dot';
+          circle.appendChild(dot);
+        }
+        choice.appendChild(circle);
+        var choiceLabel = document.createElement('span');
+        choiceLabel.className = 'control-label';
+        __buildNodes(child.children, scope, path + '/radio' + childIndex).forEach(function (k) { choiceLabel.appendChild(k); });
+        choice.appendChild(choiceLabel);
+        if (radioDisabled) choice.disabled = true;
+        else choice.addEventListener('click', function () { __runChange(el, scope, choiceValue); });
+        radioGroup.appendChild(choice);
+      });
+      return [radioGroup];
     }
     case 'list': return wrap('div', 'list');
     case 'row': {

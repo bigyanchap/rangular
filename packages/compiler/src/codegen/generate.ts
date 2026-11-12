@@ -71,6 +71,12 @@ export const TAG_MAP: Record<string, TagMapping> = {
   list: { component: 'RgList', fromUi: true },
   row: { component: 'RgRow', fromUi: true },
   fab: { component: 'RgFab', fromUi: true },
+  switch: { component: 'RgSwitch', fromUi: true },
+  switcher: { component: 'RgSwitcher', fromUi: true },
+  option: { component: 'RgOption', fromUi: true },
+  checkbox: { component: 'RgCheckbox', fromUi: true },
+  'radio-group': { component: 'RgRadioGroup', fromUi: true },
+  radio: { component: 'RgRadio', fromUi: true },
   input: { component: 'TextInput', fromUi: false },
 };
 
@@ -471,6 +477,50 @@ class Generator {
     const diagnostics = this.diagnostics;
     diagnostics.push(...css.diagnostics);
 
+    // Controls have declaration children (Stage 6): option only belongs
+    // in switcher, radio only belongs in radio-group, and each group
+    // accepts only its own declaration element.
+    const validateControlNesting = (nodes: TemplateNode[], parentTag?: string): void => {
+      for (const node of nodes) {
+        if (node.type !== 'element') continue;
+        const tag = node.tag.toLowerCase();
+        if (tag === 'option' && parentTag !== 'switcher' && parentTag !== 'radio-group') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            '<option> is outside <switcher>; it declares one segment and has no meaning on its own',
+            node.pos.line, node.pos.column,
+            'Move the option inside a switcher: <switcher [value]="view" (change)="onView($event)"><option value="list">List</option></switcher>',
+          ));
+        }
+        if (tag === 'radio' && parentTag !== 'radio-group' && parentTag !== 'switcher') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            '<radio> is outside <radio-group>; it declares one choice and has no meaning on its own',
+            node.pos.line, node.pos.column,
+            'Move the radio inside a radio group: <radio-group [value]="size" (change)="onSize($event)"><radio value="m">Medium</radio></radio-group>',
+          ));
+        }
+        if (parentTag === 'switcher' && tag !== 'option') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            `<${node.tag}> is inside <switcher>; only <option> declarations belong there`,
+            node.pos.line, node.pos.column,
+            'Replace it with <option value="...">Label</option>, or move the element outside the switcher',
+          ));
+        }
+        if (parentTag === 'radio-group' && tag !== 'radio') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            `<${node.tag}> is inside <radio-group>; only <radio> declarations belong there`,
+            node.pos.line, node.pos.column,
+            'Replace it with <radio value="...">Label</radio>, or move the element outside the radio group',
+          ));
+        }
+        validateControlNesting(node.children, tag);
+      }
+    };
+    validateControlNesting(ast.children);
+
     // --- State analysis (M3) -------------------------------------------------
     const mutated = analyzeMutatedFields(component);
     const stateFields = new Set<string>();
@@ -538,7 +588,7 @@ class Generator {
           'GEN_UNKNOWN_TAG',
           `Unknown tag <${el.tag}>, emitted as <View>. Use a known block or a component tag.`,
           el.pos.line, el.pos.column,
-          'Known blocks: screen, appbar, card, list, row, fab, button, input, h1, h2, h3, p, span, label, div, section, header, or use a Capitalised component tag',
+          'Known blocks: screen, appbar, card, list, row, fab, button, input, switch, switcher, checkbox, radio-group, h1, h2, h3, p, span, label, div, section, header, or use a Capitalised component tag',
         ));
         componentName = 'View';
         this.usedRn.add('View');
@@ -564,6 +614,14 @@ class Generator {
         if (childInfo && childInfo.fields.some((f) => f.isOutput && f.name === ev.name)) {
           const cb = outputPropName(ev.name);
           props.push(isBareRef ? `${cb}={${src}}` : `${cb}={($event) => ${codeExpr(src)}}`);
+          continue;
+        }
+        const controlTag = ['switch', 'checkbox', 'switcher', 'radio-group'].includes(el.tag.toLowerCase());
+        if (controlTag && ev.name === 'change') {
+          // Controls emit their next value as $event (Stage 6). Unlike
+          // the generic event path, the generated wrapper must receive
+          // that value and pass it to the Angular style handler call.
+          props.push(isBareRef ? `onChange={${src}}` : `onChange={($event) => ${codeExpr(src)}}`);
           continue;
         }
         const { prop, known } = eventPropName(ev.name, el.tag);

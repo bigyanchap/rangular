@@ -1,0 +1,34 @@
+<screen>
+  <appbar title="Settings"></appbar>
+
+  <label>Connection</label>
+  <switch [checked]="wifiOn" (change)="onWifi($event)">Wi-Fi</switch>
+  <p>Wi-Fi is {{ wifiOn ? 'on' : 'off' }}</p>
+
+  <label>Preferences</label>
+  <checkbox [checked]="notifications" (change)="onNotifications($event)">Notifications</checkbox>
+  <p>Notifications are {{ notifications ? 'on' : 'off' }}</p>
+
+  <label>Home view</label>
+  <switcher [value]="view" (change)="onView($event)">
+    <option value="list">List</option>
+    <option value="stats">Statistics</option>
+  </switcher>
+  <div *ngIf="view === 'list'">
+    <p>List panel: Morning Yoga, Puja, Deep Work.</p>
+  </div>
+  <div *ngIf="view === 'stats'">
+    <p>Statistics panel: 3 blocks done this week.</p>
+  </div>
+
+  <label>Text size</label>
+  <radio-group [value]="size" (change)="onSize($event)">
+    <radio value="s">Small</radio>
+    <radio value="m">Medium</radio>
+    <radio value="l">Large</radio>
+  </radio-group>
+  <p>Chosen size: {{ size }}</p>
+  <p class="sample-s" *ngIf="size === 's'">A line of text at the chosen size.</p>
+  <p class="sample-m" *ngIf="size === 'm'">A line of text at the chosen size.</p>
+  <p class="sample-l" *ngIf="size === 'l'">A line of text at the chosen size.</p>
+</screen>

@@ -133,7 +133,8 @@ function isTemplateDriven(code: string): boolean {
   return code.startsWith('TPL_')
     || code === 'GEN_UNKNOWN_TAG'
     || code === 'GEN_NGIF_ELSE_TODO'
-    || code === 'GEN_STRUCTURAL_TODO';
+    || code === 'GEN_STRUCTURAL_TODO'
+    || code === 'GEN_CONTROL_NESTING';
 }
 
 function isStyleDriven(code: string): boolean {

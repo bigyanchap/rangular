@@ -57,6 +57,24 @@ function allRoles(mode: ThemeMode): Record<string, StyleRecord> {
       borderRadius: t.radius.full, fontSize: ty.caption.fontSize, fontWeight: 700,
     },
     fab: { background: c.primaryContainer, color: c.onPrimaryContainer, borderRadius: t.radius.lg },
+    switch: {
+      background: c.surfaceVariant, borderColor: c.outline, knobBackground: c.onSurfaceVariant,
+      checkedBackground: c.primary, checkedKnobBackground: c.onPrimary,
+      borderRadius: t.radius.full, width: 52, height: 32,
+    },
+    checkbox: {
+      background: c.primary, borderColor: c.primary, color: c.onPrimary,
+      borderRadius: t.radius.sm, width: 24, height: 24,
+    },
+    switcher: {
+      background: c.surfaceVariant, borderColor: c.border, borderRadius: t.radius.full,
+      selectedBackground: c.primaryContainer, selectedColor: c.onPrimaryContainer,
+      padding: t.spacing.xs, minHeight: 40,
+    },
+    radio: {
+      borderColor: c.outline, selectedBorderColor: c.primary, dotBackground: c.primary,
+      borderRadius: t.radius.full, width: 24, height: 24, dotWidth: 12, dotHeight: 12,
+    },
     textDisplay: { fontSize: ty.display.fontSize, lineHeight: ty.display.lineHeight, fontWeight: 700 },
     textHeading: { fontSize: ty.heading.fontSize, lineHeight: ty.heading.lineHeight, fontWeight: 700 },
     textTitle: { fontSize: ty.title.fontSize, lineHeight: ty.title.lineHeight, fontWeight: 600 },
@@ -80,6 +98,10 @@ function rolesForElement(el: ElementNode): string[] {
     case 'p': return ['textBody'];
     case 'label': return ['textLabel'];
     case 'fab': return ['fab'];
+    case 'switch': return ['switch'];
+    case 'checkbox': return ['checkbox'];
+    case 'switcher': return ['switcher'];
+    case 'radio-group': return ['radio'];
     case 'span': return el.attrs['class'] === 'badge' ? ['badge'] : [];
     default: return [];
   }

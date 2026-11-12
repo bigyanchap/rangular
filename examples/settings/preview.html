@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rangular preview: app-settings</title>
+<style>
+  * { box-sizing: border-box; }
+  /* Stage 4: every colour below resolves through these variables. The
+     declared theme is the default; the Light/Dark toggle in the preview
+     chrome flips data-theme on <html> and the other palette takes over,
+     the same token swap a generated app does with RgScreen theme. */
+  :root { --screen-bg: #ffffff; --surface-variant: #f0f4f9; --text: #1f1f1f; --text-muted: #5f6368; --primary: #0b57d0; --on-primary: #ffffff; --primary-container: #d3e3fd; --on-primary-container: #041e49; --border: #dadce0; --avatar: #7b1fa2; --on-avatar: #ffffff; }
+  html[data-theme="light"] { --screen-bg: #ffffff; --surface-variant: #f0f4f9; --text: #1f1f1f; --text-muted: #5f6368; --primary: #0b57d0; --on-primary: #ffffff; --primary-container: #d3e3fd; --on-primary-container: #041e49; --border: #dadce0; --avatar: #7b1fa2; --on-avatar: #ffffff; }
+  html[data-theme="dark"] { --screen-bg: #131314; --surface-variant: #282a2c; --text: #e3e3e3; --text-muted: #9aa0a6; --primary: #a8c7fa; --on-primary: #062e6f; --primary-container: #004a77; --on-primary-container: #d3e3fd; --border: #444746; --avatar: #d0bcff; --on-avatar: #381e72; }
+  body { margin: 0; font-family: Roboto, system-ui, sans-serif; background: #e8eaed; display: flex; flex-direction: column; align-items: center; padding: 24px 12px; }
+  .preview-chrome { width: 360px; max-width: 100%; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 13px; color: #444746; }
+  .preview-chrome button { background: #ffffff; color: #0b57d0; border: 1px solid #dadce0; border-radius: 9999px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .screen { width: 360px; max-width: 100%; min-height: 640px; background: var(--screen-bg); color: var(--text); border-radius: 28px; overflow: hidden; box-shadow: 0 10px 28px rgba(0,0,0,.18); padding-bottom: 24px; }
+  .appbar { display: flex; align-items: center; gap: 12px; margin: 12px; background: var(--surface-variant); border-radius: 9999px; padding: 10px 16px; }
+  .search { flex: 1; color: var(--text-muted); font-size: 14px; }
+  .appbar-title { flex: 1; font-size: 20px; font-weight: 600; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--avatar); color: var(--on-avatar); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+  .avatar-lg { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; }
+  .display { font-size: 32px; line-height: 40px; font-weight: 700; margin: 16px 16px 8px; }
+  .heading { font-size: 24px; line-height: 32px; font-weight: 700; margin: 0 0 8px; }
+  .title { font-size: 20px; line-height: 28px; font-weight: 600; margin: 0 0 8px; }
+  .body { font-size: 16px; line-height: 24px; color: var(--text-muted); margin: 0 16px 16px; }
+  .label { display: block; font-size: 14px; line-height: 20px; font-weight: 600; letter-spacing: .4px; margin: 0 16px 8px; }
+  .badge { display: inline-block; background: var(--primary-container); color: var(--on-primary-container); border-radius: 9999px; padding: 4px 12px; font-size: 12px; font-weight: 700; }
+  .card { background: var(--surface-variant); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin: 0 16px 16px; }
+  .card .body { margin: 0; font-size: 14px; }
+  .btn { display: block; margin: 8px 16px 0; background: var(--primary); color: var(--on-primary); border: none; border-radius: 9999px; padding: 0 24px; min-height: 48px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .btn[disabled] { opacity: .38; cursor: default; }
+  .switch, .checkbox { display: flex; align-items: center; gap: 12px; width: calc(100% - 32px); margin: 8px 16px 0; padding: 8px 0; background: transparent; border: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  .switch[disabled], .checkbox[disabled], .switcher-option[disabled], .radio-option[disabled] { opacity: .38; cursor: default; }
+  .switch-track { position: relative; width: 52px; height: 32px; flex: 0 0 52px; border: 2px solid var(--border); border-radius: 9999px; background: var(--surface-variant); transition: background-color .16s linear, border-color .16s linear; }
+  .switch.on .switch-track { background: var(--primary); border-color: var(--primary); }
+  .switch-knob { position: absolute; top: 2px; left: 2px; width: 24px; height: 24px; border-radius: 50%; background: var(--text-muted); transition: left .16s linear, background-color .16s linear; }
+  .switch.on .switch-knob { left: 22px; background: var(--on-primary); }
+  .control-label { flex: 1; font-size: 14px; }
+  .checkbox-box { width: 24px; height: 24px; flex: 0 0 24px; border: 2px solid var(--text-muted); border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; color: var(--on-primary); }
+  .checkbox.on .checkbox-box { background: var(--primary); border-color: var(--primary); }
+  .checkbox-mark { font-size: 16px; font-weight: 700; line-height: 1; }
+  .switcher { display: flex; gap: 4px; padding: 4px; margin: 8px 16px 0; background: var(--surface-variant); border: 1px solid var(--border); border-radius: 9999px; }
+  .switcher-option { flex: 1; min-height: 40px; border: none; border-radius: 9999px; background: transparent; color: var(--text); padding: 0 12px; font-size: 14px; cursor: pointer; }
+  .switcher-option.selected { background: var(--primary-container); color: var(--on-primary-container); font-weight: 600; }
+  .radio-option { display: flex; align-items: center; gap: 12px; width: calc(100% - 32px); margin: 0 16px; padding: 8px 0; background: transparent; border: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  .radio-circle { width: 24px; height: 24px; flex: 0 0 24px; border: 2px solid var(--text-muted); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
+  .radio-option.selected .radio-circle { border-color: var(--primary); }
+  .radio-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--primary); }
+  .list { border-top: 1px solid var(--border); }
+  .row { display: flex; gap: 12px; align-items: flex-start; padding: 11px 16px; border-bottom: 1px solid var(--border); }
+  .row-main { flex: 1; display: flex; flex-direction: column; }
+  .row-title { font-weight: 600; font-size: 14px; }
+  .row-sub { font-size: 13px; }
+  .row-detail { font-size: 12.5px; color: var(--text-muted); }
+  .row-time { font-size: 11px; color: var(--text-muted); }
+  .fab { display: inline-block; float: right; margin: 8px 16px 0 0; background: var(--primary-container); color: var(--on-primary-container); border-radius: 16px; padding: 13px 18px; font-size: 14px; font-weight: 600; box-shadow: 0 3px 8px rgba(0,0,0,.25); }
+</style>
+</head>
+<body>
+<div class="preview-chrome"><span>Rangular preview</span><button id="theme-toggle" type="button">Switch to dark theme</button></div>
+<div id="app">
+<div class="screen"><header class="appbar"><span class="appbar-menu">&#9776;</span><span class="appbar-title">Settings</span><span class="avatar">S</span></header>
+<span class="label">Connection</span>
+<button type="button" class="switch on" ><span class="switch-track"><span class="switch-knob"></span></span><span class="control-label">Wi-Fi</span></button>
+<p class="body">Wi-Fi is on</p>
+<span class="label">Preferences</span>
+<button type="button" class="checkbox" ><span class="checkbox-box"></span><span class="control-label">Notifications</span></button>
+<p class="body">Notifications are off</p>
+<span class="label">Home view</span>
+<div class="switcher"><button type="button" class="switcher-option selected" >List</button><button type="button" class="switcher-option" >Statistics</button></div>
+<div><p class="body">List panel: Morning Yoga, Puja, Deep Work.</p></div>
+
+<span class="label">Text size</span>
+<div class="radio-group"><button type="button" class="radio-option" ><span class="radio-circle"></span><span class="control-label">Small</span></button><button type="button" class="radio-option selected" ><span class="radio-circle"><span class="radio-dot"></span></span><span class="control-label">Medium</span></button><button type="button" class="radio-option" ><span class="radio-circle"></span><span class="control-label">Large</span></button></div>
+<p class="body">Chosen size: m</p>
+
+<p class="body">A line of text at the chosen size.</p>
+</div>
+</div>
+<script>
+// Rangular interactive preview runtime (Stage 2).
+// State and methods are live: (click) handlers mutate state and re-render.
+const TEMPLATE = {"type":"root","children":[{"type":"element","tag":"screen","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"element","tag":"appbar","attrs":{"title":"Settings"},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[],"pos":{"line":2,"column":3}},{"type":"element","tag":"label","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"Connection"}],"pos":{"line":4,"column":10}}],"pos":{"line":4,"column":3}},{"type":"element","tag":"switch","attrs":{},"booleanAttrs":[],"propBindings":[{"name":"checked","expression":"wifiOn"}],"eventBindings":[{"name":"change","expression":"onWifi($event)"}],"children":[{"type":"text","parts":[{"type":"static","value":"Wi-Fi"}],"pos":{"line":5,"column":56}}],"pos":{"line":5,"column":3}},{"type":"element","tag":"p","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"Wi-Fi is "},{"type":"expr","expression":"wifiOn ? 'on' : 'off'"}],"pos":{"line":6,"column":6}}],"pos":{"line":6,"column":3}},{"type":"element","tag":"label","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"Preferences"}],"pos":{"line":8,"column":10}}],"pos":{"line":8,"column":3}},{"type":"element","tag":"checkbox","attrs":{},"booleanAttrs":[],"propBindings":[{"name":"checked","expression":"notifications"}],"eventBindings":[{"name":"change","expression":"onNotifications($event)"}],"children":[{"type":"text","parts":[{"type":"static","value":"Notifications"}],"pos":{"line":9,"column":74}}],"pos":{"line":9,"column":3}},{"type":"element","tag":"p","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"Notifications are "},{"type":"expr","expression":"notifications ? 'on' : 'off'"}],"pos":{"line":10,"column":6}}],"pos":{"line":10,"column":3}},{"type":"element","tag":"label","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"Home view"}],"pos":{"line":12,"column":10}}],"pos":{"line":12,"column":3}},{"type":"element","tag":"switcher","attrs":{},"booleanAttrs":[],"propBindings":[{"name":"value","expression":"view"}],"eventBindings":[{"name":"change","expression":"onView($event)"}],"children":[{"type":"element","tag":"option","attrs":{"value":"list"},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"List"}],"pos":{"line":14,"column":26}}],"pos":{"line":14,"column":5}},{"type":"element","tag":"option","attrs":{"value":"stats"},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"Statistics"}],"pos":{"line":15,"column":27}}],"pos":{"line":15,"column":5}}],"pos":{"line":13,"column":3}},{"type":"element","tag":"div","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"element","tag":"p","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"List panel: Morning Yoga, Puja, Deep Work."}],"pos":{"line":18,"column":8}}],"pos":{"line":18,"column":5}}],"pos":{"line":17,"column":3},"structural":{"name":"ngIf","expression":"view === 'list'"}},{"type":"element","tag":"div","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"element","tag":"p","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"Statistics panel: 3 blocks done this week."}],"pos":{"line":21,"column":8}}],"pos":{"line":21,"column":5}}],"pos":{"line":20,"column":3},"structural":{"name":"ngIf","expression":"view === 'stats'"}},{"type":"element","tag":"label","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"Text size"}],"pos":{"line":24,"column":10}}],"pos":{"line":24,"column":3}},{"type":"element","tag":"radio-group","attrs":{},"booleanAttrs":[],"propBindings":[{"name":"value","expression":"size"}],"eventBindings":[{"name":"change","expression":"onSize($event)"}],"children":[{"type":"element","tag":"radio","attrs":{"value":"s"},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"Small"}],"pos":{"line":26,"column":22}}],"pos":{"line":26,"column":5}},{"type":"element","tag":"radio","attrs":{"value":"m"},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"Medium"}],"pos":{"line":27,"column":22}}],"pos":{"line":27,"column":5}},{"type":"element","tag":"radio","attrs":{"value":"l"},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"Large"}],"pos":{"line":28,"column":22}}],"pos":{"line":28,"column":5}}],"pos":{"line":25,"column":3}},{"type":"element","tag":"p","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"Chosen size: "},{"type":"expr","expression":"size"}],"pos":{"line":30,"column":6}}],"pos":{"line":30,"column":3}},{"type":"element","tag":"p","attrs":{"class":"sample-s"},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"A line of text at the chosen size."}],"pos":{"line":31,"column":44}}],"pos":{"line":31,"column":3},"structural":{"name":"ngIf","expression":"size === 's'"}},{"type":"element","tag":"p","attrs":{"class":"sample-m"},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"A line of text at the chosen size."}],"pos":{"line":32,"column":44}}],"pos":{"line":32,"column":3},"structural":{"name":"ngIf","expression":"size === 'm'"}},{"type":"element","tag":"p","attrs":{"class":"sample-l"},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"A line of text at the chosen size."}],"pos":{"line":33,"column":44}}],"pos":{"line":33,"column":3},"structural":{"name":"ngIf","expression":"size === 'l'"}}],"pos":{"line":1,"column":1}}]};
+const state = {"wifiOn":true,"notifications":false,"view":"list","size":"m"};
+const methods = {
+  onWifi: function (value) {
+state.wifiOn = value;
+  },
+  onNotifications: function (value) {
+state.notifications = value;
+  },
+  onView: function (value) {
+state.view = value;
+  },
+  onSize: function (value) {
+state.size = value;
+  }
+};
+const SERVICES = {
+
+};
+const COMPONENTS = {
+
+};
+const ROOT_DEPS = {};
+const ROOT_ONINIT = null;
+
+function __tok(s) {
+  var t = [], i = 0;
+  while (i < s.length) {
+    var ch = s[i];
+    if (/\s/.test(ch)) { i++; continue; }
+    if (ch === '"' || ch === "'") {
+      var j = i + 1, v = '';
+      while (j < s.length && s[j] !== ch) {
+        if (s[j] === '\\' && j + 1 < s.length) { v += s[j + 1]; j += 2; }
+        else { v += s[j]; j++; }
+      }
+      t.push({ k: 'str', v: v }); i = j + 1; continue;
+    }
+    if (/[0-9]/.test(ch)) {
+      var j2 = i;
+      while (j2 < s.length && /[0-9.]/.test(s[j2])) j2++;
+      t.push({ k: 'num', v: s.slice(i, j2) }); i = j2; continue;
+    }
+    if (/[A-Za-z_$]/.test(ch)) {
+      var j3 = i;
+      while (j3 < s.length && /[A-Za-z0-9_$]/.test(s[j3])) j3++;
+      t.push({ k: 'id', v: s.slice(i, j3) }); i = j3; continue;
+    }
+    var three = s.slice(i, i + 3), two = s.slice(i, i + 2);
+    if (three === '===' || three === '!==') { t.push({ k: 'p', v: three }); i += 3; continue; }
+    if (['==', '!=', '<=', '>=', '&&', '||'].indexOf(two) >= 0) { t.push({ k: 'p', v: two }); i += 2; continue; }
+    if ('+-*/%<>!?:.,()[]|'.indexOf(ch) >= 0) { t.push({ k: 'p', v: ch }); i++; continue; }
+    throw new Error('preview: unexpected character ' + ch);
+  }
+  t.push({ k: 'eof', v: '' });
+  return t;
+}
+function __parse(src) {
+  var toks = __tok(src), pos = 0;
+  function peek() { return toks[pos]; }
+  function next() { return toks[pos++]; }
+  function atP(v) { var t = peek(); return t.k === 'p' && t.v === v; }
+  function expect(v) { if (!atP(v)) throw new Error('preview: expected ' + v); next(); }
+  var BP = { '||': 1, '&&': 2, '==': 3, '===': 3, '!=': 3, '!==': 3, '<': 4, '>': 4, '<=': 4, '>=': 4, '+': 5, '-': 5, '*': 6, '/': 6, '%': 6 };
+  function parsePipe() {
+    var inp = parseCond();
+    while (atP('|')) {
+      next();
+      var nm = next();
+      if (nm.k !== 'id') throw new Error('preview: pipe name expected');
+      var args = [];
+      while (atP(':')) { next(); args.push(parseCond()); }
+      inp = { type: 'pipe', input: inp, name: nm.v, args: args };
+    }
+    return inp;
+  }
+  function parseCond() {
+    var test = parseBin(1);
+    if (atP('?')) {
+      next();
+      var cons = parsePipe();
+      expect(':');
+      var alt = parseCond();
+      return { type: 'conditional', test: test, consequent: cons, alternate: alt };
+    }
+    return test;
+  }
+  function parseBin(min) {
+    var left = parseUnary();
+    for (;;) {
+      var t = peek();
+      if (t.k !== 'p') break;
+      var pw = BP[t.v];
+      if (pw === undefined || pw < min) break;
+      var op = next().v;
+      var right = parseBin(pw + 1);
+      left = { type: 'binary', op: op, left: left, right: right };
+    }
+    return left;
+  }
+  function parseUnary() {
+    var t = peek();
+    if (t.k === 'p' && (t.v === '!' || t.v === '-')) {
+      var op = next().v;
+      return { type: 'unary', op: op, argument: parseUnary() };
+    }
+    return parsePost();
+  }
+  function parsePost() {
+    var e = parsePrim();
+    for (;;) {
+      if (atP('.')) {
+        next();
+        var pr = next();
+        if (pr.k !== 'id') throw new Error('preview: property expected');
+        e = { type: 'member', object: e, property: pr.v };
+      } else if (atP('[')) {
+        next();
+        var ix = parsePipe();
+        expect(']');
+        e = { type: 'index', object: e, index: ix };
+      } else if (atP('(')) {
+        next();
+        var args = [];
+        if (!atP(')')) {
+          args.push(parsePipe());
+          while (atP(',')) { next(); args.push(parsePipe()); }
+        }
+        expect(')');
+        e = { type: 'call', callee: e, args: args };
+      } else break;
+    }
+    return e;
+  }
+  function parsePrim() {
+    var t = next();
+    if (t.k === 'id') {
+      if (t.v === 'true') return { type: 'literal', value: true };
+      if (t.v === 'false') return { type: 'literal', value: false };
+      if (t.v === 'null') return { type: 'literal', value: null };
+      return { type: 'identifier', name: t.v };
+    }
+    if (t.k === 'num') return { type: 'literal', value: Number(t.v) };
+    if (t.k === 'str') return { type: 'literal', value: t.v };
+    if (t.k === 'p' && t.v === '(') { var inner = parsePipe(); expect(')'); return inner; }
+    throw new Error('preview: unexpected token ' + t.v);
+  }
+  var e = parsePipe();
+  if (peek().k !== 'eof') throw new Error('preview: trailing tokens');
+  return e;
+}
+function __pipe(name, value) {
+  switch (name) {
+    case 'uppercase': return typeof value === 'string' ? value.toUpperCase() : value;
+    case 'lowercase': return typeof value === 'string' ? value.toLowerCase() : value;
+    case 'titlecase': return typeof value === 'string' ? value.replace(/\w\S*/g, function (w) { return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); }) : value;
+    case 'json': return JSON.stringify(value);
+    default: throw new Error("preview: unknown pipe '" + name + "'");
+  }
+}
+function __eval(e, scope) {
+  switch (e.type) {
+    case 'literal': return e.value;
+    case 'identifier': return scope[e.name];
+    case 'member': {
+      var o = __eval(e.object, scope);
+      if (o === null || o === undefined) return undefined;
+      return o[e.property];
+    }
+    case 'index': {
+      var o2 = __eval(e.object, scope);
+      if (o2 === null || o2 === undefined) return undefined;
+      return o2[__eval(e.index, scope)];
+    }
+    case 'call': {
+      var args = e.args.map(function (a) { return __eval(a, scope); });
+      if (e.callee.type === 'member') {
+        var obj = __eval(e.callee.object, scope);
+        if (obj === null || obj === undefined) return undefined;
+        var fn = obj[e.callee.property];
+        if (typeof fn !== 'function') throw new Error('preview: ' + e.callee.property + ' is not a function');
+        return fn.apply(obj, args);
+      }
+      var f = __eval(e.callee, scope);
+      if (typeof f !== 'function') throw new Error('preview: attempted to call a non-function');
+      return f.apply(null, args);
+    }
+    case 'unary': {
+      var v = __eval(e.argument, scope);
+      if (e.op === '!') return !v;
+      if (e.op === '-') return -v;
+      return +v;
+    }
+    case 'binary': {
+      if (e.op === '&&') { var l = __eval(e.left, scope); return l ? __eval(e.right, scope) : l; }
+      if (e.op === '||') { var l2 = __eval(e.left, scope); return l2 ? l2 : __eval(e.right, scope); }
+      var a = __eval(e.left, scope), b = __eval(e.right, scope);
+      switch (e.op) {
+        case '+': return a + b;
+        case '-': return a - b;
+        case '*': return a * b;
+        case '/': return a / b;
+        case '%': return a % b;
+        case '==': return a == b;
+        case '===': return a === b;
+        case '!=': return a != b;
+        case '!==': return a !== b;
+        case '<': return a < b;
+        case '>': return a > b;
+        case '<=': return a <= b;
+        case '>=': return a >= b;
+      }
+      throw new Error('preview: bad operator ' + e.op);
+    }
+    case 'conditional':
+      return __eval(e.test, scope) ? __eval(e.consequent, scope) : __eval(e.alternate, scope);
+    case 'pipe':
+      return __pipe(e.name, __eval(e.input, scope));
+  }
+}
+function __evalSrc(src, scope) { return __eval(__parse(src), scope); }
+function __scope(extra) {
+  var s = {}, k;
+  for (k in state) s[k] = state[k];
+  for (k in methods) s[k] = methods[k];
+  if (extra) for (k in extra) s[k] = extra[k];
+  return s;
+}
+function __extend(scope, extra) {
+  var s = {}, k;
+  for (k in scope) s[k] = scope[k];
+  for (k in extra) s[k] = extra[k];
+  return s;
+}
+function __binding(el, name, scope) {
+  for (var i = 0; i < el.propBindings.length; i++) {
+    if (el.propBindings[i].name === name) {
+      try { return __evalSrc(el.propBindings[i].expression, scope); }
+      catch (err) { console.warn(err); return undefined; }
+    }
+  }
+  return undefined;
+}
+function __attr(el, name, scope) {
+  var b = __binding(el, name, scope);
+  if (b !== undefined) return b;
+  return el.attrs[name];
+}
+function __parseNgFor(expr) {
+  var segs = expr.split(';').map(function (x) { return x.trim(); }).filter(Boolean);
+  var m = /^let\s+([A-Za-z_$][\w$]*)\s+of\s+(.+)$/.exec(segs[0] || '');
+  if (!m) return null;
+  var parts = { item: m[1], source: m[2], index: null };
+  for (var i = 1; i < segs.length; i++) {
+    var lm = /^let\s+([A-Za-z_$][\w$]*)\s*=\s*index$/.exec(segs[i]);
+    if (lm) parts.index = lm[1];
+  }
+  return parts;
+}
+function __buildNodes(nodes, scope, path) {
+  var out = [];
+  nodes.forEach(function (n, i) {
+    __buildNode(n, scope, path + '/' + i).forEach(function (d) { out.push(d); });
+  });
+  return out;
+}
+function __buildNode(node, scope, path) {
+  if (node.type === 'text') {
+    var txt = '';
+    node.parts.forEach(function (p) {
+      if (p.type === 'static') txt += p.value;
+      else {
+        try {
+          var v = __evalSrc(p.expression, scope);
+          txt += (v === undefined || v === null) ? '' : String(v);
+        } catch (err) { console.warn(err); txt += '{{ ' + p.expression + ' }}'; }
+      }
+    });
+    return [document.createTextNode(txt)];
+  }
+  return __buildElement(node, scope, path);
+}
+function __buildElement(el, scope, path) {
+  if (el.structural && el.structural.name === 'ngIf') {
+    var cond;
+    try { cond = __evalSrc(el.structural.expression.split(';')[0].trim(), scope); }
+    catch (err) { console.warn(err); cond = false; }
+    if (!cond) return [];
+    return __buildCore(el, scope, path);
+  }
+  if (el.structural && el.structural.name === 'ngFor') {
+    var parts = __parseNgFor(el.structural.expression);
+    if (!parts) { console.warn('preview: unparseable *ngFor'); return __buildCore(el, scope, path); }
+    var items;
+    try { items = __evalSrc(parts.source, scope); }
+    catch (err) { console.warn(err); items = []; }
+    if (!items || typeof items.length !== 'number') return [];
+    var out = [];
+    for (var idx = 0; idx < items.length; idx++) {
+      var extra = {};
+      extra[parts.item] = items[idx];
+      if (parts.index) extra[parts.index] = idx;
+      __buildCore(el, __extend(scope, extra), path + '/for' + idx).forEach(function (d) { out.push(d); });
+    }
+    return out;
+  }
+  return __buildCore(el, scope, path);
+}
+function __attachEvents(dom, el, scope) {
+  el.eventBindings.forEach(function (ev) {
+    if (ev.name !== 'click') {
+      console.warn('preview: only (click) handlers are wired, got (' + ev.name + ')');
+      return;
+    }
+    dom.addEventListener('click', function (event) {
+      __runHandler(ev.expression, scope, event);
+      __render();
+    });
+  });
+}
+function __runHandler(src, scope, event) {
+  var s = __extend(scope, { $event: event });
+  try {
+    var e = __parse(src);
+    if (e.type === 'call') { __eval(e, s); return; }
+    if (e.type === 'identifier') {
+      var fn = s[e.name];
+      if (typeof fn === 'function') { fn(); return; }
+      console.warn('preview: handler ' + e.name + ' is not a method');
+      return;
+    }
+    __eval(e, s);
+  } catch (err) { console.warn(err); }
+}
+function __truthy(value) { return value === true || value === 'true'; }
+function __controlValue(el, name, scope) {
+  var bound = __binding(el, name, scope);
+  if (bound !== undefined) return bound;
+  if (el.booleanAttrs.indexOf(name) >= 0) return true;
+  return el.attrs[name];
+}
+function __runChange(el, scope, value) {
+  el.eventBindings.forEach(function (ev) {
+    if (ev.name !== 'change') return;
+    var s = __extend(scope, { $event: value });
+    try {
+      var e = __parse(ev.expression);
+      if (e.type === 'call') { __eval(e, s); return; }
+      if (e.type === 'identifier') {
+        var fn = s[e.name];
+        if (typeof fn === 'function') { fn(value); return; }
+        console.warn('preview: change handler ' + e.name + ' is not a method');
+        return;
+      }
+      __eval(e, s);
+    } catch (err) { console.warn(err); }
+  });
+  __render();
+}
+function __buildCore(el, scope, path) {
+  if (COMPONENTS[el.tag]) return __buildChild(el, scope, path);
+  var kids = __buildNodes(el.children, scope, path);
+  function wrap(tag, cls) {
+    var d = document.createElement(tag);
+    if (cls) d.className = cls;
+    kids.forEach(function (k) { d.appendChild(k); });
+    return [d];
+  }
+  var title = __attr(el, 'title', scope);
+  switch (el.tag) {
+    case 'screen': return wrap('div', 'screen');
+    case 'appbar': {
+      var bar = document.createElement('header');
+      bar.className = 'appbar';
+      var menu = document.createElement('span');
+      menu.textContent = '☰';
+      bar.appendChild(menu);
+      var search = __attr(el, 'search', scope);
+      var mid = document.createElement('span');
+      if (search) { mid.className = 'search'; mid.textContent = String(search); }
+      else { mid.className = 'appbar-title'; mid.textContent = title ? String(title) : ''; }
+      bar.appendChild(mid);
+      var av = document.createElement('span');
+      av.className = 'avatar';
+      av.textContent = (title ? String(title) : 'R').charAt(0);
+      bar.appendChild(av);
+      return [bar];
+    }
+    case 'h1': return wrap('h1', 'display');
+    case 'h2': return wrap('h2', 'heading');
+    case 'h3': return wrap('h3', 'title');
+    case 'p': return wrap('p', 'body');
+    case 'label': return wrap('span', 'label');
+    case 'span': {
+      var sp = wrap('span', '');
+      if (el.attrs['class']) sp[0].className = el.attrs['class'];
+      return sp;
+    }
+    case 'card': return wrap('section', 'card');
+    case 'button': {
+      var b = document.createElement('button');
+      b.className = 'btn';
+      if (__binding(el, 'disabled', scope)) b.disabled = true;
+      kids.forEach(function (k) { b.appendChild(k); });
+      __attachEvents(b, el, scope);
+      return [b];
+    }
+    case 'switch': {
+      var switchChecked = __truthy(__controlValue(el, 'checked', scope));
+      var sw = document.createElement('button');
+      sw.type = 'button';
+      sw.className = 'switch' + (switchChecked ? ' on' : '');
+      var swTrack = document.createElement('span');
+      swTrack.className = 'switch-track';
+      var swKnob = document.createElement('span');
+      swKnob.className = 'switch-knob';
+      swTrack.appendChild(swKnob);
+      sw.appendChild(swTrack);
+      var swLabel = document.createElement('span');
+      swLabel.className = 'control-label';
+      kids.forEach(function (k) { swLabel.appendChild(k); });
+      sw.appendChild(swLabel);
+      if (__truthy(__controlValue(el, 'disabled', scope))) sw.disabled = true;
+      else sw.addEventListener('click', function () { __runChange(el, scope, !switchChecked); });
+      return [sw];
+    }
+    case 'checkbox': {
+      var checkboxChecked = __truthy(__controlValue(el, 'checked', scope));
+      var checkbox = document.createElement('button');
+      checkbox.type = 'button';
+      checkbox.className = 'checkbox' + (checkboxChecked ? ' on' : '');
+      var checkboxBox = document.createElement('span');
+      checkboxBox.className = 'checkbox-box';
+      if (checkboxChecked) {
+        var checkboxMark = document.createElement('span');
+        checkboxMark.className = 'checkbox-mark';
+        checkboxMark.textContent = '✓';
+        checkboxBox.appendChild(checkboxMark);
+      }
+      checkbox.appendChild(checkboxBox);
+      var checkboxLabel = document.createElement('span');
+      checkboxLabel.className = 'control-label';
+      kids.forEach(function (k) { checkboxLabel.appendChild(k); });
+      checkbox.appendChild(checkboxLabel);
+      if (__truthy(__controlValue(el, 'disabled', scope))) checkbox.disabled = true;
+      else checkbox.addEventListener('click', function () { __runChange(el, scope, !checkboxChecked); });
+      return [checkbox];
+    }
+    case 'switcher': {
+      var switcher = document.createElement('div');
+      switcher.className = 'switcher';
+      var switcherValue = __controlValue(el, 'value', scope);
+      var switcherDisabled = __truthy(__controlValue(el, 'disabled', scope));
+      el.children.forEach(function (child, childIndex) {
+        if (child.type !== 'element' || child.tag !== 'option') return;
+        var optionValue = __controlValue(child, 'value', scope);
+        var segment = document.createElement('button');
+        segment.type = 'button';
+        segment.className = 'switcher-option' + (String(switcherValue) === String(optionValue) ? ' selected' : '');
+        __buildNodes(child.children, scope, path + '/option' + childIndex).forEach(function (k) { segment.appendChild(k); });
+        if (switcherDisabled) segment.disabled = true;
+        else segment.addEventListener('click', function () { __runChange(el, scope, optionValue); });
+        switcher.appendChild(segment);
+      });
+      return [switcher];
+    }
+    case 'radio-group': {
+      var radioGroup = document.createElement('div');
+      radioGroup.className = 'radio-group';
+      var radioValue = __controlValue(el, 'value', scope);
+      var radioDisabled = __truthy(__controlValue(el, 'disabled', scope));
+      el.children.forEach(function (child, childIndex) {
+        if (child.type !== 'element' || child.tag !== 'radio') return;
+        var choiceValue = __controlValue(child, 'value', scope);
+        var selected = String(radioValue) === String(choiceValue);
+        var choice = document.createElement('button');
+        choice.type = 'button';
+        choice.className = 'radio-option' + (selected ? ' selected' : '');
+        var circle = document.createElement('span');
+        circle.className = 'radio-circle';
+        if (selected) {
+          var dot = document.createElement('span');
+          dot.className = 'radio-dot';
+          circle.appendChild(dot);
+        }
+        choice.appendChild(circle);
+        var choiceLabel = document.createElement('span');
+        choiceLabel.className = 'control-label';
+        __buildNodes(child.children, scope, path + '/radio' + childIndex).forEach(function (k) { choiceLabel.appendChild(k); });
+        choice.appendChild(choiceLabel);
+        if (radioDisabled) choice.disabled = true;
+        else choice.addEventListener('click', function () { __runChange(el, scope, choiceValue); });
+        radioGroup.appendChild(choice);
+      });
+      return [radioGroup];
+    }
+    case 'list': return wrap('div', 'list');
+    case 'row': {
+      var row = document.createElement('div');
+      row.className = 'row';
+      if (el.booleanAttrs.indexOf('avatar') >= 0) {
+        var avl = document.createElement('span');
+        avl.className = 'avatar-lg';
+        avl.textContent = (title ? String(title) : '•').charAt(0);
+        row.appendChild(avl);
+      }
+      var main = document.createElement('span');
+      main.className = 'row-main';
+      var rt = document.createElement('span');
+      rt.className = 'row-title';
+      rt.textContent = title ? String(title) : '';
+      main.appendChild(rt);
+      var sub = __attr(el, 'subtitle', scope);
+      if (sub) {
+        var rs = document.createElement('span');
+        rs.className = 'row-sub';
+        rs.textContent = String(sub);
+        main.appendChild(rs);
+      }
+      var det = __attr(el, 'detail', scope);
+      if (det) {
+        var rd = document.createElement('span');
+        rd.className = 'row-detail';
+        rd.textContent = String(det);
+        main.appendChild(rd);
+      }
+      kids.forEach(function (k) { main.appendChild(k); });
+      row.appendChild(main);
+      var tm = __attr(el, 'time', scope);
+      if (tm) {
+        var rtEl = document.createElement('span');
+        rtEl.className = 'row-time';
+        rtEl.textContent = String(tm);
+        row.appendChild(rtEl);
+      }
+      __attachEvents(row, el, scope);
+      return [row];
+    }
+    case 'fab': {
+      var f = wrap('div', 'fab')[0];
+      if (!el.children.length) {
+        var lbl = __attr(el, 'label', scope);
+        f.textContent = lbl ? String(lbl) : 'Compose';
+      }
+      __attachEvents(f, el, scope);
+      return [f];
+    }
+    case 'header': return wrap('header', '');
+    case 'section': return wrap('section', '');
+    default: return wrap('div', '');
+  }
+}
+var __svcCache = {};
+var __instances = {};
+function __httpStub() {
+  return { get: function () { return { subscribe: function () { return { unsubscribe: function () {} }; } }; } };
+}
+function __resolveDep(token) {
+  return token === 'HttpClient' ? __httpStub() : __service(token);
+}
+function __bind(def, inst) {
+  var fns = {};
+  Object.keys(def.methods).forEach(function (name) {
+    fns[name] = function () {
+      var args = [inst.state, fns, inst.props];
+      for (var i = 0; i < arguments.length; i++) args.push(arguments[i]);
+      return def.methods[name].apply(null, args);
+    };
+  });
+  return fns;
+}
+function __service(name) {
+  if (__svcCache[name]) return __svcCache[name];
+  var def = SERVICES[name];
+  if (!def) { console.warn('preview: no service named ' + name); return {}; }
+  var st = {};
+  Object.keys(def.state).forEach(function (k) { st[k] = def.state[k]; });
+  var inst = { state: st, props: {}, methods: {} };
+  __svcCache[name] = st;
+  Object.keys(def.deps).forEach(function (k) { st[k] = __resolveDep(def.deps[k]); });
+  inst.methods = __bind(def, inst);
+  Object.keys(inst.methods).forEach(function (m) { st[m] = inst.methods[m]; });
+  return st;
+}
+function __childInstance(path, def, props) {
+  var inst = __instances[path];
+  if (!inst) {
+    var st = {};
+    Object.keys(def.state).forEach(function (k) { st[k] = def.state[k]; });
+    inst = { state: st, props: {}, methods: {}, fresh: true };
+    Object.keys(def.deps).forEach(function (k) { st[k] = __resolveDep(def.deps[k]); });
+    inst.methods = __bind(def, inst);
+    __instances[path] = inst;
+  }
+  inst.props = props;
+  def.inputs.forEach(function (n) { if (n in props) inst.state[n] = props[n]; });
+  return inst;
+}
+function __childScope(inst) {
+  var s = {}, k;
+  for (k in inst.state) s[k] = inst.state[k];
+  for (k in inst.methods) s[k] = inst.methods[k];
+  return s;
+}
+function __buildChild(el, scope, path) {
+  var def = COMPONENTS[el.tag];
+  var props = {};
+  el.propBindings.forEach(function (b) {
+    var v = __binding(el, b.name, scope);
+    if (v !== undefined) props[b.name] = v;
+  });
+  Object.keys(el.attrs).forEach(function (k) { props[k] = el.attrs[k]; });
+  el.booleanAttrs.forEach(function (a) { props[a] = true; });
+  el.eventBindings.forEach(function (ev) {
+    if (def.outputs.indexOf(ev.name) >= 0) {
+      var cap = 'on' + ev.name.charAt(0).toUpperCase() + ev.name.slice(1);
+      props[cap] = (function (expr, sc) {
+        return function (value) { __runHandler(expr, sc, value); __render(); };
+      })(ev.expression, scope);
+    }
+  });
+  var inst = __childInstance(path, def, props);
+  if (inst.fresh) {
+    inst.fresh = false;
+    if (def.onInit && inst.methods[def.onInit]) inst.methods[def.onInit]();
+  }
+  var nodes = __buildNodes(def.template.children, __childScope(inst), path);
+  var domEvents = el.eventBindings.filter(function (ev) { return def.outputs.indexOf(ev.name) < 0; });
+  if (domEvents.length && nodes[0] && nodes[0].addEventListener) {
+    __attachEvents(nodes[0], { eventBindings: domEvents }, scope);
+  }
+  return nodes;
+}
+function __render() {
+  var app = document.getElementById('app');
+  app.innerHTML = '';
+  __buildNodes(TEMPLATE.children, __scope(), 'root').forEach(function (n) { app.appendChild(n); });
+}
+__render();
+
+// Preview theme toggle (Stage 4): flips data-theme on <html>; the CSS
+// variables in <style> do the rest. Guarded so non-DOM harnesses and
+// older pages without the chrome button simply skip it.
+var __previewTheme = 'light';
+var __themeBtn = document.getElementById('theme-toggle');
+function __syncThemeBtn() {
+  if (__themeBtn) __themeBtn.textContent = __previewTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
+}
+if (__themeBtn) {
+  __themeBtn.addEventListener('click', function () {
+    __previewTheme = __previewTheme === 'dark' ? 'light' : 'dark';
+    if (document.documentElement && document.documentElement.setAttribute) {
+      document.documentElement.setAttribute('data-theme', __previewTheme);
+    }
+    __syncThemeBtn();
+  });
+  __syncThemeBtn();
+}
+</script>
+</body>
+</html>

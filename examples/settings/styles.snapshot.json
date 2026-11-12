@@ -1,0 +1,155 @@
+{
+  "example": "settings",
+  "themes": {
+    "light": {
+      "roles": {
+        "appbar": {
+          "background": "#f0f4f9",
+          "borderRadius": 9999,
+          "gap": 12
+        },
+        "avatar": {
+          "background": "#7b1fa2",
+          "color": "#ffffff"
+        },
+        "checkbox": {
+          "background": "#0b57d0",
+          "borderColor": "#0b57d0",
+          "color": "#ffffff",
+          "borderRadius": 8,
+          "width": 24,
+          "height": 24
+        },
+        "radio": {
+          "borderColor": "#747775",
+          "selectedBorderColor": "#0b57d0",
+          "dotBackground": "#0b57d0",
+          "borderRadius": 9999,
+          "width": 24,
+          "height": 24,
+          "dotWidth": 12,
+          "dotHeight": 12
+        },
+        "screen": {
+          "background": "#ffffff",
+          "color": "#1f1f1f"
+        },
+        "switch": {
+          "background": "#f0f4f9",
+          "borderColor": "#747775",
+          "knobBackground": "#5f6368",
+          "checkedBackground": "#0b57d0",
+          "checkedKnobBackground": "#ffffff",
+          "borderRadius": 9999,
+          "width": 52,
+          "height": 32
+        },
+        "switcher": {
+          "background": "#f0f4f9",
+          "borderColor": "#dadce0",
+          "borderRadius": 9999,
+          "selectedBackground": "#d3e3fd",
+          "selectedColor": "#041e49",
+          "padding": 4,
+          "minHeight": 40
+        },
+        "textBody": {
+          "fontSize": 16,
+          "lineHeight": 24,
+          "color": "#5f6368"
+        },
+        "textLabel": {
+          "fontSize": 14,
+          "lineHeight": 20,
+          "fontWeight": 600
+        }
+      },
+      "styles": {
+        "sample-l": {
+          "fontSize": 20
+        },
+        "sample-m": {
+          "fontSize": 14
+        },
+        "sample-s": {
+          "fontSize": 12
+        }
+      }
+    },
+    "dark": {
+      "roles": {
+        "appbar": {
+          "background": "#282a2c",
+          "borderRadius": 9999,
+          "gap": 12
+        },
+        "avatar": {
+          "background": "#d0bcff",
+          "color": "#381e72"
+        },
+        "checkbox": {
+          "background": "#a8c7fa",
+          "borderColor": "#a8c7fa",
+          "color": "#062e6f",
+          "borderRadius": 8,
+          "width": 24,
+          "height": 24
+        },
+        "radio": {
+          "borderColor": "#8e918f",
+          "selectedBorderColor": "#a8c7fa",
+          "dotBackground": "#a8c7fa",
+          "borderRadius": 9999,
+          "width": 24,
+          "height": 24,
+          "dotWidth": 12,
+          "dotHeight": 12
+        },
+        "screen": {
+          "background": "#131314",
+          "color": "#e3e3e3"
+        },
+        "switch": {
+          "background": "#282a2c",
+          "borderColor": "#8e918f",
+          "knobBackground": "#9aa0a6",
+          "checkedBackground": "#a8c7fa",
+          "checkedKnobBackground": "#062e6f",
+          "borderRadius": 9999,
+          "width": 52,
+          "height": 32
+        },
+        "switcher": {
+          "background": "#282a2c",
+          "borderColor": "#444746",
+          "borderRadius": 9999,
+          "selectedBackground": "#004a77",
+          "selectedColor": "#d3e3fd",
+          "padding": 4,
+          "minHeight": 40
+        },
+        "textBody": {
+          "fontSize": 16,
+          "lineHeight": 24,
+          "color": "#9aa0a6"
+        },
+        "textLabel": {
+          "fontSize": 14,
+          "lineHeight": 20,
+          "fontWeight": 600
+        }
+      },
+      "styles": {
+        "sample-l": {
+          "fontSize": 20
+        },
+        "sample-m": {
+          "fontSize": 14
+        },
+        "sample-s": {
+          "fontSize": 12
+        }
+      }
+    }
+  }
+}

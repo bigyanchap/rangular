@@ -16,8 +16,10 @@
  * `RgThemeProvider` does the same job standalone. With no provider and no
  * prop, the default theme is light, the original Rangular Material look.
  */
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect, useRef } from 'react';
 import {
+  Animated,
+  Easing,
   FlatList,
   Pressable,
   SafeAreaView,
@@ -81,6 +83,47 @@ function buildStyles(t: Theme) {
     buttonPressed: { opacity: 0.85 },
     buttonDisabled: { opacity: 0.38 },
     buttonLabel: { color: c.onPrimary, fontSize: t.typography.label.fontSize, fontWeight: '600' },
+    controlRow: {
+      minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: t.spacing.md,
+      paddingVertical: t.spacing.sm, paddingHorizontal: t.spacing.lg,
+    },
+    controlLabel: { flex: 1, fontSize: t.typography.body.fontSize, color: c.text },
+    controlDisabled: { opacity: 0.38 },
+    switchTrack: {
+      width: 52, height: 32, borderRadius: t.radius.full, borderWidth: 2,
+      justifyContent: 'center', flexShrink: 0,
+    },
+    switchTrackOff: { backgroundColor: c.surfaceVariant, borderColor: c.outline },
+    switchKnob: {
+      width: 24, height: 24, borderRadius: t.radius.full,
+      backgroundColor: c.onPrimary,
+    },
+    switchKnobOff: { backgroundColor: c.onSurfaceVariant },
+    checkboxBox: {
+      width: 24, height: 24, borderRadius: t.radius.sm, borderWidth: 2,
+      borderColor: c.outline, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    },
+    checkboxBoxOn: { backgroundColor: c.primary, borderColor: c.primary },
+    checkboxMark: { color: c.onPrimary, fontSize: t.typography.bodyLarge.fontSize, fontWeight: '700' },
+    switcher: {
+      flexDirection: 'row', gap: t.spacing.xs, padding: t.spacing.xs,
+      marginHorizontal: t.spacing.lg, marginVertical: t.spacing.sm,
+      backgroundColor: c.surfaceVariant, borderColor: c.border, borderWidth: 1,
+      borderRadius: t.radius.full,
+    },
+    switcherSegment: {
+      flex: 1, minHeight: 40, borderRadius: t.radius.full,
+      paddingHorizontal: t.spacing.md, alignItems: 'center', justifyContent: 'center',
+    },
+    switcherSegmentSelected: { backgroundColor: c.primaryContainer },
+    switcherLabel: { color: c.text, fontSize: t.typography.label.fontSize },
+    switcherLabelSelected: { color: c.onPrimaryContainer, fontWeight: '600' },
+    radioOuter: {
+      width: 24, height: 24, borderRadius: t.radius.full, borderWidth: 2,
+      borderColor: c.outline, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    },
+    radioOuterSelected: { borderColor: c.primary },
+    radioDot: { width: 12, height: 12, borderRadius: t.radius.full, backgroundColor: c.primary },
     row: {
       flexDirection: 'row', gap: t.spacing.md, alignItems: 'flex-start',
       paddingVertical: 11, paddingHorizontal: t.spacing.lg,
@@ -157,6 +200,158 @@ export function RgButton({ children, disabled, onPress, style }: any) {
     >
       <Text style={styles.buttonLabel}>{children}</Text>
     </Pressable>
+  );
+}
+
+export function RgSwitch({ checked, disabled, onChange, children, style }: any) {
+  const t = useRgTheme();
+  const c = t.colors;
+  const styles = stylesFor(t);
+  const isOn = !!checked;
+  const progress = useRef(new Animated.Value(isOn ? 1 : 0)).current;
+
+  // Motion rule: the knob only ever moves toward its target. A plain
+  // linear timing move is used, never a spring, so the knob cannot
+  // overshoot its target or bounce back past it.
+  useEffect(() => {
+    progress.stopAnimation();
+    Animated.timing(progress, {
+      toValue: isOn ? 1 : 0,
+      duration: 160,
+      easing: Easing.linear,
+      useNativeDriver: false,
+    }).start();
+  }, [isOn, progress]);
+
+  const trackColor = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [c.surfaceVariant, c.primary],
+  });
+  const knobShift = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [2, 22],
+  });
+
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityState={{ checked: isOn, disabled: !!disabled }}
+      disabled={disabled}
+      onPress={() => onChange?.(!isOn)}
+      style={[styles.controlRow, disabled && styles.controlDisabled, style]}
+    >
+      <Animated.View
+        style={[
+          styles.switchTrack,
+          { backgroundColor: trackColor, borderColor: isOn ? c.primary : c.outline },
+        ]}
+      >
+        <Animated.View
+          style={[
+            styles.switchKnob,
+            isOn ? undefined : styles.switchKnobOff,
+            { transform: [{ translateX: knobShift }] },
+          ]}
+        />
+      </Animated.View>
+      {children ? <Text style={styles.controlLabel}>{children}</Text> : null}
+    </Pressable>
+  );
+}
+
+export function RgCheckbox({ checked, disabled, onChange, children, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  const isOn = !!checked;
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: isOn, disabled: !!disabled }}
+      disabled={disabled}
+      onPress={() => onChange?.(!isOn)}
+      style={[styles.controlRow, disabled && styles.controlDisabled, style]}
+    >
+      <View style={[styles.checkboxBox, isOn && styles.checkboxBoxOn]}>
+        {isOn ? <Text style={styles.checkboxMark}>✓</Text> : null}
+      </View>
+      {children ? <Text style={styles.controlLabel}>{children}</Text> : null}
+    </Pressable>
+  );
+}
+
+/** Marker for one segment of RgSwitcher. The parent reads its props. */
+export function RgOption({ value, children }: any) {
+  void value;
+  void children;
+  return null;
+}
+
+export function RgSwitcher({ value, disabled, onChange, children, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  const options = React.Children.toArray(children)
+    .filter((child) => React.isValidElement(child))
+    .map((child) => {
+      const el = child as React.ReactElement<any>;
+      return { value: el.props.value, label: el.props.children };
+    });
+  return (
+    <View style={[styles.switcher, disabled && styles.controlDisabled, style]}>
+      {options.map((option, index) => {
+        const selected = option.value === value;
+        return (
+          <Pressable
+            key={`${String(option.value)}-${index}`}
+            accessibilityRole="button"
+            accessibilityState={{ selected, disabled: !!disabled }}
+            disabled={disabled}
+            onPress={() => onChange?.(option.value)}
+            style={[styles.switcherSegment, selected && styles.switcherSegmentSelected]}
+          >
+            <Text style={[styles.switcherLabel, selected && styles.switcherLabelSelected]}>
+              {option.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Marker for one choice in RgRadioGroup. The parent reads its props. */
+export function RgRadio({ value, children }: any) {
+  void value;
+  void children;
+  return null;
+}
+
+export function RgRadioGroup({ value, disabled, onChange, children, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  const options = React.Children.toArray(children)
+    .filter((child) => React.isValidElement(child))
+    .map((child) => {
+      const el = child as React.ReactElement<any>;
+      return { value: el.props.value, label: el.props.children };
+    });
+  return (
+    <View style={style}>
+      {options.map((option, index) => {
+        const selected = option.value === value;
+        return (
+          <Pressable
+            key={`${String(option.value)}-${index}`}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: selected, disabled: !!disabled }}
+            disabled={disabled}
+            onPress={() => onChange?.(option.value)}
+            style={[styles.controlRow, disabled && styles.controlDisabled]}
+          >
+            <View style={[styles.radioOuter, selected && styles.radioOuterSelected]}>
+              {selected ? <View style={styles.radioDot} /> : null}
+            </View>
+            <Text style={styles.controlLabel}>{option.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 

@@ -65,20 +65,21 @@ the repo's actual behaviour today (Stage 3), not aspirations.
 | `@Injectable({ providedIn: 'root' })` services + constructor injection | Wired (Stage 3): services are reactive singletons in a generated container; constructor *parameter properties* (`constructor(private mail: MailService)`) are the injection form; services may inject services |
 | Lifecycle hooks (`ngOnInit`, `ngOnDestroy`) | Wired (Stage 3): `ngOnInit` runs once after first render, `ngOnDestroy` on unmount, `useEffect(..., [])` and its cleanup in generated code |
 | `HttpClient.get(url)` returning an Observable you `subscribe` to | Wired with a subset (Stage 3): an Observable-lite with `subscribe(next?, error?)` only; the supported component shape is `this.http.get(url).subscribe((data) => { this.field = data; });` |
+| Angular Material selection controls | Wired (Stage 6): `switch` mirrors `mat-slide-toggle`, `checkbox` mirrors `mat-checkbox`, `switcher` with `option` mirrors `mat-button-toggle-group`, and `radio-group` with `radio` mirrors `mat-radio-group`; all use `[checked]` or `[value]` in and `(change)` out with the next value as `$event` |
 
 **Not supported yet**: do not use these in Rangular source today:
 
 | Angular feature | Status today | Planned |
 |---|---|---|
-| `[(ngModel)]` / forms | Not supported. `[(x)]` syntax is *parsed* but degrades to a one-way `[x]` prop binding, no write-back, no forms model | Later stage (post-v1 scope) |
-| Two-way binding `[(...)]` generally | Same as above: one-way prop binding only, no change event is generated | Later stage |
-| Routing (`@angular/router`, `<router-outlet>`) | Not supported, no router exists; a dashed/unknown tag is passed through or warns | Later (map to React Navigation) |
+| `[(ngModel)]` / forms | Not supported. `[(x)]` syntax is *parsed* but degrades to a one-way `[x]` prop binding, no write-back, no forms model | Stage 8 |
+| Two-way binding `[(...)]` generally | Same as above: one-way prop binding only, no change event is generated for ordinary elements; Stage 6 controls use the explicit `[value]` plus `(change)` pattern instead | Stage 8 |
+| Routing (`@angular/router`, `<router-outlet>`) | Not supported, no router exists; a dashed/unknown tag is passed through or warns. The Stage 6 `switcher` is view state inside one screen, never a router | Stage 9 (map to native navigation) |
 | NgModules (`@NgModule`, `providers` arrays, module-scoped DI) | Not supported, resolution is import-based instead: `@Component` classes are entry points, and `@Injectable({ providedIn: 'root' })` classes are the injectable services (Stage 3). An `@NgModule` file errors with `CLS_NO_COMPONENT`; an `@Injectable` without `providedIn: 'root'` is not registered, so injecting it is a `DI_UNKNOWN_TOKEN` error | Not planned as modules |
 | Component constructor *bodies* | Not translated, only constructor parameter properties are read (they are the DI declarations). Do one-time setup in `ngOnInit` instead | Not planned |
 | Animations (`@angular/animations`, `:enter`/`:leave`) | Not supported anywhere in the compiler | Post-v1 |
 | SSR / hydration | Not supported, output is a React Native app, there is no server rendering | Not planned |
 | Full RxJS surface (operators, Subjects, Observables from other sources) | Not supported. Only HttpClient's Observable-lite exists (`subscribe(next?, error?)`, no operators, no unsubscribe-driven teardown beyond a cancellation flag); the runtime `async` pipe is still a pass-through stub | Later stage |
-| Custom pipes (`@Pipe` classes) | Not read. Only the built-in pipes above exist | Later stage |
+| Custom pipes (`@Pipe` classes) | Not read. Only the built-in pipes above exist | Stage 12 |
 | `*ngIf` with `else` / `then` | Detected, warns `GEN_NGIF_ELSE_TODO`, element emitted unconditionally. Workaround: two elements, `*ngIf="cond"` and `*ngIf="!(cond)"` | Later stage |
 | Full CSS (cascade, inheritance, descendant/id/pseudo selectors, unsupported properties) | Subset only: element and `.class` selectors, a fixed property list; anything else warns (`CSS_SELECTOR` / `CSS_UNSUPPORTED`) and is dropped. Styles apply per element, no cascade | Subset may grow per stage |
 
@@ -135,6 +136,46 @@ method bodies is a defined subset: do not assume all of TypeScript:
 - Long prose (a bio, a description paragraph) belongs in a `<p>`, not in a
   row's `subtitle`, row lines are single-line list text and may truncate;
   `<p>` wraps.
+
+## Controls (Stage 6)
+
+Four selection controls mirror the Angular Material components Angular
+applications already use. The source stays in Angular style:
+
+| Rangular source | Angular Material correspondence | Generated primitive | `(change)` emits |
+|---|---|---|---|
+| `<switch [checked]="wifiOn" (change)="onWifi($event)">Wi-Fi</switch>` | `mat-slide-toggle` | `RgSwitch` | the next boolean |
+| `<checkbox [checked]="done" (change)="onDone($event)">Done</checkbox>` | `mat-checkbox` | `RgCheckbox` | the next boolean |
+| `<switcher [value]="view" (change)="onView($event)">` with `<option>` children | `mat-button-toggle-group` | `RgSwitcher` with `RgOption` declarations | the chosen option value |
+| `<radio-group [value]="size" (change)="onSize($event)">` with `<radio>` children | `mat-radio-group` | `RgRadioGroup` with `RgRadio` declarations | the chosen radio value |
+
+- **The write back pattern is a method.** A control never assigns a
+  field from the template. The handler receives the next value as
+  `$event` and assigns its parameter inside the method:
+  `onWifi(value: boolean) { this.wifiOn = value; }`. Codegen turns the
+  control `(change)` binding into an `onChange` prop whose callback
+  receives that value, unlike the generic event wrapper used for
+  `(click)`.
+- **Declaration children are data.** `option` and `radio` elements are
+  declarations inside their group, in the same spirit as option
+  elements inside a select. Codegen emits `RgOption` and `RgRadio`
+  elements inside the group, and the group primitive reads each
+  child's `value` prop and text label to build its segments or rows.
+  The preview renderers extract the same value and label pairs from
+  the template AST.
+- **Nesting is checked.** An `option` outside a `switcher`, a `radio`
+  outside a `radio-group`, or any other element inside either group
+  earns a `GEN_CONTROL_NESTING` warning with a fix line.
+- **Disabled:** `switch` and `checkbox` accept `[disabled]`; a
+  disabled control keeps its value and emits nothing.
+- **Switcher means view state, not routing.** It changes a field on
+  the same screen, and panels below it switch with `*ngIf` on that
+  field. Routing is Stage 9.
+- **Switch motion:** the knob only ever moves toward its target. The
+  React Native primitive animates it with a plain linear timing move,
+  never a spring, so there is no overshoot and no backward bounce.
+  The preview uses a linear CSS transition between the same two end
+  states. See `examples/settings/` and its recipe card.
 
 ## Child components (Stage 3, M5)
 
