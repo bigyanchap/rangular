@@ -12,7 +12,7 @@ export interface GenerateResult {
   diagnostics: Diagnostic[];
 }
 
-interface TagMapping {
+export interface TagMapping {
   component: string;
   /** true when the mapping comes from @rangular/ui rather than react-native */
   fromUi: boolean;
@@ -20,7 +20,11 @@ interface TagMapping {
   variant?: string;
 }
 
-const TAG_MAP: Record<string, TagMapping> = {
+/**
+ * The tag -> generated-component contract. Single source of truth:
+ * codegen renders from this table and the catalog is generated from it.
+ */
+export const TAG_MAP: Record<string, TagMapping> = {
   div: { component: 'View', fromUi: false },
   section: { component: 'View', fromUi: false },
   header: { component: 'View', fromUi: false },
@@ -53,7 +57,8 @@ export function componentFunctionName(className: string): string {
   return className.endsWith('Component') ? className.slice(0, -'Component'.length) : className;
 }
 
-const EVENT_PROPS: Record<string, string> = {
+/** Template (event) name -> React Native prop name, for known events. */
+export const EVENT_PROPS: Record<string, string> = {
   click: 'onPress',
   change: 'onChange',
   submit: 'onSubmit',
@@ -101,6 +106,8 @@ export function generateComponent(
       diagnostics.push(warning(
         'GEN_FIELD_STATE',
         `Field '${field.name}' is assigned in a method but has a non-literal initializer; it cannot be hoisted to useState yet`,
+        undefined, undefined,
+        `Initialise '${field.name}' with a literal (0, 'text', true, [ ... ], { ... }) so it can become state — e.g. ${field.name} = 0;`,
       ));
     }
   }
@@ -148,6 +155,7 @@ export function generateComponent(
         'GEN_UNKNOWN_TAG',
         `Unknown tag <${el.tag}> — emitted as <View>. Use a known block or a component tag.`,
         el.pos.line, el.pos.column,
+        'Known blocks: screen, appbar, card, list, row, fab, button, input, h1, h2, h3, p, span, div, section, header — or use a Capitalised component tag',
       ));
       componentName = 'View';
       usedRn.add('View');
@@ -215,6 +223,7 @@ export function generateComponent(
           'GEN_NGIF_ELSE_TODO',
           `*ngIf with 'else'/'then' microsyntax is not generated yet — element emitted unconditionally`,
           el.pos.line, el.pos.column,
+          'Split it into two elements: one with *ngIf="cond" and a second with *ngIf="!(cond)"',
         ));
         return [
           `${indent}{/* TODO(M5+): *ngIf else/then — "${el.structural.expression}" */}`,
@@ -254,6 +263,7 @@ export function generateComponent(
       'GEN_STRUCTURAL_TODO',
       `*${el.structural.name} is not supported yet — element emitted unconditionally`,
       el.pos.line, el.pos.column,
+      'Only *ngIf and *ngFor are supported — rewrite the element with one of those',
     ));
     return [
       `${indent}{/* TODO: *${el.structural.name}="${el.structural.expression}" */}`,
@@ -289,7 +299,7 @@ export function generateComponent(
       }
     } else if (field.initializer) {
       fieldLines.push(`  // TODO: field '${field.name}' has a non-literal initializer (${field.initializer}) — not hoisted; wire it up manually for now.`);
-      diagnostics.push(warning('GEN_FIELD', `Field '${field.name}' has a non-literal initializer; not hoisted`));
+      diagnostics.push(warning('GEN_FIELD', `Field '${field.name}' has a non-literal initializer; not hoisted`, undefined, undefined, `Initialise '${field.name}' with a literal (including arrays/objects of literals) or wire the value up manually in the generated component`));
     }
   }
 

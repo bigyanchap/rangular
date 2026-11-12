@@ -137,7 +137,7 @@ export function parseComponent(tsSource: string, fileName = 'component.ts'): Par
   visit(sf);
 
   if (!found) {
-    diagnostics.push(error('CLS_NO_COMPONENT', 'No @Component-decorated class found in the source'));
+    diagnostics.push(error('CLS_NO_COMPONENT', 'No @Component-decorated class found in the source', undefined, undefined, "Decorate the class: @Component({ selector: 'app-x', templateUrl: './x.component.html' }) export class XComponent { ... } — only @Component classes are compiled; @NgModule/@Injectable classes are not entry points"));
   }
   return { component: found, diagnostics };
 }

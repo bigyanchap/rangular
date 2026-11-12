@@ -45,21 +45,21 @@ export function parseCss(cssText: string): ParsedCss {
       const isClass = selector.startsWith('.');
       const key = isClass ? selector.slice(1) : selector;
       if (!isClass && !/^[a-z][a-z0-9-]*$/i.test(selector)) {
-        diagnostics.push(warning('CSS_SELECTOR', `Unsupported selector '${selector}' — only element and .class selectors are supported`));
+        diagnostics.push(warning('CSS_SELECTOR', `Unsupported selector '${selector}' — only element and .class selectors are supported`, undefined, undefined, `Rewrite '${selector}' as an element selector (h1) or a single class (.card-note); descendant, id and pseudo selectors are not supported`));
         continue;
       }
       const styleObj: Record<string, string | number> = (styles[key] ??= {});
       for (const decl of declarations) {
         const colon = decl.indexOf(':');
         if (colon === -1) {
-          diagnostics.push(warning('CSS_DECL', `Malformed declaration '${decl}'`));
+          diagnostics.push(warning('CSS_DECL', `Malformed declaration '${decl}'`, undefined, undefined, "Write each declaration as 'property: value' — e.g. 'color: #5f6368;'"));
           continue;
         }
         const rawProp = decl.slice(0, colon).trim();
         const rawValue = decl.slice(colon + 1).trim();
         const prop = camelCase(rawProp);
         if (!SUPPORTED.has(prop)) {
-          diagnostics.push(warning('CSS_UNSUPPORTED', `Unsupported CSS property '${rawProp}' in '${selector}' — dropped`));
+          diagnostics.push(warning('CSS_UNSUPPORTED', `Unsupported CSS property '${rawProp}' in '${selector}' — dropped`, undefined, undefined, `Remove '${rawProp}' or use a supported property (color, background-color, font-size, font-weight, margin/padding, border-radius, border-width/color, opacity, flex, flex-direction, align-items, justify-content, gap, width/height)`));
           continue;
         }
         styleObj[prop] = convertValue(rawValue);

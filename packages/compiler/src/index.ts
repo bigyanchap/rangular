@@ -12,3 +12,4 @@ export * from './codegen/generate';
 export * from './codegen/methods';
 export * from './preview/renderPreview';
 export * from './compile';
+export * from './catalog';

@@ -39,12 +39,14 @@ export function compileComponent(options: CompileOptions): CompileResult {
       diagnostics.push(error(
         'CMP_TEMPLATE',
         `Could not resolve templateUrl '${component.templateUrl}' — pass templateSource or a resolveFile callback`,
+        undefined, undefined,
+        'Check the path is relative to the component file and the template file exists — e.g. templateUrl: \'./x.component.html\'',
       ));
       return { code: '', diagnostics, component };
     }
   }
   if (!templateSource) {
-    diagnostics.push(error('CMP_TEMPLATE', 'Component has neither an inline template nor a templateUrl'));
+    diagnostics.push(error('CMP_TEMPLATE', 'Component has neither an inline template nor a templateUrl', undefined, undefined, "Add templateUrl: './x.component.html' (or an inline template: `...`) to the @Component decorator"));
     return { code: '', diagnostics, component };
   }
 

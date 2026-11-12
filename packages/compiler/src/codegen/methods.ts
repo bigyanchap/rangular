@@ -215,6 +215,8 @@ class Translator {
     this.ctx.diagnostics.push(warning(
       'METHOD_UNSUPPORTED',
       `Method '${this.ctx.methodName}': ${what} is not in the Stage 2 translation subset — left as a TODO`,
+      undefined, undefined,
+      'Rewrite with the supported subset: this.field assignments (+=, ++, =), this.method() calls, if/else, return, local const/let — or move the unsupported logic out of the method',
     ));
     return [`${indent}/* TODO(Rangular): unsupported in method '${this.ctx.methodName}': ${what} */`];
   }

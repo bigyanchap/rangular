@@ -47,6 +47,7 @@ flowchart TB
 | M2 | Interpolation `{{ }}` + `[prop]` binding | ✅ Done (Stage 0+1) |
 | M3 | Events + state (counter) | ✅ Done (Stage 2) |
 | M4 | `*ngIf` / `*ngFor` | ✅ Done (Stage 2) |
+| — | **Stage 2.5: Vibe layer** — `AGENTS.md`, `llms.txt`, generated catalog, recipe cards, `--json` diagnostics with `fix:` lines, delta tables | ✅ Done |
 | M5 | Child components, `@Input` / `@Output` | ⏳ `@Input`/`@Output` are extracted; wiring is Stage 3 |
 | M6 | Injected service + lifecycle | ⏳ Runtime `Container` exists; bridging is Stage 3 |
 | M7 | CLI, source maps, error messages, Awaken Me dogfood | 🔶 CLI exists (`build` / `ast` / `preview`); source maps + dogfood pending |
@@ -58,7 +59,7 @@ flowchart TB
 | `@rangular/compiler` | Template parser + expression (Pratt) parser, `@Component` extractor (TypeScript compiler API), CSS-subset parser, RN code generator, HTML preview renderer |
 | `@rangular/runtime` | Pure-TypeScript helpers for generated apps: `EventEmitter`, `signal()`, DI `Container`, `pipe()` |
 | `@rangular/ui` | Rangular Material: `tokens.ts` (pure TS) + shipped-source RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`) |
-| `@rangular/cli` | `rangular build`, `rangular ast`, `rangular preview` |
+| `@rangular/cli` | `rangular build`, `rangular ast`, `rangular preview`, `rangular catalog` (build/preview accept `--json`) |
 
 > Note: `@rangular/ui` primitives and other shipped-source files for generated
 > apps are **source shipped into generated projects**; they are not typechecked
@@ -85,6 +86,41 @@ node dist/packages/cli/src/cli.js preview examples/hello/hello.component.ts --ou
 The committed `examples/hello/hello.component.tsx` and
 `examples/hello/preview.html` are the golden outputs of the two commands
 above; the golden-file test keeps them honest.
+
+## Vibe-coding ready
+
+Rangular is built to be written by AI assistants (and humans working
+through them) **without guessing** — see [docs/VIBE_CODING.md](docs/VIBE_CODING.md):
+
+- **[AGENTS.md](AGENTS.md)** — the rules of this repo: never edit generated
+  files; every capability ships with compiler support + tests + a tiny
+  example + a recipe card + a regenerated catalog.
+- **[llms.txt](llms.txt)** — one AI-readable index of every doc, example
+  and package, including the 6-step "how to build a screen" loop.
+- **[catalog.md](catalog.md) / `catalog.json`** — every tag, event,
+  primitive prop, token scale and diagnostic code, **generated from the
+  code** by `rangular catalog` (a test fails if the committed catalog is stale):
+
+  ```sh
+  node dist/packages/cli/src/cli.js catalog --out .
+  ```
+
+- **Recipe cards** — `examples/hello/README.md`,
+  `examples/counter/README.md`, `examples/inbox/README.md`,
+  `examples/profile/README.md`: Intent /
+  Source / What it compiles to / Rules used / Common mistakes.
+- **Proof test (Stage 2.5)** — `examples/profile/` was written by a fresh
+  AI agent given only AGENTS.md, llms.txt, the catalog and the recipe
+  cards (no compiler source): it compiled with zero diagnostics on the
+  first attempt, and every gap it reported was fixed in the docs
+  (supported-expression list, avatar/row semantics, composition rules).
+- **Machine-readable errors** — `rangular build --json` prints a single
+  JSON object (`{ ok, outFile?, diagnostics[] }`) on stdout; every
+  diagnostic carries a concrete `fix:` suggestion.
+- **Delta tables** — [docs/VIBE_CODING.md](docs/VIBE_CODING.md) states
+  exactly how Rangular source differs from Angular (what is the same,
+  what is not supported yet, with stages) and from React (no JSX, no
+  hooks in source — classes + HTML templates).
 
 ## Stage 2: events, state, `*ngIf` / `*ngFor`
 

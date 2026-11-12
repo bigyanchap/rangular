@@ -52,7 +52,7 @@ export function parseTemplate(source: string): ParseResult {
       if (open === -1) break;
       const close = rest.indexOf('}}', open + 2);
       if (close === -1) {
-        diagnostics.push(error('TPL_INTERPOLATION', 'Unclosed {{ interpolation }}', at.line, at.column));
+        diagnostics.push(error('TPL_INTERPOLATION', 'Unclosed {{ interpolation }}', at.line, at.column, 'Close the interpolation with }} — e.g. {{ title }}'));
         break;
       }
       if (open > 0) parts.push({ type: 'static', value: rest.slice(0, open) });
@@ -86,7 +86,7 @@ export function parseTemplate(source: string): ParseResult {
     advance(1); // '<'
     const tag = readWhile((c) => /[A-Za-z0-9_-]/.test(c));
     if (!tag) {
-      diagnostics.push(error('TPL_TAG', 'Expected a tag name after <', at.line, at.column));
+      diagnostics.push(error('TPL_TAG', 'Expected a tag name after <', at.line, at.column, 'Write a real element — e.g. <p>text</p>; a literal < in text is not supported'));
       return undefined;
     }
     const el: ElementNode = {
@@ -98,7 +98,7 @@ export function parseTemplate(source: string): ParseResult {
     for (;;) {
       skipWhitespace();
       if (eof()) {
-        diagnostics.push(error('TPL_UNCLOSED', `Element <${tag}> is never closed`, at.line, at.column));
+        diagnostics.push(error('TPL_UNCLOSED', `Element <${tag}> is never closed`, at.line, at.column, `Close the element with </${tag}> or make it self-closing: <${tag} />`));
         return el;
       }
       if (startsWith('/>')) { advance(2); selfClosing = true; break; }
@@ -116,7 +116,7 @@ export function parseTemplate(source: string): ParseResult {
     // Attribute names may start with *, [, ( or # and contain word chars, -, ., [ ] ( ).
     const name = readWhile((c) => /[A-Za-z0-9_\-\.\*\[\]\(\)#]/.test(c));
     if (!name) {
-      diagnostics.push(error('TPL_ATTR', 'Could not parse an attribute', at.line, at.column));
+      diagnostics.push(error('TPL_ATTR', 'Could not parse an attribute', at.line, at.column, 'Write attributes as name="value", [prop]="expr", (event)="handler()" or *ngIf="cond"'));
       advance(1);
       return;
     }
@@ -166,7 +166,7 @@ export function parseTemplate(source: string): ParseResult {
         skipWhitespace();
         if (!eof() && source[i] === '>') advance(1);
         if (untilTag === undefined) {
-          diagnostics.push(error('TPL_CLOSE', `Unexpected closing tag </${closing}>`, at.line, at.column));
+          diagnostics.push(error('TPL_CLOSE', `Unexpected closing tag </${closing}>`, at.line, at.column, `Remove the stray </${closing}> or add its opening <${closing}> before it`));
           return nodes;
         }
         if (closing !== untilTag) {
@@ -174,6 +174,7 @@ export function parseTemplate(source: string): ParseResult {
             'TPL_MISMATCH',
             `Expected </${untilTag}> but found </${closing}>`,
             at.line, at.column,
+            `Close <${untilTag}> with </${untilTag}> — check for a missing or mis-nested closing tag above`,
           ));
         }
         return nodes;
@@ -187,7 +188,7 @@ export function parseTemplate(source: string): ParseResult {
       if (text) nodes.push(text);
     }
     if (untilTag !== undefined) {
-      diagnostics.push(error('TPL_UNCLOSED', `Element <${untilTag}> is never closed`, openPos.line, openPos.column));
+      diagnostics.push(error('TPL_UNCLOSED', `Element <${untilTag}> is never closed`, openPos.line, openPos.column, `Add the missing closing tag </${untilTag}>`));
     }
     return nodes;
   }

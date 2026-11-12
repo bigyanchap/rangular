@@ -1,0 +1,12 @@
+<screen>
+  <appbar title="Profile"></appbar>
+  <card>
+    <row avatar [title]="name"></row>
+    <p>{{ bio }}</p>
+    <button (click)="toggleFollow()">{{ following ? 'Following' : 'Follow' }}</button>
+  </card>
+  <h2>Posts</h2>
+  <list>
+    <row *ngFor="let post of posts; let i = index" [title]="post.title" [subtitle]="post.snippet" [time]="post.time"></row>
+  </list>
+</screen>
