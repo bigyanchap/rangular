@@ -1,0 +1,1 @@
+{"dependencies":{"typescript":"^5.9.0"},"description":"Rangular template + class compiler: Angular-style components to React Native TSX.","main":"src/index.ts","name":"@rangular/compiler","types":"src/index.ts","version":"0.1.0"}
