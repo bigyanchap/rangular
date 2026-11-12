@@ -1,0 +1,27 @@
+<screen>
+  <appbar title="Icons"></appbar>
+
+  <label>The set</label>
+  <div class="icon-cell" *ngFor="let name of names">
+    <icon [name]="name"></icon>
+    <span>{{ name }}</span>
+  </div>
+
+  <label>In use</label>
+  <div class="icon-line">
+    <icon name="bell" color="primary"></icon>
+    <p>Notifications</p>
+  </div>
+  <div class="icon-line">
+    <icon name="search" size="20"></icon>
+    <p>Search your library</p>
+  </div>
+  <div class="icon-line">
+    <icon name="heart" size="28" color="error"></icon>
+    <p>Favourites</p>
+  </div>
+  <div class="icon-line">
+    <icon name="sun"></icon>
+    <p>Good morning</p>
+  </div>
+</screen>

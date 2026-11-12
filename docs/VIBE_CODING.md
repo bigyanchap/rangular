@@ -177,6 +177,46 @@ applications already use. The source stays in Angular style:
   The preview uses a linear CSS transition between the same two end
   states. See `examples/settings/` and its recipe card.
 
+## Icons (Stage 7)
+
+One icon block, in the shape of Angular Material's `mat-icon`, drawing
+from one curated set of Material style icons:
+
+```html
+<icon name="search"></icon>
+<icon name="heart" size="28" color="error"></icon>
+<icon [name]="currentIcon"></icon>
+```
+
+- **The set.** 27 names: menu, search, close, check, chevron-left,
+  chevron-right, arrow-left, arrow-right, plus, minus, bell, heart,
+  star, settings, home, person, calendar, alarm, play, pause, edit,
+  delete, share, info, warning, mail, sun. The set lives as SVG path
+  data (24 by 24 viewBox) in `packages/ui/src/icons.ts`, and the
+  catalog's Icons section is generated from that same file.
+- **Props.** `name` only, plus optional `size` (20, 24 or 28, default
+  24) and `color` (a theme colour role name; default is the theme text
+  colour, the onSurface role). `[name]`, `[size]` and `[color]`
+  bindings work. There are no other props and no events in v1.
+- **Validation.** A static name outside the set is a
+  `GEN_ICON_UNKNOWN` error: the message names the bad name, the fix
+  points at the Icons list in catalog.md, and the JSON diagnostic
+  carries the full valid list in a `validIcons` field. A missing name
+  is `GEN_ICON_NAME`. An off-scale size warns with `GEN_ICON_SIZE`
+  and the generated code uses the nearest on-scale size, the same
+  warn-and-snap rule as styles. A `[name]` binding is passed through
+  unchecked.
+- **Parity by construction.** The generated app draws the path data
+  through `RgIcon` (react-native-svg, which ships inside Expo Go and
+  standard Expo and React Native projects); the preview draws the
+  exact same path data as inline SVG, coloured by the same theme role
+  variables. One drawing, two renderers, no drift. The appbar menu
+  and the checkbox tick are set icons now (menu, check), not font
+  characters.
+- **Not in this stage.** Custom project icons (registering your own
+  path data) come later. Today the curated set is the whole set. See
+  `examples/icons/` and its recipe card.
+
 ## Child components (Stage 3, M5)
 
 - **Resolution is by import.** The compiler follows the entry component's

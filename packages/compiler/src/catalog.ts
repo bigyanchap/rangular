@@ -13,6 +13,7 @@ import {
   themes,
   typeScale,
 } from '../../ui/src/tokens';
+import { ICON_NAMES } from '../../ui/src/icons';
 
 /**
  * The machine-readable catalog of everything an author (human or AI) can
@@ -25,6 +26,8 @@ import {
  *                 pattern of each exported Rg* function is the reliable,
  *                 drift-free source of prop names.
  *  - tokens:      imported from @rangular/ui tokens and serialised.
+ *  - icons:       ICON_NAMES from @rangular/ui icons.ts, the same set the
+ *                 compiler validates <icon> names against.
  *  - diagnostics: DIAGNOSTIC_CODES in diagnostics.ts.
  */
 
@@ -46,6 +49,7 @@ export interface Catalog {
   tags: CatalogTag[];
   events: { event: string; rnProp: string; note?: string }[];
   primitives: CatalogPrimitive[];
+  icons: string[];
   tokens: {
     spacing: typeof spacing;
     spacingScale: number[];
@@ -133,6 +137,7 @@ export function buildCatalog(options: { primitivesPath?: string; fromDir?: strin
     tags,
     events,
     primitives,
+    icons: [...ICON_NAMES],
     tokens: { spacing, spacingScale, radius, radiusScale, typeScale, colours, elevation, themes },
     diagnostics: Object.entries(DIAGNOSTIC_CODES).map(([code, meaning]) => ({ code, meaning })),
   };
@@ -175,6 +180,12 @@ export function renderCatalogMarkdown(catalog: Catalog): string {
     for (const prop of p.props) lines.push(`- \`${prop.name}\`: ${prop.type}`);
     lines.push('');
   }
+  lines.push('## Icons');
+  lines.push('');
+  lines.push(`Icons live in \`packages/ui/src/icons.ts\` as SVG path data (24 by 24 viewBox). \`<icon name="...">\` draws one of these ${catalog.icons.length} names; any other name is a GEN_ICON_UNKNOWN error whose JSON form carries this same list in \`validIcons\`.`);
+  lines.push('');
+  for (const name of catalog.icons) lines.push(`- \`${name}\``);
+  lines.push('');
   lines.push('## Design tokens');
   lines.push('');
   lines.push(`- Spacing scale: ${catalog.tokens.spacingScale.join(', ')} (keys: ${Object.keys(catalog.tokens.spacing).join(', ')})`);

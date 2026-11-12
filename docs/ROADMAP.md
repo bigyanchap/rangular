@@ -21,6 +21,8 @@ The stage adds `switch`, `checkbox`, `switcher` with `option`, and `radio-group`
 
 ## Stage 7: Icons
 
+Status: built in this change.
+
 Angular ground: Angular Material `mat-icon` and the Material icon set that Angular applications use through the icon component.
 
 The stage adds an Angular style icon block with a curated set of everyday Material style icons. One icon set serves the generated app and the preview, so the two cannot drift apart. An unknown icon name becomes a diagnostic whose fix lists the valid names, and the catalog lists every available icon.

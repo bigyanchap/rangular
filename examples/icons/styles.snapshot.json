@@ -1,0 +1,91 @@
+{
+  "example": "icons",
+  "themes": {
+    "light": {
+      "roles": {
+        "appbar": {
+          "background": "#f0f4f9",
+          "borderRadius": 9999,
+          "gap": 12
+        },
+        "avatar": {
+          "background": "#7b1fa2",
+          "color": "#ffffff"
+        },
+        "icon": {
+          "color": "#1f1f1f"
+        },
+        "screen": {
+          "background": "#ffffff",
+          "color": "#1f1f1f"
+        },
+        "textBody": {
+          "fontSize": 16,
+          "lineHeight": 24,
+          "color": "#5f6368"
+        },
+        "textLabel": {
+          "fontSize": 14,
+          "lineHeight": 20,
+          "fontWeight": 600
+        }
+      },
+      "styles": {
+        "icon-cell": {
+          "alignItems": "center",
+          "gap": 4,
+          "padding": 8
+        },
+        "icon-line": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "gap": 12,
+          "padding": 8
+        }
+      }
+    },
+    "dark": {
+      "roles": {
+        "appbar": {
+          "background": "#282a2c",
+          "borderRadius": 9999,
+          "gap": 12
+        },
+        "avatar": {
+          "background": "#d0bcff",
+          "color": "#381e72"
+        },
+        "icon": {
+          "color": "#e3e3e3"
+        },
+        "screen": {
+          "background": "#131314",
+          "color": "#e3e3e3"
+        },
+        "textBody": {
+          "fontSize": 16,
+          "lineHeight": 24,
+          "color": "#9aa0a6"
+        },
+        "textLabel": {
+          "fontSize": 14,
+          "lineHeight": 20,
+          "fontWeight": 600
+        }
+      },
+      "styles": {
+        "icon-cell": {
+          "alignItems": "center",
+          "gap": 4,
+          "padding": 8
+        },
+        "icon-line": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "gap": 12,
+          "padding": 8
+        }
+      }
+    }
+  }
+}

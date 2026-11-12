@@ -28,8 +28,10 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Svg, Path } from 'react-native-svg';
 import { theme as makeTheme } from './tokens';
 import type { Theme } from './tokens';
+import { ICON_PATHS } from './icons';
 
 const RgThemeContext = createContext<Theme>(makeTheme('light'));
 
@@ -42,6 +44,34 @@ export function useRgTheme(): Theme {
 export function RgThemeProvider({ mode = 'light', children }: any) {
   return (
     <RgThemeContext.Provider value={makeTheme(mode)}>{children}</RgThemeContext.Provider>
+  );
+}
+
+/**
+ * One icon from the curated set in ./icons (Stage 7). The drawing is the
+ * SVG path data itself, rendered here with react-native-svg, which
+ * ships inside Expo Go and is a standard part of Expo and React Native
+ * projects. The dev preview draws the same path data as inline SVG, so
+ * the two renderings cannot drift apart.
+ *
+ * `color` names a theme colour role (e.g. color="primary"); the role is
+ * resolved against the active theme, and any other string is passed
+ * through as a colour value. With no color, the icon takes the theme
+ * text colour (the onSurface role). An unknown name draws nothing: the
+ * compiler reports it as an error long before an app runs.
+ */
+export function RgIcon({ name, size = 24, color, style }: any) {
+  const t = useRgTheme();
+  const paths = ICON_PATHS[name as string] ?? [];
+  const fill = color
+    ? ((t.colors as unknown as Record<string, string>)[color as string] ?? color)
+    : t.colors.text;
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" style={style}>
+      {paths.map((d: string, i: number) => (
+        <Path key={i} d={d} fill={fill} />
+      ))}
+    </Svg>
   );
 }
 
@@ -104,7 +134,6 @@ function buildStyles(t: Theme) {
       borderColor: c.outline, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
     checkboxBoxOn: { backgroundColor: c.primary, borderColor: c.primary },
-    checkboxMark: { color: c.onPrimary, fontSize: t.typography.bodyLarge.fontSize, fontWeight: '700' },
     switcher: {
       flexDirection: 'row', gap: t.spacing.xs, padding: t.spacing.xs,
       marginHorizontal: t.spacing.lg, marginVertical: t.spacing.sm,
@@ -161,7 +190,7 @@ export function RgAppbar({ title, search }: any) {
   const styles = stylesFor(t);
   return (
     <View style={styles.appbar}>
-      <Text style={{ color: c.textMuted, fontSize: 17 }}>☰</Text>
+      <RgIcon name="menu" size={24} color="textMuted" />
       {search ? <Text style={styles.searchText}>{search}</Text> : <Text style={styles.appbarTitle}>{title}</Text>}
       <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: c.avatar, alignItems: 'center', justifyContent: 'center' }}>
         <Text style={{ color: c.onAvatar, fontSize: 12, fontWeight: '600' }}>{(title || 'R').charAt(0)}</Text>
@@ -271,7 +300,7 @@ export function RgCheckbox({ checked, disabled, onChange, children, style }: any
       style={[styles.controlRow, disabled && styles.controlDisabled, style]}
     >
       <View style={[styles.checkboxBox, isOn && styles.checkboxBoxOn]}>
-        {isOn ? <Text style={styles.checkboxMark}>✓</Text> : null}
+        {isOn ? <RgIcon name="check" size={20} color="onPrimary" /> : null}
       </View>
       {children ? <Text style={styles.controlLabel}>{children}</Text> : null}
     </Pressable>

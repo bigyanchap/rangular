@@ -20,6 +20,12 @@ export interface Diagnostic {
    * Stage 2.5: diagnostics teach the fix, not just name the problem.
    */
   fix?: string;
+  /**
+   * The full list of valid icon names (Stage 7). Only GEN_ICON_UNKNOWN
+   * carries it, so a JSON consumer can offer or check the whole set
+   * without parsing the human readable message.
+   */
+  validIcons?: string[];
 }
 
 export function error(code: string, message: string, line?: number, column?: number, fix?: string): Diagnostic {
@@ -64,6 +70,9 @@ export const DIAGNOSTIC_CODES: Record<string, string> = {
   GEN_NGIF_ELSE_TODO: '*ngIf with else/then microsyntax is not generated yet; the element was emitted unconditionally.',
   GEN_STRUCTURAL_TODO: 'A structural directive other than *ngIf/*ngFor is not supported yet; the element was emitted unconditionally.',
   GEN_CONTROL_NESTING: 'A control declaration is nested in the wrong parent; option belongs in switcher and radio belongs in radio-group, and those groups accept only their own declarations.',
+  GEN_ICON_UNKNOWN: 'An <icon> names an icon that is not in the Rangular icon set; the JSON form of this diagnostic carries the full valid list in validIcons.',
+  GEN_ICON_NAME: 'An <icon> element has no name attribute and no [name] binding, so there is nothing to draw.',
+  GEN_ICON_SIZE: 'An <icon> size is off the icon size scale (20, 24, 28); the generated code uses the nearest on-scale size.',
   METHOD_UNSUPPORTED: 'A statement in a component method is outside the supported translation subset; it was left as a TODO.',
   CMP_IMPORT_UNRESOLVED: 'A relative import in a compiled file could not be resolved to a source file.',
   CMP_PATH_ESCAPE: 'A templateUrl, styleUrl or relative import resolved to a file outside the project root; the file was not read.',

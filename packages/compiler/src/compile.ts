@@ -134,7 +134,10 @@ function isTemplateDriven(code: string): boolean {
     || code === 'GEN_UNKNOWN_TAG'
     || code === 'GEN_NGIF_ELSE_TODO'
     || code === 'GEN_STRUCTURAL_TODO'
-    || code === 'GEN_CONTROL_NESTING';
+    || code === 'GEN_CONTROL_NESTING'
+    || code === 'GEN_ICON_UNKNOWN'
+    || code === 'GEN_ICON_NAME'
+    || code === 'GEN_ICON_SIZE';
 }
 
 function isStyleDriven(code: string): boolean {

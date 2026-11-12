@@ -88,6 +88,11 @@
       "from": "@rangular/ui"
     },
     {
+      "tag": "icon",
+      "component": "RgIcon",
+      "from": "@rangular/ui"
+    },
+    {
       "tag": "switch",
       "component": "RgSwitch",
       "from": "@rangular/ui"
@@ -152,6 +157,27 @@
         },
         {
           "name": "children",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgIcon",
+      "props": [
+        {
+          "name": "name",
+          "type": "any"
+        },
+        {
+          "name": "size",
+          "type": "any"
+        },
+        {
+          "name": "color",
+          "type": "any"
+        },
+        {
+          "name": "style",
           "type": "any"
         }
       ]
@@ -430,6 +456,35 @@
         }
       ]
     }
+  ],
+  "icons": [
+    "alarm",
+    "arrow-left",
+    "arrow-right",
+    "bell",
+    "calendar",
+    "check",
+    "chevron-left",
+    "chevron-right",
+    "close",
+    "delete",
+    "edit",
+    "heart",
+    "home",
+    "info",
+    "mail",
+    "menu",
+    "minus",
+    "pause",
+    "person",
+    "play",
+    "plus",
+    "search",
+    "settings",
+    "share",
+    "star",
+    "sun",
+    "warning"
   ],
   "tokens": {
     "spacing": {
@@ -894,6 +949,18 @@
     {
       "code": "GEN_CONTROL_NESTING",
       "meaning": "A control declaration is nested in the wrong parent; option belongs in switcher and radio belongs in radio-group, and those groups accept only their own declarations."
+    },
+    {
+      "code": "GEN_ICON_UNKNOWN",
+      "meaning": "An <icon> names an icon that is not in the Rangular icon set; the JSON form of this diagnostic carries the full valid list in validIcons."
+    },
+    {
+      "code": "GEN_ICON_NAME",
+      "meaning": "An <icon> element has no name attribute and no [name] binding, so there is nothing to draw."
+    },
+    {
+      "code": "GEN_ICON_SIZE",
+      "meaning": "An <icon> size is off the icon size scale (20, 24, 28); the generated code uses the nearest on-scale size."
     },
     {
       "code": "METHOD_UNSUPPORTED",

@@ -97,7 +97,8 @@ flowchart TB
 | - | **Stage 4: Polish lock-in** - complete token set (light + dark), themed primitives, CSS snapping (`STYLE_OFF_SCALE`), preview Light/Dark toggle, showcase example | ✅ Done |
 | M7 | CLI, source maps, error messages, Awaken Me dogfood | ✅ Done (Stage 5) |
 | - | **Stage 6: Controls**, Material style switch, checkbox, segmented page switcher and radio group, settings example | ✅ Done |
-| - | Stages 7 to 12: icons, forms, routing, pickers and overlays, data display, language completeness and app readiness | Planned, see [docs/ROADMAP.md](docs/ROADMAP.md) |
+| - | **Stage 7: Icons**, one `<icon>` block over a curated set of 27 Material style icons, compile time name validation, icons example | ✅ Done |
+| - | Stages 8 to 12: forms, routing, pickers and overlays, data display, language completeness and app readiness | Planned, see [docs/ROADMAP.md](docs/ROADMAP.md) |
 
 ## Packages
 
@@ -105,7 +106,7 @@ flowchart TB
 |---|---|
 | `@rangular/compiler` | Template parser + expression (Pratt) parser, `@Component` extractor (TypeScript compiler API), CSS-subset parser, RN code generator, HTML preview renderer |
 | `@rangular/runtime` | Pure-TypeScript helpers for generated apps: `EventEmitter`, `signal()`, DI `Container`, `ReactiveService` (service reactivity base), `HttpClient` (Observable-lite over fetch), `pipe()` |
-| `@rangular/ui` | Rangular Material: `tokens.ts` (pure TS) + shipped-source RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`, `RgSwitch`, `RgCheckbox`, `RgSwitcher`, `RgOption`, `RgRadioGroup`, `RgRadio`) |
+| `@rangular/ui` | Rangular Material: `tokens.ts` (pure TS), `icons.ts` (the curated icon set as SVG path data) + shipped-source RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`, `RgSwitch`, `RgCheckbox`, `RgSwitcher`, `RgOption`, `RgRadioGroup`, `RgRadio`, `RgIcon`) |
 | `@rangular/cli` | `rangular build`, `rangular ast`, `rangular preview`, `rangular catalog`, `rangular watch`, `rangular init`, `rangular doctor` (build/preview/doctor accept `--json`; build accepts `--source-map`) |
 
 > Note: `@rangular/ui` primitives and other shipped-source files for generated
@@ -159,7 +160,8 @@ through them) **without guessing**, see [docs/VIBE_CODING.md](docs/VIBE_CODING.m
   `examples/counter/README.md`, `examples/inbox/README.md`,
   `examples/profile/README.md`, `examples/favourite/README.md`,
   `examples/shared-inbox/README.md`, `examples/showcase/README.md`,
-  `examples/dinacharya-row/README.md`, `examples/settings/README.md`: Intent /
+  `examples/dinacharya-row/README.md`, `examples/settings/README.md`,
+  `examples/icons/README.md`: Intent /
   Source / What it compiles to / Rules used / Common mistakes.
 - **Proof test (Stage 2.5)**, `examples/profile/` was written by a fresh
   AI agent given only AGENTS.md, llms.txt, the catalog and the recipe
@@ -407,6 +409,33 @@ the same screen; routing is Stage 9 in
 the React Native primitive uses a plain linear timing move, never
 a spring, so it cannot overshoot or bounce back, and the preview
 uses a linear CSS transition between the same two end states.
+
+## Stage 7: icons
+
+One more example:
+
+- `examples/icons/`, the full icon set with a name label under each
+  icon (drawn inside a `*ngFor`), plus a usage strip: a bell in the
+  primary colour role, a small search icon, a large heart in the
+  error role.
+
+**Icons.** `<icon name="search">` draws one of 27 curated Material
+style icons, stored as SVG path data in `packages/ui/src/icons.ts`.
+`size` is 20, 24 or 28 (default 24) and `color` names a theme colour
+role; with no color the icon takes the theme text colour. The
+generated app draws the paths through `RgIcon` with
+react-native-svg (it ships inside Expo Go and standard Expo and
+React Native projects), and the preview draws the exact same path
+data as inline SVG, so the two cannot drift apart. The appbar menu
+and the checkbox tick are set icons now, not font characters.
+
+**Validation.** A name outside the set is a `GEN_ICON_UNKNOWN`
+error at compile time: the fix points at the Icons list in
+catalog.md, and the JSON diagnostic carries the whole valid list in
+a `validIcons` field. A missing name is `GEN_ICON_NAME`. An
+off-scale size warns (`GEN_ICON_SIZE`) and snaps to the nearest
+on-scale size, the same rule styles use. Custom project icons are
+not in this stage; they are planned as a register-your-own path set.
 
 ## v1 is complete
 

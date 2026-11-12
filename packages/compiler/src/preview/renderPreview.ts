@@ -1,7 +1,9 @@
 import { colours, theme } from '../../../ui/src/tokens';
+import { ICON_PATHS, ICON_SIZES, DEFAULT_ICON_SIZE } from '../../../ui/src/icons';
 import { ComponentField, ComponentInfo, ServiceInfo } from '../class/parseComponent';
 import { ChildUnitInput, outputPropName } from '../codegen/generate';
 import { translateMethods } from '../codegen/methods';
+import { nearestOnScale } from '../style/css';
 import { ElementNode, TemplateNode, TemplateRoot } from '../template/ast';
 import { evaluateExpression, Scope } from '../template/evaluate';
 import { literalValue } from '../template/literal';
@@ -106,6 +108,27 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+/** Colour role name to CSS variable suffix: onPrimaryContainer -> on-primary-container. */
+export function kebabRole(role: string): string {
+  return role.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+}
+
+/**
+ * One icon as inline SVG (Stage 7). The path data is ICON_PATHS itself,
+ * the same data RgIcon draws in a generated app through
+ * react-native-svg, so the preview and the app show the identical
+ * drawing. The fill is currentColor; a colour role wraps the SVG in a
+ * span coloured by that role's CSS variable, so the theme toggle
+ * recolours icons exactly like every other role.
+ */
+export function iconSvg(name: string, size: number, colorRole?: string): string {
+  const paths = ICON_PATHS[name];
+  if (!paths || !paths.length) return '';
+  const body = paths.map((d) => `<path d="${d}"/>`).join('');
+  const style = colorRole ? ` style="color: var(--role-${kebabRole(colorRole)})"` : '';
+  return `<span class="icon"${style}><svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${body}</svg></span>`;
+}
+
 const UNSET = Symbol('unset');
 
 /** Evaluate an expression against a scope; UNSET on any failure. */
@@ -141,6 +164,9 @@ function cssVars(mode: 'light' | 'dark'): string {
     `--border: ${cc.border}`,
     `--avatar: ${cc.avatar}`,
     `--on-avatar: ${cc.onAvatar}`,
+    // Stage 7: every colour role also gets a --role-* variable, so an
+    // <icon color="..."> can name any role and follow the theme toggle.
+    ...Object.entries(cc).map(([role, value]) => `--role-${kebabRole(role)}: ${value}`),
   ].join('; ') + ';';
 }
 
@@ -204,6 +230,13 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
 
   const truthy = (value: unknown): boolean => value === true || value === 'true';
 
+  /** An <icon> size resolved and snapped to the icon size scale (Stage 7). */
+  const iconSizeOf = (el: ElementNode, scope: Scope): number => {
+    const v = rawBound(el, 'size', scope);
+    const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN;
+    return Number.isFinite(n) ? nearestOnScale(ICON_SIZES, n) : DEFAULT_ICON_SIZE;
+  };
+
   const renderElement = (el: ElementNode, scope: Scope): string => {
     if (el.structural?.name === 'ngIf') {
       const parts = parseNgIf(el.structural.expression);
@@ -260,7 +293,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
         return `<div class="screen">${inner}</div>`;
       case 'appbar': {
         const search = bound(el, 'search', scope);
-        return `<header class="appbar"><span class="appbar-menu">&#9776;</span>` +
+        return `<header class="appbar">${iconSvg('menu', 24, 'textMuted')}` +
           (search
             ? `<span class="search">${escapeHtml(search)}</span>`
             : `<span class="appbar-title">${escapeHtml(title)}</span>`) +
@@ -289,7 +322,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
       case 'checkbox': {
         const checked = truthy(rawBound(el, 'checked', scope));
         const disabled = truthy(rawBound(el, 'disabled', scope));
-        return `<button type="button" class="checkbox${checked ? ' on' : ''}" ${disabled ? 'disabled' : ''}><span class="checkbox-box">${checked ? '<span class="checkbox-mark">✓</span>' : ''}</span><span class="control-label">${inner}</span></button>`;
+        return `<button type="button" class="checkbox${checked ? ' on' : ''}" ${disabled ? 'disabled' : ''}><span class="checkbox-box">${checked ? iconSvg('check', 20, 'onPrimary') : ''}</span><span class="control-label">${inner}</span></button>`;
       }
       case 'switcher': {
         const current = rawBound(el, 'value', scope);
@@ -335,6 +368,11 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
           (titleBound !== undefined ? inner : '') +
           `</span>${time ? `<span class="row-time">${escapeHtml(time)}</span>` : ''}</div>`;
       }
+      case 'icon': {
+        const name = bound(el, 'name', scope);
+        if (!name) return '';
+        return iconSvg(name, iconSizeOf(el, scope), bound(el, 'color', scope));
+      }
       case 'fab': return `<div class="fab">${inner || escapeHtml(bound(el, 'label', scope) ?? 'Compose')}</div>`;
       case 'header': return `<header>${inner}</header>`;
       case 'section': return `<section>${inner}</section>`;
@@ -369,6 +407,8 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .appbar-title { flex: 1; font-size: ${t.typography.title.fontSize}px; font-weight: 600; }
   .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--avatar); color: var(--on-avatar); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
   .avatar-lg { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; }
+  .icon { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+  .icon svg { display: block; }
   .display { font-size: ${t.typography.display.fontSize}px; line-height: ${t.typography.display.lineHeight}px; font-weight: 700; margin: ${t.spacing.lg}px ${t.spacing.lg}px ${t.spacing.sm}px; }
   .heading { font-size: ${t.typography.heading.fontSize}px; line-height: ${t.typography.heading.lineHeight}px; font-weight: 700; margin: 0 0 ${t.spacing.sm}px; }
   .title { font-size: ${t.typography.title.fontSize}px; line-height: ${t.typography.title.lineHeight}px; font-weight: 600; margin: 0 0 ${t.spacing.sm}px; }
@@ -508,6 +548,7 @@ export function previewScript(
   return `// Rangular interactive preview runtime (Stage 2).
 // State and methods are live: (click) handlers mutate state and re-render.
 const TEMPLATE = ${jsonForScript(ast)};
+const ICONS = ${jsonForScript(ICON_PATHS)};
 const state = ${jsonForScript(state)};
 const methods = {
 ${methodEntries.join(',\n')}
@@ -885,6 +926,28 @@ function __runHandler(src, scope, event) {
   } catch (err) { console.warn(err); }
 }
 function __truthy(value) { return value === true || value === 'true'; }
+function __kebabRole(role) { return String(role).replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase(); }
+function __iconSize(el, scope) {
+  var v = __controlValue(el, 'size', scope);
+  var n = typeof v === 'number' ? v : (typeof v === 'string' && v !== '' ? Number(v) : NaN);
+  if (!isFinite(n)) return 24;
+  var scale = [20, 24, 28], best = scale[0];
+  for (var i = 0; i < scale.length; i++) {
+    if (Math.abs(scale[i] - n) < Math.abs(best - n)) best = scale[i];
+  }
+  return best;
+}
+function __icon(name, size, colorRole) {
+  var paths = ICONS[name] || [];
+  var span = document.createElement('span');
+  span.className = 'icon';
+  if (colorRole && span.setAttribute) span.setAttribute('style', 'color: var(--role-' + __kebabRole(colorRole) + ')');
+  var svg = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">';
+  paths.forEach(function (d) { svg += '<path d="' + d + '"/>'; });
+  svg += '</svg>';
+  span.innerHTML = svg;
+  return span;
+}
 function __controlValue(el, name, scope) {
   var bound = __binding(el, name, scope);
   if (bound !== undefined) return bound;
@@ -924,9 +987,7 @@ function __buildCore(el, scope, path) {
     case 'appbar': {
       var bar = document.createElement('header');
       bar.className = 'appbar';
-      var menu = document.createElement('span');
-      menu.textContent = '☰';
-      bar.appendChild(menu);
+      bar.appendChild(__icon('menu', 24, 'textMuted'));
       var search = __attr(el, 'search', scope);
       var mid = document.createElement('span');
       if (search) { mid.className = 'search'; mid.textContent = String(search); }
@@ -984,10 +1045,7 @@ function __buildCore(el, scope, path) {
       var checkboxBox = document.createElement('span');
       checkboxBox.className = 'checkbox-box';
       if (checkboxChecked) {
-        var checkboxMark = document.createElement('span');
-        checkboxMark.className = 'checkbox-mark';
-        checkboxMark.textContent = '✓';
-        checkboxBox.appendChild(checkboxMark);
+        checkboxBox.appendChild(__icon('check', 20, 'onPrimary'));
       }
       checkbox.appendChild(checkboxBox);
       var checkboxLabel = document.createElement('span');
@@ -1087,6 +1145,11 @@ function __buildCore(el, scope, path) {
       }
       __attachEvents(row, el, scope);
       return [row];
+    }
+    case 'icon': {
+      var iconName = __attr(el, 'name', scope);
+      if (!iconName) return [];
+      return [__icon(String(iconName), __iconSize(el, scope), __attr(el, 'color', scope))];
     }
     case 'fab': {
       var f = wrap('div', 'fab')[0];

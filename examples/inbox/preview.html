@@ -10,9 +10,9 @@
      declared theme is the default; the Light/Dark toggle in the preview
      chrome flips data-theme on <html> and the other palette takes over,
      the same token swap a generated app does with RgScreen theme. */
-  :root { --screen-bg: #ffffff; --surface-variant: #f0f4f9; --text: #1f1f1f; --text-muted: #5f6368; --primary: #0b57d0; --on-primary: #ffffff; --primary-container: #d3e3fd; --on-primary-container: #041e49; --border: #dadce0; --avatar: #7b1fa2; --on-avatar: #ffffff; }
-  html[data-theme="light"] { --screen-bg: #ffffff; --surface-variant: #f0f4f9; --text: #1f1f1f; --text-muted: #5f6368; --primary: #0b57d0; --on-primary: #ffffff; --primary-container: #d3e3fd; --on-primary-container: #041e49; --border: #dadce0; --avatar: #7b1fa2; --on-avatar: #ffffff; }
-  html[data-theme="dark"] { --screen-bg: #131314; --surface-variant: #282a2c; --text: #e3e3e3; --text-muted: #9aa0a6; --primary: #a8c7fa; --on-primary: #062e6f; --primary-container: #004a77; --on-primary-container: #d3e3fd; --border: #444746; --avatar: #d0bcff; --on-avatar: #381e72; }
+  :root { --screen-bg: #ffffff; --surface-variant: #f0f4f9; --text: #1f1f1f; --text-muted: #5f6368; --primary: #0b57d0; --on-primary: #ffffff; --primary-container: #d3e3fd; --on-primary-container: #041e49; --border: #dadce0; --avatar: #7b1fa2; --on-avatar: #ffffff; --role-primary: #0b57d0; --role-on-primary: #ffffff; --role-primary-container: #d3e3fd; --role-on-primary-container: #041e49; --role-secondary: #00639b; --role-secondary-container: #cde6ff; --role-on-secondary-container: #001d32; --role-accent: #0b57d0; --role-background: #ffffff; --role-surface: #ffffff; --role-surface-variant: #f0f4f9; --role-on-surface: #1f1f1f; --role-on-surface-variant: #5f6368; --role-text: #1f1f1f; --role-text-muted: #5f6368; --role-error: #b3261e; --role-on-error: #ffffff; --role-danger: #b3261e; --role-border: #dadce0; --role-outline: #747775; --role-scrim: #000000; --role-avatar: #7b1fa2; --role-on-avatar: #ffffff; }
+  html[data-theme="light"] { --screen-bg: #ffffff; --surface-variant: #f0f4f9; --text: #1f1f1f; --text-muted: #5f6368; --primary: #0b57d0; --on-primary: #ffffff; --primary-container: #d3e3fd; --on-primary-container: #041e49; --border: #dadce0; --avatar: #7b1fa2; --on-avatar: #ffffff; --role-primary: #0b57d0; --role-on-primary: #ffffff; --role-primary-container: #d3e3fd; --role-on-primary-container: #041e49; --role-secondary: #00639b; --role-secondary-container: #cde6ff; --role-on-secondary-container: #001d32; --role-accent: #0b57d0; --role-background: #ffffff; --role-surface: #ffffff; --role-surface-variant: #f0f4f9; --role-on-surface: #1f1f1f; --role-on-surface-variant: #5f6368; --role-text: #1f1f1f; --role-text-muted: #5f6368; --role-error: #b3261e; --role-on-error: #ffffff; --role-danger: #b3261e; --role-border: #dadce0; --role-outline: #747775; --role-scrim: #000000; --role-avatar: #7b1fa2; --role-on-avatar: #ffffff; }
+  html[data-theme="dark"] { --screen-bg: #131314; --surface-variant: #282a2c; --text: #e3e3e3; --text-muted: #9aa0a6; --primary: #a8c7fa; --on-primary: #062e6f; --primary-container: #004a77; --on-primary-container: #d3e3fd; --border: #444746; --avatar: #d0bcff; --on-avatar: #381e72; --role-primary: #a8c7fa; --role-on-primary: #062e6f; --role-primary-container: #004a77; --role-on-primary-container: #d3e3fd; --role-secondary: #8ecbf2; --role-secondary-container: #004b70; --role-on-secondary-container: #cde6ff; --role-accent: #a8c7fa; --role-background: #131314; --role-surface: #1e1f20; --role-surface-variant: #282a2c; --role-on-surface: #e3e3e3; --role-on-surface-variant: #9aa0a6; --role-text: #e3e3e3; --role-text-muted: #9aa0a6; --role-error: #f2b8b5; --role-on-error: #601410; --role-danger: #f2b8b5; --role-border: #444746; --role-outline: #8e918f; --role-scrim: #000000; --role-avatar: #d0bcff; --role-on-avatar: #381e72; }
   body { margin: 0; font-family: Roboto, system-ui, sans-serif; background: #e8eaed; display: flex; flex-direction: column; align-items: center; padding: 24px 12px; }
   .preview-chrome { width: 360px; max-width: 100%; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 13px; color: #444746; }
   .preview-chrome button { background: #ffffff; color: #0b57d0; border: 1px solid #dadce0; border-radius: 9999px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
@@ -22,6 +22,8 @@
   .appbar-title { flex: 1; font-size: 20px; font-weight: 600; }
   .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--avatar); color: var(--on-avatar); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
   .avatar-lg { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; }
+  .icon { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+  .icon svg { display: block; }
   .display { font-size: 32px; line-height: 40px; font-weight: 700; margin: 16px 16px 8px; }
   .heading { font-size: 24px; line-height: 32px; font-weight: 700; margin: 0 0 8px; }
   .title { font-size: 20px; line-height: 28px; font-weight: 600; margin: 0 0 8px; }
@@ -32,6 +34,23 @@
   .card .body { margin: 0; font-size: 14px; }
   .btn { display: block; margin: 8px 16px 0; background: var(--primary); color: var(--on-primary); border: none; border-radius: 9999px; padding: 0 24px; min-height: 48px; font-size: 14px; font-weight: 600; cursor: pointer; }
   .btn[disabled] { opacity: .38; cursor: default; }
+  .switch, .checkbox { display: flex; align-items: center; gap: 12px; width: calc(100% - 32px); margin: 8px 16px 0; padding: 8px 0; background: transparent; border: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  .switch[disabled], .checkbox[disabled], .switcher-option[disabled], .radio-option[disabled] { opacity: .38; cursor: default; }
+  .switch-track { position: relative; width: 52px; height: 32px; flex: 0 0 52px; border: 2px solid var(--border); border-radius: 9999px; background: var(--surface-variant); transition: background-color .16s linear, border-color .16s linear; }
+  .switch.on .switch-track { background: var(--primary); border-color: var(--primary); }
+  .switch-knob { position: absolute; top: 2px; left: 2px; width: 24px; height: 24px; border-radius: 50%; background: var(--text-muted); transition: left .16s linear, background-color .16s linear; }
+  .switch.on .switch-knob { left: 22px; background: var(--on-primary); }
+  .control-label { flex: 1; font-size: 14px; }
+  .checkbox-box { width: 24px; height: 24px; flex: 0 0 24px; border: 2px solid var(--text-muted); border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; color: var(--on-primary); }
+  .checkbox.on .checkbox-box { background: var(--primary); border-color: var(--primary); }
+  .checkbox-mark { font-size: 16px; font-weight: 700; line-height: 1; }
+  .switcher { display: flex; gap: 4px; padding: 4px; margin: 8px 16px 0; background: var(--surface-variant); border: 1px solid var(--border); border-radius: 9999px; }
+  .switcher-option { flex: 1; min-height: 40px; border: none; border-radius: 9999px; background: transparent; color: var(--text); padding: 0 12px; font-size: 14px; cursor: pointer; }
+  .switcher-option.selected { background: var(--primary-container); color: var(--on-primary-container); font-weight: 600; }
+  .radio-option { display: flex; align-items: center; gap: 12px; width: calc(100% - 32px); margin: 0 16px; padding: 8px 0; background: transparent; border: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  .radio-circle { width: 24px; height: 24px; flex: 0 0 24px; border: 2px solid var(--text-muted); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
+  .radio-option.selected .radio-circle { border-color: var(--primary); }
+  .radio-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--primary); }
   .list { border-top: 1px solid var(--border); }
   .row { display: flex; gap: 12px; align-items: flex-start; padding: 11px 16px; border-bottom: 1px solid var(--border); }
   .row-main { flex: 1; display: flex; flex-direction: column; }
@@ -45,7 +64,7 @@
 <body>
 <div class="preview-chrome"><span>Rangular preview</span><button id="theme-toggle" type="button">Switch to dark theme</button></div>
 <div id="app">
-<div class="screen"><header class="appbar"><span class="appbar-menu">&#9776;</span><span class="search">Search in mail</span><span class="avatar">M</span></header>
+<div class="screen"><header class="appbar"><span class="icon" style="color: var(--role-text-muted)"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></span><span class="search">Search in mail</span><span class="avatar">M</span></header>
 <h1 class="display">Inbox</h1>
 <div class="list"><div class="row"><span class="avatar-lg">S</span><span class="row-main"><span class="row-title">Sarju</span><span class="row-sub">Photos from the weekend</span><span class="row-detail">Sharing the album with you…</span></span><span class="row-time">9:12 am</span></div>
 <div class="row"><span class="avatar-lg">G</span><span class="row-main"><span class="row-title">Google</span><span class="row-sub">Security alert</span><span class="row-detail">A new sign-in on your device</span></span><span class="row-time">8:03 am</span></div>
@@ -57,6 +76,7 @@
 // Rangular interactive preview runtime (Stage 2).
 // State and methods are live: (click) handlers mutate state and re-render.
 const TEMPLATE = {"type":"root","children":[{"type":"element","tag":"screen","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"element","tag":"appbar","attrs":{"title":"Mail","search":"Search in mail"},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[],"pos":{"line":2,"column":3}},{"type":"element","tag":"h1","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"expr","expression":"title"}],"pos":{"line":3,"column":7}}],"pos":{"line":3,"column":3}},{"type":"element","tag":"list","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"element","tag":"row","attrs":{},"booleanAttrs":["avatar"],"propBindings":[{"name":"title","expression":"m.from"},{"name":"subtitle","expression":"m.subject"},{"name":"detail","expression":"m.snippet"},{"name":"time","expression":"m.time"}],"eventBindings":[],"children":[],"pos":{"line":5,"column":5},"structural":{"name":"ngFor","expression":"let m of mails; let i = index"}}],"pos":{"line":4,"column":3}},{"type":"element","tag":"p","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"No mail. Enjoy the quiet."}],"pos":{"line":7,"column":33}}],"pos":{"line":7,"column":3},"structural":{"name":"ngIf","expression":"mails.length === 0"}}],"pos":{"line":1,"column":1}}]};
+const ICONS = {"menu":["M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"],"search":["M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"],"close":["M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"],"check":["M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"],"chevron-left":["M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"],"chevron-right":["M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"],"arrow-left":["M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"],"arrow-right":["M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"],"plus":["M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"],"minus":["M19 13H5v-2h14v2z"],"bell":["M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"],"heart":["M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"],"star":["M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"],"settings":["M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"],"home":["M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"],"person":["M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"],"calendar":["M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"],"alarm":["M22 5.72l-4.6-3.86-1.29 1.53 4.6 3.86L22 5.72zM7.88 3.39L6.6 1.86 2 5.71l1.29 1.53 4.59-3.85zM12.5 8H11v6l4.75 2.85.75-1.23-4-2.37V8zM12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9c4.97 0 9-4.03 9-9s-4.03-9-9-9z"],"play":["M8 5v14l11-7z"],"pause":["M6 19h4V5H6v14zm8-14v14h4V5h-4z"],"edit":["M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"],"delete":["M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"],"share":["M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"],"info":["M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"],"warning":["M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"],"mail":["M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"],"sun":["M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm-1 16.95h2V19.5h-2v2.95zm-7.45-3.91l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z"]};
 const state = {"title":"Inbox","mails":[{"id":1,"from":"Sarju","subject":"Photos from the weekend","snippet":"Sharing the album with you…","time":"9:12 am","unread":true},{"id":2,"from":"Google","subject":"Security alert","snippet":"A new sign-in on your device","time":"8:03 am","unread":true},{"id":3,"from":"Medium","subject":"Your weekly reading list","snippet":"Stories picked for you","time":"Yesterday","unread":false},{"id":4,"from":"Awaken Me","subject":"Build finished successfully","snippet":"Your latest build is ready to test","time":"Tue","unread":false}]};
 const methods = {
 
@@ -379,6 +399,53 @@ function __runHandler(src, scope, event) {
     __eval(e, s);
   } catch (err) { console.warn(err); }
 }
+function __truthy(value) { return value === true || value === 'true'; }
+function __kebabRole(role) { return String(role).replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase(); }
+function __iconSize(el, scope) {
+  var v = __controlValue(el, 'size', scope);
+  var n = typeof v === 'number' ? v : (typeof v === 'string' && v !== '' ? Number(v) : NaN);
+  if (!isFinite(n)) return 24;
+  var scale = [20, 24, 28], best = scale[0];
+  for (var i = 0; i < scale.length; i++) {
+    if (Math.abs(scale[i] - n) < Math.abs(best - n)) best = scale[i];
+  }
+  return best;
+}
+function __icon(name, size, colorRole) {
+  var paths = ICONS[name] || [];
+  var span = document.createElement('span');
+  span.className = 'icon';
+  if (colorRole && span.setAttribute) span.setAttribute('style', 'color: var(--role-' + __kebabRole(colorRole) + ')');
+  var svg = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">';
+  paths.forEach(function (d) { svg += '<path d="' + d + '"/>'; });
+  svg += '</svg>';
+  span.innerHTML = svg;
+  return span;
+}
+function __controlValue(el, name, scope) {
+  var bound = __binding(el, name, scope);
+  if (bound !== undefined) return bound;
+  if (el.booleanAttrs.indexOf(name) >= 0) return true;
+  return el.attrs[name];
+}
+function __runChange(el, scope, value) {
+  el.eventBindings.forEach(function (ev) {
+    if (ev.name !== 'change') return;
+    var s = __extend(scope, { $event: value });
+    try {
+      var e = __parse(ev.expression);
+      if (e.type === 'call') { __eval(e, s); return; }
+      if (e.type === 'identifier') {
+        var fn = s[e.name];
+        if (typeof fn === 'function') { fn(value); return; }
+        console.warn('preview: change handler ' + e.name + ' is not a method');
+        return;
+      }
+      __eval(e, s);
+    } catch (err) { console.warn(err); }
+  });
+  __render();
+}
 function __buildCore(el, scope, path) {
   if (COMPONENTS[el.tag]) return __buildChild(el, scope, path);
   var kids = __buildNodes(el.children, scope, path);
@@ -394,9 +461,7 @@ function __buildCore(el, scope, path) {
     case 'appbar': {
       var bar = document.createElement('header');
       bar.className = 'appbar';
-      var menu = document.createElement('span');
-      menu.textContent = '☰';
-      bar.appendChild(menu);
+      bar.appendChild(__icon('menu', 24, 'textMuted'));
       var search = __attr(el, 'search', scope);
       var mid = document.createElement('span');
       if (search) { mid.className = 'search'; mid.textContent = String(search); }
@@ -426,6 +491,92 @@ function __buildCore(el, scope, path) {
       kids.forEach(function (k) { b.appendChild(k); });
       __attachEvents(b, el, scope);
       return [b];
+    }
+    case 'switch': {
+      var switchChecked = __truthy(__controlValue(el, 'checked', scope));
+      var sw = document.createElement('button');
+      sw.type = 'button';
+      sw.className = 'switch' + (switchChecked ? ' on' : '');
+      var swTrack = document.createElement('span');
+      swTrack.className = 'switch-track';
+      var swKnob = document.createElement('span');
+      swKnob.className = 'switch-knob';
+      swTrack.appendChild(swKnob);
+      sw.appendChild(swTrack);
+      var swLabel = document.createElement('span');
+      swLabel.className = 'control-label';
+      kids.forEach(function (k) { swLabel.appendChild(k); });
+      sw.appendChild(swLabel);
+      if (__truthy(__controlValue(el, 'disabled', scope))) sw.disabled = true;
+      else sw.addEventListener('click', function () { __runChange(el, scope, !switchChecked); });
+      return [sw];
+    }
+    case 'checkbox': {
+      var checkboxChecked = __truthy(__controlValue(el, 'checked', scope));
+      var checkbox = document.createElement('button');
+      checkbox.type = 'button';
+      checkbox.className = 'checkbox' + (checkboxChecked ? ' on' : '');
+      var checkboxBox = document.createElement('span');
+      checkboxBox.className = 'checkbox-box';
+      if (checkboxChecked) {
+        checkboxBox.appendChild(__icon('check', 20, 'onPrimary'));
+      }
+      checkbox.appendChild(checkboxBox);
+      var checkboxLabel = document.createElement('span');
+      checkboxLabel.className = 'control-label';
+      kids.forEach(function (k) { checkboxLabel.appendChild(k); });
+      checkbox.appendChild(checkboxLabel);
+      if (__truthy(__controlValue(el, 'disabled', scope))) checkbox.disabled = true;
+      else checkbox.addEventListener('click', function () { __runChange(el, scope, !checkboxChecked); });
+      return [checkbox];
+    }
+    case 'switcher': {
+      var switcher = document.createElement('div');
+      switcher.className = 'switcher';
+      var switcherValue = __controlValue(el, 'value', scope);
+      var switcherDisabled = __truthy(__controlValue(el, 'disabled', scope));
+      el.children.forEach(function (child, childIndex) {
+        if (child.type !== 'element' || child.tag !== 'option') return;
+        var optionValue = __controlValue(child, 'value', scope);
+        var segment = document.createElement('button');
+        segment.type = 'button';
+        segment.className = 'switcher-option' + (String(switcherValue) === String(optionValue) ? ' selected' : '');
+        __buildNodes(child.children, scope, path + '/option' + childIndex).forEach(function (k) { segment.appendChild(k); });
+        if (switcherDisabled) segment.disabled = true;
+        else segment.addEventListener('click', function () { __runChange(el, scope, optionValue); });
+        switcher.appendChild(segment);
+      });
+      return [switcher];
+    }
+    case 'radio-group': {
+      var radioGroup = document.createElement('div');
+      radioGroup.className = 'radio-group';
+      var radioValue = __controlValue(el, 'value', scope);
+      var radioDisabled = __truthy(__controlValue(el, 'disabled', scope));
+      el.children.forEach(function (child, childIndex) {
+        if (child.type !== 'element' || child.tag !== 'radio') return;
+        var choiceValue = __controlValue(child, 'value', scope);
+        var selected = String(radioValue) === String(choiceValue);
+        var choice = document.createElement('button');
+        choice.type = 'button';
+        choice.className = 'radio-option' + (selected ? ' selected' : '');
+        var circle = document.createElement('span');
+        circle.className = 'radio-circle';
+        if (selected) {
+          var dot = document.createElement('span');
+          dot.className = 'radio-dot';
+          circle.appendChild(dot);
+        }
+        choice.appendChild(circle);
+        var choiceLabel = document.createElement('span');
+        choiceLabel.className = 'control-label';
+        __buildNodes(child.children, scope, path + '/radio' + childIndex).forEach(function (k) { choiceLabel.appendChild(k); });
+        choice.appendChild(choiceLabel);
+        if (radioDisabled) choice.disabled = true;
+        else choice.addEventListener('click', function () { __runChange(el, scope, choiceValue); });
+        radioGroup.appendChild(choice);
+      });
+      return [radioGroup];
     }
     case 'list': return wrap('div', 'list');
     case 'row': {
@@ -468,6 +619,11 @@ function __buildCore(el, scope, path) {
       }
       __attachEvents(row, el, scope);
       return [row];
+    }
+    case 'icon': {
+      var iconName = __attr(el, 'name', scope);
+      if (!iconName) return [];
+      return [__icon(String(iconName), __iconSize(el, scope), __attr(el, 'color', scope))];
     }
     case 'fab': {
       var f = wrap('div', 'fab')[0];

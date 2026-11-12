@@ -1,6 +1,7 @@
+import { ICON_NAMES, ICON_PATHS, ICON_SIZES, DEFAULT_ICON_SIZE } from '../../../ui/src/icons';
 import { ComponentInfo, ServiceInfo } from '../class/parseComponent';
 import { Diagnostic, error, warning } from '../diagnostics';
-import { ParsedCss } from '../style/css';
+import { nearestOnScale, ParsedCss } from '../style/css';
 import { ElementNode, TemplateNode, TemplateRoot } from '../template/ast';
 import { exprToCode, parseExpression } from '../template/expr';
 import { isLiteralSource } from '../template/literal';
@@ -71,6 +72,7 @@ export const TAG_MAP: Record<string, TagMapping> = {
   list: { component: 'RgList', fromUi: true },
   row: { component: 'RgRow', fromUi: true },
   fab: { component: 'RgFab', fromUi: true },
+  icon: { component: 'RgIcon', fromUi: true },
   switch: { component: 'RgSwitch', fromUi: true },
   switcher: { component: 'RgSwitcher', fromUi: true },
   option: { component: 'RgOption', fromUi: true },
@@ -568,8 +570,98 @@ class Generator {
       return indent + parts.join('');
     };
 
+    /**
+     * Render an <icon> element (Stage 7). Icons are validated here, at
+     * compile time, against the curated set in @rangular/ui icons.ts:
+     * an unknown static name is an error (the JSON diagnostic carries
+     * the full valid list in validIcons), a missing name is an error,
+     * and an off-scale size warns and snaps to the icon size scale,
+     * the same warn-and-snap behaviour the style translator uses. A
+     * [name] binding is passed through unvalidated, its value is only
+     * known at runtime. Only name, size and color exist in v1; any
+     * other attribute or binding on <icon> is ignored.
+     */
+    const renderIcon = (el: ElementNode, depth: number, extraProps: string[]): string[] => {
+      const indent = '  '.repeat(depth + 2);
+      this.usedUi.add('RgIcon');
+      const props: string[] = [...extraProps];
+      const nameBinding = el.propBindings.find((b) => b.name === 'name');
+      const sizeBinding = el.propBindings.find((b) => b.name === 'size');
+      const colorBinding = el.propBindings.find((b) => b.name === 'color');
+      const staticName = el.attrs['name'];
+
+      if (staticName !== undefined) {
+        if (staticName in ICON_PATHS) {
+          props.push(`name="${escapeJsxAttrValue(staticName)}"`);
+        } else {
+          diagnostics.push({
+            severity: 'error',
+            code: 'GEN_ICON_UNKNOWN',
+            message: `Unknown icon name '${staticName}': it is not in the Rangular icon set`,
+            line: el.pos.line,
+            column: el.pos.column,
+            fix: 'Use one of the names listed under Icons in catalog.md, e.g. <icon name="search"></icon>',
+            validIcons: ICON_NAMES,
+          });
+          props.push(`name="${escapeJsxAttrValue(staticName)}"`);
+        }
+      } else if (nameBinding) {
+        props.push(`name={${codeExpr(nameBinding.expression)}}`);
+      } else {
+        diagnostics.push(error(
+          'GEN_ICON_NAME',
+          '<icon> has no name attribute and no [name] binding; there is nothing to draw',
+          el.pos.line, el.pos.column,
+          'Add a name from the icon set, e.g. <icon name="search"></icon>; the full set is listed under Icons in catalog.md',
+        ));
+      }
+
+      const snapIconSize = (raw: number): number => {
+        const snapped = nearestOnScale(ICON_SIZES, raw);
+        if (snapped !== raw) {
+          diagnostics.push(warning(
+            'GEN_ICON_SIZE',
+            `Icon size ${raw} is off the icon size scale (${ICON_SIZES.join(', ')}); the generated code uses ${snapped}`,
+            el.pos.line, el.pos.column,
+            `Use size="${snapped}" (the icon size scale is ${ICON_SIZES.join(', ')})`,
+          ));
+        }
+        return snapped;
+      };
+      if (el.attrs['size'] !== undefined) {
+        const raw = Number(el.attrs['size']);
+        if (Number.isFinite(raw)) {
+          props.push(`size={${snapIconSize(raw)}}`);
+        } else {
+          diagnostics.push(warning(
+            'GEN_ICON_SIZE',
+            `Icon size '${el.attrs['size']}' is not a number; the generated code uses the default size ${DEFAULT_ICON_SIZE}`,
+            el.pos.line, el.pos.column,
+            `Use size="20", size="24" or size="28"`,
+          ));
+          props.push(`size={${DEFAULT_ICON_SIZE}}`);
+        }
+      } else if (sizeBinding) {
+        const literal = /^-?\d+(\.\d+)?$/.test(sizeBinding.expression.trim())
+          ? Number(sizeBinding.expression.trim())
+          : undefined;
+        props.push(literal !== undefined
+          ? `size={${snapIconSize(literal)}}`
+          : `size={${codeExpr(sizeBinding.expression)}}`);
+      }
+
+      if (el.attrs['color'] !== undefined) {
+        props.push(`color="${escapeJsxAttrValue(el.attrs['color'])}"`);
+      } else if (colorBinding) {
+        props.push(`color={${codeExpr(colorBinding.expression)}}`);
+      }
+
+      return [`${indent}<RgIcon${props.length ? ' ' + props.join(' ') : ''} />`];
+    };
+
     /** Render one element without its structural directive (handled by renderElement). */
     const renderCore = (el: ElementNode, depth: number, extraProps: string[]): string[] => {
+      if (el.tag.toLowerCase() === 'icon') return renderIcon(el, depth, extraProps);
       const indent = '  '.repeat(depth + 2);
       const lines: string[] = [];
       const mapping = TAG_MAP[el.tag.toLowerCase()];

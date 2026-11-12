@@ -56,6 +56,7 @@ function allRoles(mode: ThemeMode): Record<string, StyleRecord> {
       background: c.primaryContainer, color: c.onPrimaryContainer,
       borderRadius: t.radius.full, fontSize: ty.caption.fontSize, fontWeight: 700,
     },
+    icon: { color: c.text },
     fab: { background: c.primaryContainer, color: c.onPrimaryContainer, borderRadius: t.radius.lg },
     switch: {
       background: c.surfaceVariant, borderColor: c.outline, knobBackground: c.onSurfaceVariant,
@@ -97,6 +98,7 @@ function rolesForElement(el: ElementNode): string[] {
     case 'h3': return ['textTitle'];
     case 'p': return ['textBody'];
     case 'label': return ['textLabel'];
+    case 'icon': return ['icon'];
     case 'fab': return ['fab'];
     case 'switch': return ['switch'];
     case 'checkbox': return ['checkbox'];
