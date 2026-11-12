@@ -1,9 +1,17 @@
 import { ICON_NAMES, ICON_PATHS, ICON_SIZES, DEFAULT_ICON_SIZE } from '../../../ui/src/icons';
 import { ComponentInfo, ServiceInfo } from '../class/parseComponent';
+import { analyzeFormInitializer, FormFieldInfo, isFormInitializer } from '../class/formInit';
 import { Diagnostic, error, warning } from '../diagnostics';
 import { nearestOnScale, ParsedCss } from '../style/css';
-import { ElementNode, TemplateNode, TemplateRoot } from '../template/ast';
+import { ElementNode, EventBinding, TemplateNode, TemplateRoot } from '../template/ast';
 import { exprToCode, parseExpression } from '../template/expr';
+import {
+  hasNgModelSurface,
+  ngModelBindingOf,
+  plainFieldOf,
+  ValidatorSpec,
+  validatorsOf,
+} from '../template/forms';
 import { isLiteralSource } from '../template/literal';
 import { parseNgFor, parseNgIf } from '../template/structural';
 import { analyzeMutatedFields, setterName, translateMethods } from './methods';
@@ -79,7 +87,8 @@ export const TAG_MAP: Record<string, TagMapping> = {
   checkbox: { component: 'RgCheckbox', fromUi: true },
   'radio-group': { component: 'RgRadioGroup', fromUi: true },
   radio: { component: 'RgRadio', fromUi: true },
-  input: { component: 'TextInput', fromUi: false },
+  input: { component: 'RgInput', fromUi: true },
+  form: { component: 'View', fromUi: false },
 };
 
 /** True when an initializer source text is a plain literal we may hoist. */
@@ -139,6 +148,7 @@ export const EVENT_PROPS: Record<string, string> = {
   click: 'onPress',
   change: 'onChange',
   submit: 'onSubmit',
+  blur: 'onBlur',
 };
 
 /** Map a template (event) to its React Native prop name. */
@@ -154,6 +164,35 @@ export function eventPropName(eventName: string, tag: string): { prop: string; k
 }
 
 const HTTP_CLIENT = 'HttpClient';
+
+/**
+ * Forms analysis for one component (Stage 8). FormInfo is what a <form>
+ * offers its subtree: its (submit) handler, its [formGroup] field, and
+ * the touched-state keys of the ngModel inputs inside it (a submit
+ * attempt marks them all touched). InputInfo is the binding mode of one
+ * <input>: plain (value/events only), ngmodel (template-driven, with an
+ * optional validation model keyed by `key`), valueOnly (an ngModel whose
+ * target is not a plain field: bound one way, GEN_NGMODEL_EXPR), or
+ * reactive (formControlName inside a [formGroup] form).
+ */
+interface FormInfo {
+  submit?: EventBinding;
+  groupField?: string;
+  touchedKeys: string[];
+}
+
+interface InputInfo {
+  mode: 'plain' | 'ngmodel' | 'valueOnly' | 'reactive';
+  field?: string;
+  expression?: string;
+  twoWay?: boolean;
+  validators: ValidatorSpec[];
+  refName?: string;
+  /** Touched/model key when a validation model is generated for this input. */
+  key?: string;
+  groupField?: string;
+  controlName?: string;
+}
 
 interface StyleEntry {
   key: string;
@@ -523,12 +562,49 @@ class Generator {
     };
     validateControlNesting(ast.children);
 
+    // --- Forms analysis (Stage 8) --------------------------------------------
+    // Reactive form fields: initialised with new FormGroup(...) or
+    // new FormControl(...); they are stable instances, never state.
+    const formFields = new Map<string, FormFieldInfo>();
+    for (const field of component.fields) {
+      if (field.isInput || field.isOutput) continue;
+      if (isFormInitializer(field.initializer)) {
+        formFields.set(field.name, analyzeFormInitializer(field.initializer!));
+      }
+    }
+
+    // ngModel belongs on <input> only in this version, and a two-way
+    // ngModel field becomes state by definition (Angular semantics: the
+    // binding itself writes the field).
+    const ngModelStateFields = new Set<string>();
+    const walkNgModel = (nodes: TemplateNode[]): void => {
+      for (const node of nodes) {
+        if (node.type !== 'element') continue;
+        if (node.tag.toLowerCase() === 'input') {
+          const tw = node.twoWayBindings.find((b) => b.name === 'ngModel');
+          const field = tw ? plainFieldOf(tw.expression) : undefined;
+          if (field) ngModelStateFields.add(field);
+        } else if (hasNgModelSurface(node)) {
+          diagnostics.push(error(
+            'GEN_NGMODEL_TARGET',
+            `ngModel is used on <${node.tag}>; in this version ngModel binds <input> only (selection controls already have their [checked]/[value] plus (change) contract)`,
+            node.pos.line, node.pos.column,
+            'Move [(ngModel)] to an <input>, or bind the control explicitly: <switch [checked]="wifiOn" (change)="onWifi($event)"></switch>',
+          ));
+        }
+        walkNgModel(node.children);
+      }
+    };
+    walkNgModel(ast.children);
+
     // --- State analysis (M3) -------------------------------------------------
     const mutated = analyzeMutatedFields(component);
     const stateFields = new Set<string>();
     for (const field of component.fields) {
       if (field.isInput || field.isOutput) continue;
-      if (field.initializer && isLiteralInitializer(field.initializer) && mutated.has(field.name)) {
+      if (formFields.has(field.name)) continue;
+      if (field.initializer && isLiteralInitializer(field.initializer)
+        && (mutated.has(field.name) || ngModelStateFields.has(field.name))) {
         stateFields.add(field.name);
       } else if (mutated.has(field.name) && field.initializer && !isLiteralInitializer(field.initializer)) {
         diagnostics.push(warning(
@@ -540,6 +616,132 @@ class Generator {
       }
     }
     if (stateFields.size) this.reactImports.add('useState');
+
+    // Per-form and per-input binding modes, walked with the form stack
+    // so formControlName finds its [formGroup] and submit buttons find
+    // the touched keys they must set.
+    const fieldByName = new Map(component.fields.map((f) => [f.name, f]));
+    const formInfos = new Map<ElementNode, FormInfo>();
+    const inputInfos = new Map<ElementNode, InputInfo>();
+    const modelInfos: InputInfo[] = [];
+    const modelKeys = new Set<string>();
+
+    const inputInfoOf = (el: ElementNode, form: FormInfo | undefined): InputInfo => {
+      const validators = validatorsOf(el);
+      const refName = el.ref && el.refExport === 'ngModel' ? el.ref : undefined;
+      const info: InputInfo = { mode: 'plain', validators, refName };
+      if (el.propBindings.some((b) => b.name === 'formControlName')) {
+        diagnostics.push(warning(
+          'GEN_FORM_CONTROL',
+          'formControlName is written as a [formControlName] binding; it must be a static attribute naming a control of the enclosing [formGroup]',
+          el.pos.line, el.pos.column,
+          'Write formControlName="email" (no brackets) on the input',
+        ));
+      }
+      const fcn = el.attrs['formControlName'];
+      if (fcn !== undefined) {
+        if (!form?.groupField) {
+          diagnostics.push(error(
+            'GEN_FORM_CONTROL',
+            `formControlName="${fcn}" is not inside a <form> with a [formGroup] binding, so there is no control to bind`,
+            el.pos.line, el.pos.column,
+            `Wrap the input in <form [formGroup]="profileForm"> ... </form> and give the group a control named '${fcn}'`,
+          ));
+          return info;
+        }
+        info.mode = 'reactive';
+        info.groupField = form.groupField;
+        info.controlName = fcn;
+        const names = formFields.get(form.groupField)?.controlNames ?? [];
+        if (names.length && !names.includes(fcn)) {
+          diagnostics.push(error(
+            'GEN_FORM_CONTROL',
+            `formControlName="${fcn}" does not match any control of the form group '${form.groupField}' (controls: ${names.join(', ')})`,
+            el.pos.line, el.pos.column,
+            `Use one of the group's controls (${names.join(', ')}), or add a '${fcn}' FormControl to the group`,
+          ));
+        }
+        return info;
+      }
+      const ng = ngModelBindingOf(el);
+      if (ng) {
+        info.expression = ng.expression;
+        info.twoWay = ng.mode === 'twoWay';
+        const field = plainFieldOf(ng.expression);
+        const fieldInfo = field ? fieldByName.get(field) : undefined;
+        if (field && fieldInfo && !fieldInfo.isInput && !fieldInfo.isOutput
+          && fieldInfo.initializer && isLiteralInitializer(fieldInfo.initializer)) {
+          info.mode = 'ngmodel';
+          info.field = field;
+          if (validators.length || refName) info.key = refName ?? field;
+        } else {
+          info.mode = 'valueOnly';
+          diagnostics.push(warning(
+            'GEN_NGMODEL_EXPR',
+            `ngModel is bound to '${ng.expression}', which is not a plain component field with a literal initial value; the value is bound one way, with no write-back and no validation state`,
+            el.pos.line, el.pos.column,
+            `Bind ngModel to a plain field with a literal initial value, e.g. email = ''; in the component class`,
+          ));
+        }
+      }
+      return info;
+    };
+
+    const walkForms = (nodes: TemplateNode[], formStack: FormInfo[]): void => {
+      for (const node of nodes) {
+        if (node.type !== 'element') continue;
+        const tag = node.tag.toLowerCase();
+        let stack = formStack;
+        if (tag === 'form') {
+          const info: FormInfo = { touchedKeys: [] };
+          info.submit = node.eventBindings.find(
+            (b) => b.name === 'submit' || b.name === 'ngSubmit',
+          );
+          const fg = node.propBindings.find((b) => b.name === 'formGroup');
+          if (fg) {
+            const name = plainFieldOf(fg.expression);
+            const target = name ? formFields.get(name) : undefined;
+            const named = name ? fieldByName.get(name) : undefined;
+            if (name && target?.kind === 'group') {
+              info.groupField = name;
+            } else if (name && named && !named.isInput && !named.isOutput) {
+              diagnostics.push(error(
+                'GEN_FORMGROUP_TYPE',
+                `[formGroup] is bound to '${name}', which is not a field initialised with new FormGroup(...)`,
+                node.pos.line, node.pos.column,
+                `Initialise the field as a form group: ${name} = new FormGroup({ email: new FormControl('') });`,
+              ));
+            } else {
+              diagnostics.push(warning(
+                'GEN_FORMGROUP_TYPE',
+                `[formGroup] expression '${fg.expression}' cannot be verified as a field initialised with new FormGroup(...); its formControlName inputs cannot be wired`,
+                node.pos.line, node.pos.column,
+                'Bind [formGroup] to a plain field initialised with new FormGroup({ ... })',
+              ));
+              // groupField stays unset: wiring inputs to a ref that is
+              // never generated would be broken code, so the inputs
+              // report GEN_FORM_CONTROL instead.
+            }
+          }
+          formInfos.set(node, info);
+          stack = [...formStack, info];
+        }
+        if (tag === 'input') {
+          const info = inputInfoOf(node, stack[stack.length - 1]);
+          inputInfos.set(node, info);
+          if (info.key) {
+            if (!modelKeys.has(info.key)) {
+              modelKeys.add(info.key);
+              modelInfos.push(info);
+            }
+            const form = stack[stack.length - 1];
+            if (form && !form.touchedKeys.includes(info.key)) form.touchedKeys.push(info.key);
+          }
+        }
+        walkForms(node.children, stack);
+      }
+    };
+    walkForms(ast.children, []);
 
     const styleKeys = new Set(Object.keys(css.styles));
     for (const [key, styleObj] of Object.entries(css.styles)) {
@@ -556,8 +758,18 @@ class Generator {
       return refs.length === 1 ? refs[0] : `[${refs.join(', ')}]`;
     };
 
+    // Template expressions (Stage 8): reactive form fields read through
+    // their ref (profileForm -> profileFormRef.current), and member
+    // chains rooted at an ngModel template reference read from the
+    // generated model object (email.invalid -> emailModel.invalid).
+    const identRenames = new Map<string, string>();
+    for (const name of formFields.keys()) identRenames.set(name, `${name}Ref.current`);
+    const refBases = new Map<string, string>();
+    for (const info of modelInfos) {
+      if (info.refName) refBases.set(info.refName, `${info.key}Model`);
+    }
     const codeExpr = (source: string): string => {
-      const code = exprToCode(source);
+      const code = exprToCode(source, { renames: identRenames, refBases });
       if (code.includes("pipe('")) this.usedRuntime.add('pipe');
       return code;
     };
@@ -659,9 +871,134 @@ class Generator {
       return [`${indent}<RgIcon${props.length ? ' ' + props.join(' ') : ''} />`];
     };
 
+    // Attributes of <input> that are forms machinery, never RgInput
+    // props: the validators, the reactive name, the ngModel options, and
+    // `type`/`name` (type is translated to secure/keyboardType below;
+    // Angular's `name` keys controls inside an NgForm, which Rangular
+    // does not track, refs and fields do that job here).
+    const INPUT_DROP_ATTRS = new Set([
+      'required', 'minlength', 'maxlength', 'email', 'pattern',
+      'name', 'formControlName', 'ngModelOptions', 'type',
+    ]);
+
+    /**
+     * Render an <input> (Stage 8). The binding mode comes from the forms
+     * analysis: ngModel inputs get value plus write-back (and a touched
+     * hook feeding their validation model), reactive inputs wire to
+     * their FormControl (setValue on change, markAsTouched on blur),
+     * plain inputs keep the Stage 2 value/event behaviour. Handler
+     * expressions receive the text as $event, the Stage 6 control
+     * pattern. Validator attributes, formControlName and ngModelOptions
+     * are consumed, never emitted as props.
+     */
+    const renderInput = (el: ElementNode, depth: number, extraProps: string[]): string[] => {
+      const indent = '  '.repeat(depth + 2);
+      const info = inputInfos.get(el);
+      this.usedUi.add('RgInput');
+      const lines: string[] = [];
+      const props: string[] = [...extraProps];
+
+      const typeAttr = el.attrs['type'];
+      if (typeAttr === 'password') props.push('secure');
+      else if (typeAttr === 'email') props.push('keyboardType="email-address"');
+      else if (typeAttr === 'number') props.push('keyboardType="numeric"');
+
+      for (const [name, value] of Object.entries(el.attrs)) {
+        if (name === 'class' || INPUT_DROP_ATTRS.has(name)) continue;
+        props.push(`${name}="${escapeJsxAttrValue(value)}"`);
+      }
+      for (const b of el.booleanAttrs) {
+        if (INPUT_DROP_ATTRS.has(b)) continue;
+        props.push(b);
+      }
+
+      /** A handler binding in $event call form: bare ref -> fn($event). */
+      const callOf = (src: string): string => {
+        const trimmed = src.trim();
+        let bare = false;
+        try { bare = parseExpression(trimmed).type === 'identifier'; } catch { /* raw fallback */ }
+        return bare ? `${trimmed}($event)` : codeExpr(src);
+      };
+
+      const textCalls: string[] = [];
+      const blurCalls: string[] = [];
+      if (info?.mode === 'ngmodel' && info.field) {
+        props.push(info.twoWay
+          ? `value={${info.field}}`
+          : `value={${codeExpr(info.expression ?? info.field)}}`);
+        if (info.twoWay) textCalls.push(`${setterName(info.field)}($event)`);
+        if (info.key) blurCalls.push(`${setterName(`${info.key}Touched`)}(true)`);
+      } else if (info?.mode === 'valueOnly') {
+        props.push(`value={${codeExpr(info.expression ?? '')}}`);
+        lines.push(`${indent}{/* TODO(Rangular forms): ngModel target "${forBlockComment(info.expression ?? '')}" is not a plain field, the value is one-way only */}`);
+      } else if (info?.mode === 'reactive' && info.groupField && info.controlName) {
+        const group = `${info.groupField}Ref.current`;
+        props.push(`value={${group}.get('${info.controlName}').value}`);
+        textCalls.push(`${group}.get('${info.controlName}').setValue($event)`);
+        blurCalls.push(`${group}.get('${info.controlName}').markAsTouched()`);
+        blurCalls.push('setFormVersion((v) => v + 1)');
+      }
+
+      const consumedEvents = new Set(['input', 'change', 'blur', 'ngModelChange']);
+      for (const ev of el.eventBindings) {
+        if (ev.name === 'ngModelChange' && info?.mode !== 'reactive') {
+          textCalls.push(callOf(ev.expression));
+        } else if (ev.name === 'input' || ev.name === 'change') {
+          textCalls.push(callOf(ev.expression));
+        } else if (ev.name === 'blur') {
+          const trimmed = ev.expression.trim();
+          let bare = false;
+          try { bare = parseExpression(trimmed).type === 'identifier'; } catch { /* raw fallback */ }
+          blurCalls.push(bare ? `${trimmed}()` : codeExpr(ev.expression));
+        }
+      }
+      if (textCalls.length) {
+        props.push(textCalls.length === 1
+          ? `onChangeText={($event) => ${textCalls[0]}}`
+          : `onChangeText={($event) => { ${textCalls.join('; ')}; }}`);
+      }
+      if (blurCalls.length) {
+        props.push(blurCalls.length === 1
+          ? `onBlur={() => ${blurCalls[0]}}`
+          : `onBlur={() => { ${blurCalls.join('; ')}; }}`);
+      }
+
+      const consumedProps = new Set(['ngModel', 'ngModelOptions', 'formControlName']);
+      if (info && info.mode !== 'plain') consumedProps.add('value');
+      for (const p of el.propBindings) {
+        if (consumedProps.has(p.name)) continue;
+        if (p.name === 'type') {
+          lines.push(`${indent}{/* TODO(Rangular forms): a [type] binding on <input> is not supported, use a static type="password|email|number" attribute */}`);
+          continue;
+        }
+        props.push(`${p.name}={${codeExpr(p.expression)}}`);
+      }
+      // Remaining events keep the generic mapping (e.g. (focus)).
+      for (const ev of el.eventBindings) {
+        if (consumedEvents.has(ev.name)) continue;
+        const src = ev.expression.trim();
+        let isBareRef = false;
+        try { isBareRef = parseExpression(src).type === 'identifier'; } catch { /* raw fallback */ }
+        const { prop, known } = eventPropName(ev.name, el.tag);
+        if (!known) {
+          lines.push(`${indent}{/* (${ev.name}) has no standard RN prop, mapped to ${prop} */}`);
+        }
+        props.push(isBareRef ? `${prop}={${src}}` : `${prop}={() => ${codeExpr(src)}}`);
+      }
+      const style = styleFor(el);
+      if (style) props.push(`style={${style}}`);
+      // A forms ref (#email="ngModel") is a template-level validation
+      // object, not a DOM ref; only plain inputs keep the ref prop.
+      if (el.ref && (!info || info.mode === 'plain')) props.push(`ref={${el.ref}Ref}`);
+
+      lines.push(`${indent}<RgInput${props.length ? ' ' + props.join(' ') : ''} />`);
+      return lines;
+    };
+
     /** Render one element without its structural directive (handled by renderElement). */
-    const renderCore = (el: ElementNode, depth: number, extraProps: string[]): string[] => {
+    const renderCore = (el: ElementNode, depth: number, extraProps: string[], formCtx?: FormInfo): string[] => {
       if (el.tag.toLowerCase() === 'icon') return renderIcon(el, depth, extraProps);
+      if (el.tag.toLowerCase() === 'input') return renderInput(el, depth, extraProps);
       const indent = '  '.repeat(depth + 2);
       const lines: string[] = [];
       const mapping = TAG_MAP[el.tag.toLowerCase()];
@@ -680,7 +1017,7 @@ class Generator {
           'GEN_UNKNOWN_TAG',
           `Unknown tag <${el.tag}>, emitted as <View>. Use a known block or a component tag.`,
           el.pos.line, el.pos.column,
-          'Known blocks: screen, appbar, card, list, row, fab, button, input, switch, switcher, checkbox, radio-group, h1, h2, h3, p, span, label, div, section, header, or use a Capitalised component tag',
+          'Known blocks: screen, appbar, card, list, row, fab, button, input, form, switch, switcher, checkbox, radio-group, h1, h2, h3, p, span, label, div, section, header, or use a Capitalised component tag',
         ));
         componentName = 'View';
         this.usedRn.add('View');
@@ -688,18 +1025,51 @@ class Generator {
 
       const props: string[] = [...extraProps];
       if (mapping?.variant) props.push(`variant="${mapping.variant}"`);
+      const isFormEl = el.tag.toLowerCase() === 'form';
+      const isButtonEl = el.tag.toLowerCase() === 'button';
       for (const [name, value] of Object.entries(el.attrs)) {
         if (name === 'class') continue;
+        // A button's type is forms machinery (Stage 8): type="submit"
+        // is consumed by the submit rewrite below, never a prop.
+        if (isButtonEl && name === 'type') continue;
         props.push(`${name}="${escapeJsxAttrValue(value)}"`);
       }
       for (const b of el.booleanAttrs) props.push(b);
       for (const p of el.propBindings) {
+        // [formGroup] is the reactive binding mechanism, not a View prop.
+        if (isFormEl && p.name === 'formGroup') continue;
         props.push(`${p.name}={${codeExpr(p.expression)}}`);
+      }
+      // Form submit (Stage 8): a <button type="submit"> statically
+      // nested in a form with a (submit) handler calls that handler
+      // directly (there is no DOM form to submit in React Native). A
+      // submit attempt first marks every ngModel input in the form
+      // touched, so validation errors appear on save, the standard UX.
+      let submitPress: string | undefined;
+      if (isButtonEl && el.attrs['type'] === 'submit' && formCtx?.submit
+        && !el.eventBindings.some((b) => b.name === 'click')) {
+        const src = formCtx.submit.expression.trim();
+        let bare = false;
+        try { bare = parseExpression(src).type === 'identifier'; } catch { /* raw fallback */ }
+        const call = bare ? `${src}()` : codeExpr(formCtx.submit.expression);
+        const parts = [
+          ...formCtx.touchedKeys.map((k) => `${setterName(`${k}Touched`)}(true)`),
+          ...(formCtx.groupField
+            ? [`${formCtx.groupField}Ref.current.markAllAsTouched()`, 'setFormVersion((v) => v + 1)']
+            : []),
+          call,
+        ];
+        submitPress = parts.length === 1
+          ? `() => ${call}`
+          : `${formCtx.submit.expression.includes('$event') ? '($event)' : '()'} => { ${parts.join('; ')}; }`;
       }
       // Event bindings (M3): (click) -> onPress={() => handler()} etc.
       // On a child component, an event named after one of its @Output fields
       // becomes that output's callback prop instead (M5).
       for (const ev of el.eventBindings) {
+        // A form's own (submit)/(ngSubmit) is consumed by the rewrite
+        // above; it is not a prop on the generated View.
+        if (isFormEl && (ev.name === 'submit' || ev.name === 'ngSubmit')) continue;
         const src = ev.expression.trim();
         let isBareRef = false;
         try { isBareRef = parseExpression(src).type === 'identifier'; } catch { /* raw fallback below */ }
@@ -722,15 +1092,20 @@ class Generator {
         }
         props.push(isBareRef ? `${prop}={${src}}` : `${prop}={() => ${codeExpr(src)}}`);
       }
+      if (submitPress) props.push(`onPress={${submitPress}}`);
       const style = styleFor(el);
       if (style) props.push(`style={${style}}`);
       if (el.ref) props.push(`ref={${el.ref}Ref}`);
 
       const open = `${indent}<${componentName}${props.length ? ' ' + props.join(' ') : ''}`;
       const childLines: string[] = [];
+      // The form context flows to descendants (submit buttons and
+      // reactive inputs find their form); it stops at child components,
+      // whose templates render as their own units.
+      const childForm = isFormEl ? formInfos.get(el) : formCtx;
       for (const child of el.children) {
         if (child.type === 'text') childLines.push(renderText(child, ''));
-        else childLines.push(...renderElement(child, depth + 1));
+        else childLines.push(...renderElement(child, depth + 1, childForm));
       }
       if (!childLines.length) {
         lines.push(`${open} />`);
@@ -751,9 +1126,9 @@ class Generator {
     };
 
     /** Render an element, applying *ngIf / *ngFor wrapping when present (M4). */
-    const renderElementInner = (el: ElementNode, depth: number): string[] => {
+    const renderElementInner = (el: ElementNode, depth: number, formCtx?: FormInfo): string[] => {
       const indent = '  '.repeat(depth + 2);
-      if (!el.structural) return renderCore(el, depth, []);
+      if (!el.structural) return renderCore(el, depth, [], formCtx);
       const stripped: ElementNode = { ...el, structural: undefined };
 
       if (el.structural.name === 'ngIf') {
@@ -767,10 +1142,10 @@ class Generator {
           ));
           return [
             `${indent}{/* TODO(M5+): *ngIf else/then, "${forBlockComment(el.structural.expression)}" */}`,
-            ...renderCore(stripped, depth, []),
+            ...renderCore(stripped, depth, [], formCtx),
           ];
         }
-        const inner = renderCore(stripped, depth + 1, []);
+        const inner = renderCore(stripped, depth + 1, [], formCtx);
         return [
           `${indent}{${codeExpr(parts.condition)} && (`,
           ...inner,
@@ -784,14 +1159,14 @@ class Generator {
         if (!parts) {
           return [
             `${indent}{/* TODO: unparseable *ngFor="${forBlockComment(el.structural.expression)}", element emitted once */}`,
-            ...renderCore(stripped, depth, []),
+            ...renderCore(stripped, depth, [], formCtx),
           ];
         }
         const indexName = parts.indexVar ?? 'index';
         const keyExpr = parts.trackBy
           ? `${parts.trackBy}(${parts.itemVar})`
           : `${parts.itemVar}?.id ?? ${indexName}`;
-        const inner = renderCore(stripped, depth + 1, [`key={${keyExpr}}`]);
+        const inner = renderCore(stripped, depth + 1, [`key={${keyExpr}}`], formCtx);
         return [
           `${indent}{${codeExpr(parts.source)}.map((${parts.itemVar}, ${indexName}) => (`,
           ...inner,
@@ -807,7 +1182,7 @@ class Generator {
       ));
       return [
         `${indent}{/* TODO: *${el.structural.name}="${forBlockComment(el.structural.expression)}" */}`,
-        ...renderCore(stripped, depth, []),
+        ...renderCore(stripped, depth, [], formCtx),
       ];
     };
 
@@ -817,8 +1192,8 @@ class Generator {
      * into a segment and removes. Without a map this is a pass-through,
      * so default output is byte identical to before.
      */
-    const renderElement = (el: ElementNode, depth: number): string[] => {
-      const lines = renderElementInner(el, depth);
+    const renderElement = (el: ElementNode, depth: number, formCtx?: FormInfo): string[] => {
+      const lines = renderElementInner(el, depth, formCtx);
       if (!this.smConfig || !opts.templateFile) return lines;
       const id = this.smRecords.length;
       this.smRecords.push({ templateFile: opts.templateFile, el });
@@ -877,6 +1252,7 @@ class Generator {
     const fieldLines: string[] = [];
     for (const field of component.fields) {
       if (field.isInput || field.isOutput) continue;
+      if (formFields.has(field.name)) continue; // Stage 8: a ref below, not state.
       if (field.initializer && isLiteralInitializer(field.initializer)) {
         if (stateFields.has(field.name)) {
           fieldLines.push(`  const [${field.name}, ${setterName(field.name)}] = useState(${field.initializer});`);
@@ -889,10 +1265,81 @@ class Generator {
       }
     }
 
+    // --- Reactive form instances (Stage 8) -----------------------------------
+    // A FormGroup/FormControl field is one stable instance per component
+    // instance, held in a ref with its initializer verbatim (the author's
+    // own @angular/forms code, re-homed to the runtime classes). Control
+    // value changes bump a version counter through valueChanges, so the
+    // component re-renders and template reads like
+    // profileForm.get('email').invalid stay live, the same notify shape
+    // services use.
+    const formLines: string[] = [];
+    if (formFields.size) {
+      this.reactImports.add('useRef');
+      this.reactImports.add('useState');
+      this.reactImports.add('useEffect');
+      for (const field of component.fields) {
+        if (!formFields.has(field.name)) continue;
+        formLines.push(`  const ${field.name}Ref = useRef(${field.initializer});`);
+      }
+      const formTexts: string[] = [];
+      for (const field of component.fields) {
+        if (formFields.has(field.name) && field.initializer) formTexts.push(field.initializer);
+      }
+      for (const m of component.methodDetails) if (m.body) formTexts.push(m.body);
+      for (const name of ['FormGroup', 'FormControl', 'Validators']) {
+        if (formTexts.some((t) => new RegExp(`\\b${name}\\b`).test(t))) this.usedRuntime.add(name);
+      }
+      formLines.push('  const [, setFormVersion] = useState(0);');
+      formLines.push('  useEffect(() => {');
+      formLines.push('    const subs = [');
+      for (const field of component.fields) {
+        const info = formFields.get(field.name);
+        if (!info) continue;
+        if (info.kind === 'group') {
+          formLines.push(`      ...Object.values(${field.name}Ref.current.controls).map((control) => control.valueChanges.subscribe(() => setFormVersion((v) => v + 1))),`);
+        } else {
+          formLines.push(`      ${field.name}Ref.current.valueChanges.subscribe(() => setFormVersion((v) => v + 1)),`);
+        }
+      }
+      formLines.push('    ];');
+      formLines.push('    return () => { subs.forEach((sub) => sub.unsubscribe()); };');
+      formLines.push('  }, []);');
+    }
+
+    // --- Template-driven validation models (Stage 8) -------------------------
+    // One model per ngModel input that declares validators or an
+    // #ref="ngModel": a touched state plus an errors object recomputed
+    // from the field on every render by the runtime validators. The
+    // model is what a template reference reads (email.invalid,
+    // email.touched, email.errors), via the chain-root rewrite in
+    // exprToCode.
+    const modelLines: string[] = [];
+    for (const info of modelInfos) {
+      const key = info.key!;
+      const field = info.field!;
+      this.reactImports.add('useState');
+      modelLines.push(`  const [${key}Touched, ${setterName(`${key}Touched`)}] = useState(false);`);
+      if (info.validators.length) {
+        this.usedRuntime.add('Validators');
+        this.usedRuntime.add('validateValue');
+        const calls = info.validators
+          .map((v) => (v.argSource !== undefined ? `Validators.${v.fn}(${v.argSource})` : `Validators.${v.fn}`))
+          .join(', ');
+        modelLines.push(`  const ${key}Errors = validateValue(${field}, [${calls}]);`);
+      } else {
+        modelLines.push(`  const ${key}Errors = null;`);
+      }
+      modelLines.push(`  const ${key}Model = { value: ${field}, errors: ${key}Errors, valid: ${key}Errors === null, invalid: ${key}Errors !== null, touched: ${key}Touched };`);
+    }
+
     // --- Methods: translation (M3) --------------------------------------------
     const outputCallbacks = new Map<string, string>();
     for (const f of outputs) outputCallbacks.set(f.name, outputPropName(f.name));
-    const { methods: translated, diagnostics: methodDiags } = translateMethods(component, 'react', stateFields, { outputCallbacks });
+    const { methods: translated, diagnostics: methodDiags } = translateMethods(component, 'react', stateFields, {
+      outputCallbacks,
+      formFields: new Set(formFields.keys()),
+    });
     diagnostics.push(...methodDiags);
     const methodLines: string[] = [];
     for (const m of translated) {
@@ -939,6 +1386,8 @@ class Generator {
       `${exportKw} ${fnName}(${propsDecl}) {`,
       ...depLines,
       ...fieldLines,
+      ...formLines,
+      ...modelLines,
       ...methodLines,
       ...lifecycleLines,
       ...returnLines,

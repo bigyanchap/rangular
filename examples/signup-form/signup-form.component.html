@@ -1,0 +1,16 @@
+<screen>
+  <appbar title="Create account"></appbar>
+  <card>
+    <form (submit)="save()">
+      <input label="Full name" placeholder="e.g. Bigyan Chapagain" [(ngModel)]="name" #name="ngModel" required minlength="3">
+      <p *ngIf="name.invalid && name.touched">Name is required and needs at least 3 characters.</p>
+      <input label="Email" placeholder="you@example.com" type="email" [(ngModel)]="email" #email="ngModel" required email>
+      <p *ngIf="email.invalid && email.touched">Enter a valid email address.</p>
+      <input label="Password" placeholder="At least 6 characters" type="password" [(ngModel)]="password" #password="ngModel" required minlength="6">
+      <p *ngIf="password.invalid && password.touched">Password is required and needs at least 6 characters.</p>
+      <checkbox [checked]="terms" (change)="onTerms($event)">I accept the terms</checkbox>
+      <button type="submit" [disabled]="name.invalid || email.invalid || password.invalid || !terms">Create account</button>
+    </form>
+    <p *ngIf="submitted">Welcome aboard. Your account was created.</p>
+  </card>
+</screen>

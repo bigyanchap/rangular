@@ -124,7 +124,12 @@
     },
     {
       "tag": "input",
-      "component": "TextInput",
+      "component": "RgInput",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "form",
+      "component": "View",
       "from": "react-native"
     }
   ],
@@ -140,6 +145,10 @@
     {
       "event": "submit",
       "rnProp": "onSubmit"
+    },
+    {
+      "event": "blur",
+      "rnProp": "onBlur"
     },
     {
       "event": "input",
@@ -255,6 +264,51 @@
         },
         {
           "name": "onPress",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgInput",
+      "props": [
+        {
+          "name": "value",
+          "type": "any"
+        },
+        {
+          "name": "onChangeText",
+          "type": "any"
+        },
+        {
+          "name": "onBlur",
+          "type": "any"
+        },
+        {
+          "name": "placeholder",
+          "type": "any"
+        },
+        {
+          "name": "label",
+          "type": "any"
+        },
+        {
+          "name": "error",
+          "type": "any"
+        },
+        {
+          "name": "disabled",
+          "type": "any"
+        },
+        {
+          "name": "secure",
+          "type": "any"
+        },
+        {
+          "name": "keyboardType",
           "type": "any"
         },
         {
@@ -961,6 +1015,26 @@
     {
       "code": "GEN_ICON_SIZE",
       "meaning": "An <icon> size is off the icon size scale (20, 24, 28); the generated code uses the nearest on-scale size."
+    },
+    {
+      "code": "GEN_NGMODEL_TARGET",
+      "meaning": "ngModel (two-way, [ngModel] or (ngModelChange)) is used on an element other than <input>; in this version ngModel binds text inputs only."
+    },
+    {
+      "code": "GEN_NGMODEL_EXPR",
+      "meaning": "An ngModel binding does not target a plain component field with a literal initial value, so no write-back or validation state could be generated; the value is bound one way."
+    },
+    {
+      "code": "GEN_FORM_CONTROL",
+      "meaning": "A formControlName cannot be bound: the input is not inside a <form> with a [formGroup], the control name is not one of the group's controls, or formControlName was written as a [binding] instead of a static attribute."
+    },
+    {
+      "code": "GEN_FORMGROUP_TYPE",
+      "meaning": "A [formGroup] binding does not name a field initialised with new FormGroup(...), so the reactive form cannot be wired."
+    },
+    {
+      "code": "GEN_FORM_INITIALIZER",
+      "meaning": "A field initialised with new FormGroup(...) or new FormControl(...) uses a shape the preview cannot evaluate (only literal values, Validators references and validator calls are supported); the generated app runs the initializer as written."
     },
     {
       "code": "METHOD_UNSUPPORTED",

@@ -91,7 +91,7 @@ export function parseTemplate(source: string): ParseResult {
     }
     const el: ElementNode = {
       type: 'element', tag, attrs: {}, booleanAttrs: [],
-      propBindings: [], eventBindings: [], children: [], pos: at,
+      propBindings: [], twoWayBindings: [], eventBindings: [], children: [], pos: at,
     };
 
     let selfClosing = false;
@@ -140,14 +140,17 @@ export function parseTemplate(source: string): ParseResult {
     if (name.startsWith('*')) {
       el.structural = { name: name.slice(1), expression: value ?? '' };
     } else if (name.startsWith('[(') && name.endsWith(')]')) {
-      // Two-way binding: stored as a prop binding in Stage 0+1.
-      el.propBindings.push({ name: name.slice(2, -2), expression: value ?? '' });
+      // Two-way binding [(name)]="expr" (Stage 8): its own list, because
+      // codegen must write back, not just bind one way.
+      el.twoWayBindings.push({ name: name.slice(2, -2), expression: value ?? '' });
     } else if (name.startsWith('[') && name.endsWith(']')) {
       el.propBindings.push({ name: name.slice(1, -1), expression: value ?? '' });
     } else if (name.startsWith('(') && name.endsWith(')')) {
       el.eventBindings.push({ name: name.slice(1, -1), expression: value ?? '' });
     } else if (name.startsWith('#')) {
       el.ref = name.slice(1);
+      // #email="ngModel": the value names what the reference exports.
+      if (value !== undefined) el.refExport = value;
     } else if (value === undefined) {
       el.booleanAttrs.push(name);
     } else {

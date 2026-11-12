@@ -17,12 +17,12 @@ everything you may use is [catalog.md](catalog.md) / `catalog.json`.
 |---|---|
 | `packages/compiler/src/` | The compiler: template parser (`template/`), `@Component` extractor (`class/`), CSS subset (`style/`), RN code generator (`codegen/`), HTML preview renderer (`preview/`), catalog generator (`catalog.ts`), pipeline (`compile.ts`) |
 | `packages/cli/src/cli.ts` | The `rangular` CLI: `build` (with `--json`, `--source-map`), `ast`, `preview`, `catalog`, `watch`, `init`, `doctor` (the polish linter lives in `packages/compiler/src/doctor.ts`) |
-| `packages/runtime/src/index.ts` | Pure-TS helpers for generated apps: `EventEmitter`, `signal()`, `Container`, `ReactiveService` (base class generated services extend), `HttpClient` (Observable-lite over fetch), `pipe()` |
+| `packages/runtime/src/index.ts` | Pure-TS helpers for generated apps: `EventEmitter`, `signal()`, `Container`, `ReactiveService` (base class generated services extend), `HttpClient` (Observable-lite over fetch), `pipe()`, and the forms classes (Stage 8): `Validators`, `validateValue`, `FormControl`, `FormGroup` |
 | `packages/ui/src/tokens.ts` | Rangular Material design tokens (pure TS, part of the build) |
 | `packages/ui/src/icons.ts` | The curated icon set (Stage 7): name to SVG path data (24 by 24 viewBox), the size scale and the default size; the single source the compiler validates against, the catalog generates from, and both renderers draw |
-| `packages/ui/src/primitives.tsx` | RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`, `RgSwitch`, `RgCheckbox`, `RgSwitcher`, `RgOption`, `RgRadioGroup`, `RgRadio`, `RgIcon`) plus the theme context (`RgThemeProvider`, `useRgTheme`); all colours come from the active theme, shipped source for generated apps, deliberately excluded from this repo's `tsc` build |
-| `examples/hello/`, `examples/counter/`, `examples/inbox/`, `examples/profile/`, `examples/favourite/`, `examples/shared-inbox/`, `examples/showcase/`, `examples/dinacharya-row/`, `examples/settings/`, `examples/icons/` | Tiny single-capability examples, each with a recipe-card `README.md`, golden generated `.tsx`, `preview.html` and a `styles.snapshot.json` style golden (profile is the Stage 2.5 proof-test example: written from these docs alone; favourite = child components, shared-inbox = services/DI/lifecycle, showcase = tokens/theming/snapping, dinacharya-row = the Stage 5 dogfood example: one real Awaken Me row, settings = Stage 6 controls: switch, checkbox, switcher, radio group, icons = Stage 7 icon set: the full set with labels, sizes and colour roles) |
-| `tests/` | `node:test` suites, parser, expressions, codegen, methods, runtime, tokens, catalog/vibe layer, Stage 3 (children, services, HttpClient, preview behaviour via a DOM shim), Stage 4 (token completeness, primitives hex guard, CSS snapping, preview theme toggle, no-em-dash guard), Stage 5 (per-file diagnostics, source maps, watch, init, doctor, style snapshot goldens, preview parity guard, dogfood behaviour), Stage 6 (controls codegen and nesting, settings example, preview behaviour for switch, checkbox, switcher and radio group, switch motion rule), Stage 7 (icon set and validation, icons example, preview parity of the drawn paths, RgIcon primitive) |
+| `packages/ui/src/primitives.tsx` | RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`, `RgSwitch`, `RgCheckbox`, `RgSwitcher`, `RgOption`, `RgRadioGroup`, `RgRadio`, `RgIcon`, `RgInput`) plus the theme context (`RgThemeProvider`, `useRgTheme`); all colours come from the active theme, shipped source for generated apps, deliberately excluded from this repo's `tsc` build |
+| `examples/hello/`, `examples/counter/`, `examples/inbox/`, `examples/profile/`, `examples/favourite/`, `examples/shared-inbox/`, `examples/showcase/`, `examples/dinacharya-row/`, `examples/settings/`, `examples/icons/`, `examples/signup-form/`, `examples/profile-form/` | Tiny single-capability examples, each with a recipe-card `README.md`, golden generated `.tsx`, `preview.html` and a `styles.snapshot.json` style golden (profile is the Stage 2.5 proof-test example: written from these docs alone; favourite = child components, shared-inbox = services/DI/lifecycle, showcase = tokens/theming/snapping, dinacharya-row = the Stage 5 dogfood example: one real Awaken Me row, settings = Stage 6 controls: switch, checkbox, switcher, radio group, icons = Stage 7 icon set: the full set with labels, sizes and colour roles, signup-form = Stage 8 template-driven forms: ngModel, validators, refs, submit, profile-form = Stage 8 reactive forms: FormGroup, formControlName) |
+| `tests/` | `node:test` suites, parser, expressions, codegen, methods, runtime, tokens, catalog/vibe layer, Stage 3 (children, services, HttpClient, preview behaviour via a DOM shim), Stage 4 (token completeness, primitives hex guard, CSS snapping, preview theme toggle, no-em-dash guard), Stage 5 (per-file diagnostics, source maps, watch, init, doctor, style snapshot goldens, preview parity guard, dogfood behaviour), Stage 6 (controls codegen and nesting, settings example, preview behaviour for switch, checkbox, switcher and radio group, switch motion rule), Stage 7 (icon set and validation, icons example, preview parity of the drawn paths, RgIcon primitive), Stage 8 (runtime Validators and form classes, ngModel and refs codegen, reactive ref-held groups, forms diagnostics, signup-form and profile-form examples, preview text entry behaviour via the DOM shim) |
 | `docs/` | `PINPOINT_MAP.md` (design map), `LEARNING_LIST.md` (the 77 things), `BLOCK_DIAGRAM.md` (architecture), `UI_POLISH.md` (polish system), `VIBE_CODING.md` (AI-facing layer + delta tables), `ROADMAP.md` (the approved Stages 6 to 12 plan) |
 | `catalog.json`, `catalog.md` | GENERATED from the code by `rangular catalog`, never hand-edit |
 | `llms.txt` | AI-readable index of the whole repo |
@@ -60,6 +60,24 @@ node dist/packages/cli/src/cli.js init my-app
 # Polish linter: hex colours, off-scale values, loose text, tap targets
 node dist/packages/cli/src/cli.js doctor examples/showcase/showcase.component.ts
 ```
+
+## Forms (Stage 8), the short version
+
+- `<input>` is the one text entry block (`RgInput`). `[(ngModel)]`
+  works on `<input>` only and binds a plain field; anywhere else it
+  is a `GEN_NGMODEL_TARGET` error. Validators are attributes
+  (`required`, `minlength`, `maxlength`, `email`, `pattern`);
+  `type="email"` does not validate, the `email` attribute does.
+- `#name="ngModel"` refs expose `valid` / `invalid` / `touched` /
+  `errors` to template expressions only. `<form (submit)>` plus a
+  `<button type="submit">` is the whole form element; there is no
+  NgForm. Full detail in the Forms section of docs/VIBE_CODING.md.
+- Reactive forms: a field initialised with `new FormGroup(...)` or
+  `new FormControl(...)` (imported from `@angular/forms` in source)
+  is a stable ref-held instance of the runtime classes, bound with
+  `[formGroup]` and `formControlName`. Do not assign such a field in
+  a method, and do not expect `[formControlName]` (binding form) to
+  work; it warns.
 
 ## Golden rules
 

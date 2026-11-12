@@ -1,0 +1,13 @@
+<screen>
+  <appbar title="Profile"></appbar>
+  <card>
+    <form [formGroup]="profileForm" (submit)="save()">
+      <input label="Name" placeholder="Your name" formControlName="name">
+      <p *ngIf="profileForm.get('name').invalid && profileForm.get('name').touched">Name is required.</p>
+      <input label="Email" placeholder="you@example.com" formControlName="email">
+      <p *ngIf="profileForm.get('email').invalid && profileForm.get('email').touched">Enter a valid email address.</p>
+      <button type="submit" [disabled]="profileForm.invalid">Save profile</button>
+    </form>
+    <p *ngIf="summary">Saved: {{ summary }}</p>
+  </card>
+</screen>

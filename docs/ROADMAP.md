@@ -29,9 +29,13 @@ The stage adds an Angular style icon block with a curated set of everyday Materi
 
 ## Stage 8: Forms
 
+Status: built in this change.
+
 Angular ground: the Angular forms guide, covering template driven forms and reactive forms.
 
 The stage adds `[(ngModel)]` two way binding, template driven forms, reactive forms built from form controls and form groups, and the standard validators. Form state, validity and error display follow Angular semantics. The generated React Native code stays an implementation detail under the Angular source.
+
+As built: an `<input>` block compiles to a Material style `RgInput` field. Template driven forms bind with `[(ngModel)]` on inputs only (the `[ngModel]` plus `(ngModelChange)` pair also works), validate with attributes (`required`, `minlength`, `maxlength`, `email`, `pattern`, with Angular error shapes from the runtime `Validators`), and expose `#name="ngModel"` refs (`valid`, `invalid`, `touched`, `errors`) to template expressions. A lightweight `<form (submit)>` element runs its handler from a `<button type="submit">` after marking inputs touched; there is no NgForm object. Reactive forms use runtime `FormControl`, `FormGroup` and `Validators` classes: a group field is a stable ref-held instance bound through `[formGroup]` and `formControlName`, re-rendering through a version counter subscribed to the controls. The signup-form and profile-form examples prove both flavours in the compiler output and in the interactive preview.
 
 ## Stage 9: Routing
 

@@ -34,6 +34,12 @@
   .card .body { margin: 0; font-size: 14px; }
   .btn { display: block; margin: 8px 16px 0; background: var(--primary); color: var(--on-primary); border: none; border-radius: 9999px; padding: 0 24px; min-height: 48px; font-size: 14px; font-weight: 600; cursor: pointer; }
   .btn[disabled] { opacity: .38; cursor: default; }
+  .form { display: flex; flex-direction: column; }
+  .field { display: flex; flex-direction: column; gap: 4px; margin: 8px 16px 0; }
+  .field-label { font-size: 14px; font-weight: 600; color: var(--text-muted); }
+  .field-input { font: inherit; font-size: 16px; color: var(--text); background: var(--role-surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .field-input[disabled] { opacity: .38; }
+  .field-error { color: var(--role-error); font-size: 12px; }
   .switch, .checkbox { display: flex; align-items: center; gap: 12px; width: calc(100% - 32px); margin: 8px 16px 0; padding: 8px 0; background: transparent; border: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
   .switch[disabled], .checkbox[disabled], .switcher-option[disabled], .radio-option[disabled] { opacity: .38; cursor: default; }
   .switch-track { position: relative; width: 52px; height: 32px; flex: 0 0 52px; border: 2px solid var(--border); border-radius: 9999px; background: var(--surface-variant); transition: background-color .16s linear, border-color .16s linear; }
@@ -74,9 +80,10 @@
 <script>
 // Rangular interactive preview runtime (Stage 2).
 // State and methods are live: (click) handlers mutate state and re-render.
-const TEMPLATE = {"type":"root","children":[{"type":"element","tag":"screen","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"element","tag":"appbar","attrs":{"title":"Counter"},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[],"pos":{"line":2,"column":3}},{"type":"element","tag":"h1","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"expr","expression":"count"}],"pos":{"line":3,"column":7}}],"pos":{"line":3,"column":3}},{"type":"element","tag":"p","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"Past five. Keep going"}],"pos":{"line":4,"column":25}}],"pos":{"line":4,"column":3},"structural":{"name":"ngIf","expression":"count >= 5"}},{"type":"element","tag":"button","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[{"name":"click","expression":"increment()"}],"children":[{"type":"text","parts":[{"type":"static","value":"Increment"}],"pos":{"line":5,"column":33}}],"pos":{"line":5,"column":3}},{"type":"element","tag":"button","attrs":{},"booleanAttrs":[],"propBindings":[{"name":"disabled","expression":"count === 0"}],"eventBindings":[{"name":"click","expression":"decrement()"}],"children":[{"type":"text","parts":[{"type":"static","value":"Decrement"}],"pos":{"line":6,"column":58}}],"pos":{"line":6,"column":3}},{"type":"element","tag":"button","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[{"name":"click","expression":"reset()"}],"children":[{"type":"text","parts":[{"type":"static","value":"Reset"}],"pos":{"line":7,"column":29}}],"pos":{"line":7,"column":3}}],"pos":{"line":1,"column":1}}]};
+const TEMPLATE = {"type":"root","children":[{"type":"element","tag":"screen","attrs":{},"booleanAttrs":[],"propBindings":[],"twoWayBindings":[],"eventBindings":[],"children":[{"type":"element","tag":"appbar","attrs":{"title":"Counter"},"booleanAttrs":[],"propBindings":[],"twoWayBindings":[],"eventBindings":[],"children":[],"pos":{"line":2,"column":3}},{"type":"element","tag":"h1","attrs":{},"booleanAttrs":[],"propBindings":[],"twoWayBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"expr","expression":"count"}],"pos":{"line":3,"column":7}}],"pos":{"line":3,"column":3}},{"type":"element","tag":"p","attrs":{},"booleanAttrs":[],"propBindings":[],"twoWayBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"Past five. Keep going"}],"pos":{"line":4,"column":25}}],"pos":{"line":4,"column":3},"structural":{"name":"ngIf","expression":"count >= 5"}},{"type":"element","tag":"button","attrs":{},"booleanAttrs":[],"propBindings":[],"twoWayBindings":[],"eventBindings":[{"name":"click","expression":"increment()"}],"children":[{"type":"text","parts":[{"type":"static","value":"Increment"}],"pos":{"line":5,"column":33}}],"pos":{"line":5,"column":3}},{"type":"element","tag":"button","attrs":{},"booleanAttrs":[],"propBindings":[{"name":"disabled","expression":"count === 0"}],"twoWayBindings":[],"eventBindings":[{"name":"click","expression":"decrement()"}],"children":[{"type":"text","parts":[{"type":"static","value":"Decrement"}],"pos":{"line":6,"column":58}}],"pos":{"line":6,"column":3}},{"type":"element","tag":"button","attrs":{},"booleanAttrs":[],"propBindings":[],"twoWayBindings":[],"eventBindings":[{"name":"click","expression":"reset()"}],"children":[{"type":"text","parts":[{"type":"static","value":"Reset"}],"pos":{"line":7,"column":29}}],"pos":{"line":7,"column":3}}],"pos":{"line":1,"column":1}}]};
 const ICONS = {"menu":["M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"],"search":["M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"],"close":["M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"],"check":["M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"],"chevron-left":["M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"],"chevron-right":["M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"],"arrow-left":["M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"],"arrow-right":["M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"],"plus":["M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"],"minus":["M19 13H5v-2h14v2z"],"bell":["M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"],"heart":["M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"],"star":["M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"],"settings":["M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"],"home":["M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"],"person":["M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"],"calendar":["M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"],"alarm":["M22 5.72l-4.6-3.86-1.29 1.53 4.6 3.86L22 5.72zM7.88 3.39L6.6 1.86 2 5.71l1.29 1.53 4.59-3.85zM12.5 8H11v6l4.75 2.85.75-1.23-4-2.37V8zM12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9c4.97 0 9-4.03 9-9s-4.03-9-9-9z"],"play":["M8 5v14l11-7z"],"pause":["M6 19h4V5H6v14zm8-14v14h4V5h-4z"],"edit":["M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"],"delete":["M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"],"share":["M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"],"info":["M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"],"warning":["M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"],"mail":["M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"],"sun":["M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm-1 16.95h2V19.5h-2v2.95zm-7.45-3.91l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z"]};
 const state = {"count":0};
+const FORM_INITS = {};
 const methods = {
   increment: function () {
 state.count++;
@@ -237,6 +244,14 @@ function __eval(e, scope) {
     case 'literal': return e.value;
     case 'identifier': return scope[e.name];
     case 'member': {
+      // Template references (Stage 8): a member chain rooted at an
+      // ngModel ref name reads the ref's live validation object.
+      if (e.object.type === 'identifier' && scope.__refs
+        && Object.prototype.hasOwnProperty.call(scope.__refs, e.object.name)) {
+        var ro = scope.__refs[e.object.name];
+        if (ro === null || ro === undefined) return undefined;
+        return ro[e.property];
+      }
       var o = __eval(e.object, scope);
       if (o === null || o === undefined) return undefined;
       return o[e.property];
@@ -293,11 +308,18 @@ function __eval(e, scope) {
   }
 }
 function __evalSrc(src, scope) { return __eval(__parse(src), scope); }
+var __rootTouched = {};
 function __scope(extra) {
   var s = {}, k;
   for (k in state) s[k] = state[k];
   for (k in methods) s[k] = methods[k];
   if (extra) for (k in extra) s[k] = extra[k];
+  // Forms channels (Stage 8): __state is the backing store ngModel
+  // writes land in (scopes are copies), __touched persists per input
+  // across re-renders, __refs carries the live ngModel ref objects.
+  s.__state = state;
+  s.__touched = __rootTouched;
+  s.__refs = __refsFor(TEMPLATE.children, state, __rootTouched, s);
   return s;
 }
 function __extend(scope, extra) {
@@ -331,14 +353,14 @@ function __parseNgFor(expr) {
   }
   return parts;
 }
-function __buildNodes(nodes, scope, path) {
+function __buildNodes(nodes, scope, path, form) {
   var out = [];
   nodes.forEach(function (n, i) {
-    __buildNode(n, scope, path + '/' + i).forEach(function (d) { out.push(d); });
+    __buildNode(n, scope, path + '/' + i, form).forEach(function (d) { out.push(d); });
   });
   return out;
 }
-function __buildNode(node, scope, path) {
+function __buildNode(node, scope, path, form) {
   if (node.type === 'text') {
     var txt = '';
     node.parts.forEach(function (p) {
@@ -352,19 +374,19 @@ function __buildNode(node, scope, path) {
     });
     return [document.createTextNode(txt)];
   }
-  return __buildElement(node, scope, path);
+  return __buildElement(node, scope, path, form);
 }
-function __buildElement(el, scope, path) {
+function __buildElement(el, scope, path, form) {
   if (el.structural && el.structural.name === 'ngIf') {
     var cond;
     try { cond = __evalSrc(el.structural.expression.split(';')[0].trim(), scope); }
     catch (err) { console.warn(err); cond = false; }
     if (!cond) return [];
-    return __buildCore(el, scope, path);
+    return __buildCore(el, scope, path, form);
   }
   if (el.structural && el.structural.name === 'ngFor') {
     var parts = __parseNgFor(el.structural.expression);
-    if (!parts) { console.warn('preview: unparseable *ngFor'); return __buildCore(el, scope, path); }
+    if (!parts) { console.warn('preview: unparseable *ngFor'); return __buildCore(el, scope, path, form); }
     var items;
     try { items = __evalSrc(parts.source, scope); }
     catch (err) { console.warn(err); items = []; }
@@ -374,11 +396,11 @@ function __buildElement(el, scope, path) {
       var extra = {};
       extra[parts.item] = items[idx];
       if (parts.index) extra[parts.index] = idx;
-      __buildCore(el, __extend(scope, extra), path + '/for' + idx).forEach(function (d) { out.push(d); });
+      __buildCore(el, __extend(scope, extra), path + '/for' + idx, form).forEach(function (d) { out.push(d); });
     }
     return out;
   }
-  return __buildCore(el, scope, path);
+  return __buildCore(el, scope, path, form);
 }
 function __attachEvents(dom, el, scope) {
   el.eventBindings.forEach(function (ev) {
@@ -453,9 +475,363 @@ function __runChange(el, scope, value) {
   });
   __render();
 }
-function __buildCore(el, scope, path) {
+// Forms runtime (Stage 8). Plain-JS mirrors of the @rangular/runtime
+// forms core (Validators, FormControl, FormGroup semantics and error
+// shapes), plus the mini evaluator for form field initializers and the
+// ngModel ref builder. The preview never uses eval on author code: the
+// initializer shapes are parsed by hand, like everything else here.
+function __isEmptyValue(v) {
+  return v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0);
+}
+function __valueLength(v) {
+  return (typeof v === 'string' || Array.isArray(v)) ? v.length : String(v).length;
+}
+var __Validators = {
+  required: function (v) { return __isEmptyValue(v) ? { required: true } : null; },
+  minLength: function (n) {
+    return function (v) {
+      if (__isEmptyValue(v)) return null;
+      var len = __valueLength(v);
+      return len < n ? { minlength: { requiredLength: n, actualLength: len } } : null;
+    };
+  },
+  maxLength: function (n) {
+    return function (v) {
+      if (__isEmptyValue(v)) return null;
+      var len = __valueLength(v);
+      return len > n ? { maxlength: { requiredLength: n, actualLength: len } } : null;
+    };
+  },
+  email: function (v) {
+    if (__isEmptyValue(v)) return null;
+    return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/.test(String(v)) ? null : { email: true };
+  },
+  pattern: function (p) {
+    var rp = String(p);
+    if (rp.charAt(0) !== '^') rp = '^' + rp;
+    if (rp.charAt(rp.length - 1) !== '$') rp = rp + '$';
+    var re = new RegExp(rp);
+    return function (v) {
+      if (__isEmptyValue(v)) return null;
+      return re.test(String(v)) ? null : { pattern: { requiredPattern: rp, actualValue: v } };
+    };
+  }
+};
+function __validateValue(value, fns) {
+  var merged = null;
+  (fns || []).forEach(function (fn) {
+    var errs = fn(value);
+    if (errs) {
+      merged = merged || {};
+      Object.keys(errs).forEach(function (k) { merged[k] = errs[k]; });
+    }
+  });
+  return merged;
+}
+function __validatorsOf(el, scope) {
+  var fns = [];
+  function argOf(attr, binding) {
+    var b = __binding(el, binding, scope);
+    if (b !== undefined) return b;
+    var a = el.attrs[attr];
+    if (a === undefined) return undefined;
+    return isNaN(Number(a)) ? a : Number(a);
+  }
+  if (el.booleanAttrs.indexOf('required') >= 0
+    || (el.attrs['required'] !== undefined && el.attrs['required'] !== 'false')) fns.push(__Validators.required);
+  var min = argOf('minlength', 'minlength');
+  if (min !== undefined) fns.push(__Validators.minLength(min));
+  var max = argOf('maxlength', 'maxlength');
+  if (max !== undefined) fns.push(__Validators.maxLength(max));
+  if (el.booleanAttrs.indexOf('email') >= 0
+    || (el.attrs['email'] !== undefined && el.attrs['email'] !== 'false')) fns.push(__Validators.email);
+  var pat = argOf('pattern', 'pattern');
+  if (pat !== undefined) fns.push(__Validators.pattern(pat));
+  return fns;
+}
+function __makeControl(args) {
+  var spec = args.length > 1 ? args[1] : null;
+  var c = {
+    value: args.length ? args[0] : null,
+    touched: false,
+    dirty: false,
+    errors: null,
+    __validators: spec === null || spec === undefined ? [] : (Array.isArray(spec) ? spec : [spec]),
+    setValue: function (v) {
+      c.value = v;
+      c.dirty = true;
+      c.errors = __validateValue(c.value, c.__validators);
+    },
+    markAsTouched: function () { c.touched = true; }
+  };
+  c.errors = __validateValue(c.value, c.__validators);
+  Object.defineProperty(c, 'valid', { get: function () { return c.errors === null; } });
+  Object.defineProperty(c, 'invalid', { get: function () { return c.errors !== null; } });
+  return c;
+}
+function __makeGroup(controls) {
+  var g = {
+    controls: controls || {},
+    get: function (name) { return g.controls[name]; },
+    markAllAsTouched: function () {
+      Object.keys(g.controls).forEach(function (k) { g.controls[k].markAsTouched(); });
+    }
+  };
+  Object.defineProperty(g, 'value', {
+    get: function () {
+      var out = {};
+      Object.keys(g.controls).forEach(function (k) { out[k] = g.controls[k].value; });
+      return out;
+    }
+  });
+  Object.defineProperty(g, 'valid', {
+    get: function () {
+      return Object.keys(g.controls).every(function (k) { return g.controls[k].valid; });
+    }
+  });
+  Object.defineProperty(g, 'invalid', { get: function () { return !g.valid; } });
+  Object.defineProperty(g, 'touched', {
+    get: function () {
+      return Object.keys(g.controls).some(function (k) { return g.controls[k].touched; });
+    }
+  });
+  return g;
+}
+function __evalFormInit(src) {
+  var s = String(src), i = 0;
+  function ws() { while (i < s.length && /\s/.test(s[i])) i++; }
+  function parseArgs() {
+    ws();
+    var args = [];
+    if (s[i] === '(') {
+      i++;
+      ws();
+      if (s[i] !== ')') {
+        for (;;) {
+          args.push(parseValue());
+          ws();
+          if (s[i] === ',') { i++; ws(); if (s[i] === ')') break; continue; }
+          break;
+        }
+      }
+      ws();
+      if (s[i] === ')') i++;
+    }
+    return args;
+  }
+  function parseValue() {
+    ws();
+    var ch = s[i];
+    if (ch === "'" || ch === '"') {
+      var j = i + 1, v = '';
+      while (j < s.length && s[j] !== ch) {
+        if (s[j] === '\\' && j + 1 < s.length) { v += s[j + 1]; j += 2; }
+        else { v += s[j]; j++; }
+      }
+      i = j + 1;
+      return v;
+    }
+    if (ch === '[') {
+      i++;
+      var arr = [];
+      ws();
+      if (s[i] !== ']') {
+        for (;;) {
+          arr.push(parseValue());
+          ws();
+          if (s[i] === ',') { i++; ws(); if (s[i] === ']') break; continue; }
+          break;
+        }
+      }
+      ws();
+      if (s[i] === ']') i++;
+      return arr;
+    }
+    if (ch === '{') {
+      i++;
+      var obj = {};
+      ws();
+      if (s[i] !== '}') {
+        for (;;) {
+          ws();
+          if (s[i] === '}') break;
+          var key;
+          if (s[i] === "'" || s[i] === '"') key = parseValue();
+          else {
+            var km = /^[A-Za-z_$][\w$]*/.exec(s.slice(i));
+            if (!km) throw new Error('preview: bad key in form initializer');
+            key = km[0];
+            i += km[0].length;
+          }
+          ws();
+          if (s[i] === ':') i++;
+          obj[key] = parseValue();
+          ws();
+          if (s[i] === ',') { i++; continue; }
+          break;
+        }
+      }
+      ws();
+      if (s[i] === '}') i++;
+      return obj;
+    }
+    if (s.substr(i, 3) === 'new' && !/[A-Za-z0-9_$]/.test(s[i + 3] || '')) {
+      i += 3;
+      ws();
+      var nm = /^[A-Za-z_$][\w$]*/.exec(s.slice(i));
+      if (!nm) throw new Error('preview: bad form initializer');
+      i += nm[0].length;
+      var args = parseArgs();
+      if (nm[0] === 'FormControl') return __makeControl(args);
+      if (nm[0] === 'FormGroup') return __makeGroup(args[0]);
+      throw new Error('preview: unsupported form initializer ' + nm[0]);
+    }
+    var idm = /^[A-Za-z_$][\w$]*/.exec(s.slice(i));
+    if (idm) {
+      var name = idm[0];
+      i += name.length;
+      if (name === 'true') return true;
+      if (name === 'false') return false;
+      if (name === 'null') return null;
+      if (name === 'Validators') {
+        ws();
+        if (s[i] === '.') {
+          i++;
+          var vm = /^[A-Za-z_$][\w$]*/.exec(s.slice(i));
+          if (!vm) throw new Error('preview: bad Validators reference');
+          i += vm[0].length;
+          ws();
+          if (s[i] === '(') {
+            var vargs = parseArgs();
+            return __Validators[vm[0]].apply(null, vargs);
+          }
+          return __Validators[vm[0]];
+        }
+      }
+      throw new Error('preview: unsupported identifier in form initializer: ' + name);
+    }
+    var num = /^-?\d+(\.\d+)?/.exec(s.slice(i));
+    if (num) { i += num[0].length; return Number(num[0]); }
+    throw new Error('preview: cannot evaluate form initializer');
+  }
+  try {
+    return parseValue();
+  } catch (err) {
+    console.warn(err);
+    return undefined;
+  }
+}
+function __refsFor(nodes, stateObj, touched, scope) {
+  var refs = {};
+  function walk(list) {
+    (list || []).forEach(function (n) {
+      if (n.type !== 'element') return;
+      if (COMPONENTS[n.tag]) return;
+      if (n.tag === 'input' && n.ref && n.refExport === 'ngModel') {
+        var expr = null;
+        (n.twoWayBindings || []).forEach(function (b) { if (b.name === 'ngModel') expr = b.expression; });
+        if (!expr) n.propBindings.forEach(function (b) { if (b.name === 'ngModel') expr = b.expression; });
+        if (expr && /^[A-Za-z_$][\w$]*$/.test(expr.trim())) {
+          var field = expr.trim();
+          var errs = __validateValue(stateObj[field], __validatorsOf(n, scope));
+          refs[n.ref] = {
+            value: stateObj[field], errors: errs,
+            valid: errs === null, invalid: errs !== null,
+            touched: !!touched[n.ref]
+          };
+        }
+      }
+      walk(n.children);
+    });
+  }
+  walk(nodes);
+  return refs;
+}
+function __formCtx(el, scope) {
+  var ctx = { submit: null, group: null, touchedKeys: [], touched: (scope && scope.__touched) || {} };
+  el.eventBindings.forEach(function (ev) {
+    if (ev.name === 'submit' || ev.name === 'ngSubmit') ctx.submit = ev;
+  });
+  var g = __binding(el, 'formGroup', scope);
+  if (g !== undefined && g !== null) ctx.group = g;
+  return ctx;
+}
+function __buildInput(el, scope, form) {
+  var wrap = document.createElement('div');
+  wrap.className = 'field';
+  var labelText = __attr(el, 'label', scope);
+  if (labelText) {
+    var ls = document.createElement('span');
+    ls.className = 'field-label';
+    ls.textContent = String(labelText);
+    wrap.appendChild(ls);
+  }
+  var input = document.createElement('input');
+  input.className = 'field-input';
+  var typeAttr = el.attrs['type'];
+  input.type = typeAttr === 'password' ? 'password' : typeAttr === 'email' ? 'email' : typeAttr === 'number' ? 'number' : 'text';
+  var ph = __attr(el, 'placeholder', scope);
+  if (ph) input.setAttribute('placeholder', String(ph));
+  var fcn = el.attrs['formControlName'];
+  var control = null;
+  if (fcn !== undefined && form && form.group && form.group.get) control = form.group.get(fcn);
+  var tw = null, pair = null;
+  (el.twoWayBindings || []).forEach(function (b) { if (b.name === 'ngModel') tw = b; });
+  el.propBindings.forEach(function (b) { if (b.name === 'ngModel') pair = b; });
+  var model = tw || pair;
+  var field = null;
+  if (model && /^[A-Za-z_$][\w$]*$/.test(model.expression.trim())) field = model.expression.trim();
+  var value;
+  if (control) value = control.value;
+  else if (model) {
+    try { value = __evalSrc(model.expression, scope); }
+    catch (err) { console.warn(err); value = undefined; }
+  } else {
+    var vb = __binding(el, 'value', scope);
+    value = vb !== undefined ? vb : el.attrs['value'];
+  }
+  input.value = value === undefined || value === null ? '' : String(value);
+  if (__truthy(__controlValue(el, 'disabled', scope))) input.disabled = true;
+  var touchedKey = el.ref || field;
+  if (form && field && touchedKey && form.touchedKeys.indexOf(touchedKey) < 0) form.touchedKeys.push(touchedKey);
+  input.addEventListener('input', function () {
+    var v = input.value;
+    if (control) control.setValue(v);
+    if (tw && field && scope.__state) scope.__state[field] = v;
+    el.eventBindings.forEach(function (ev) {
+      if (ev.name === 'ngModelChange' || ev.name === 'input') __runHandler(ev.expression, scope, v);
+    });
+    __render();
+  });
+  input.addEventListener('change', function () {
+    el.eventBindings.forEach(function (ev) {
+      if (ev.name === 'change') __runHandler(ev.expression, scope, input.value);
+    });
+    __render();
+  });
+  input.addEventListener('blur', function () {
+    if (control) control.markAsTouched();
+    if (field && scope.__touched && touchedKey) scope.__touched[touchedKey] = true;
+    el.eventBindings.forEach(function (ev) {
+      if (ev.name === 'blur') __runHandler(ev.expression, scope, undefined);
+    });
+    __render();
+  });
+  wrap.appendChild(input);
+  var errText = __attr(el, 'error', scope);
+  if (errText) {
+    var es = document.createElement('span');
+    es.className = 'field-error';
+    es.textContent = String(errText);
+    wrap.appendChild(es);
+  }
+  return wrap;
+}
+function __buildCore(el, scope, path, form) {
   if (COMPONENTS[el.tag]) return __buildChild(el, scope, path);
-  var kids = __buildNodes(el.children, scope, path);
+  var kidsForm = form;
+  if (el.tag === 'form') kidsForm = __formCtx(el, scope);
+  var kids = __buildNodes(el.children, scope, path, kidsForm);
   function wrap(tag, cls) {
     var d = document.createElement(tag);
     if (cls) d.className = cls;
@@ -491,12 +867,30 @@ function __buildCore(el, scope, path) {
       return sp;
     }
     case 'card': return wrap('section', 'card');
+    case 'form': return wrap('div', 'form');
+    case 'input': return [__buildInput(el, scope, form)];
     case 'button': {
       var b = document.createElement('button');
       b.className = 'btn';
       if (__binding(el, 'disabled', scope)) b.disabled = true;
       kids.forEach(function (k) { b.appendChild(k); });
-      __attachEvents(b, el, scope);
+      // Form submit (Stage 8): a submit button inside a form with a
+      // (submit) handler runs that handler, first marking every ngModel
+      // input touched (and every control of a reactive group), the
+      // same composition the compiler generates.
+      var hasClick = false;
+      el.eventBindings.forEach(function (ev) { if (ev.name === 'click') hasClick = true; });
+      if (el.attrs['type'] === 'submit' && form && form.submit && !hasClick) {
+        b.addEventListener('click', function () {
+          if (b.disabled) return;
+          form.touchedKeys.forEach(function (k) { form.touched[k] = true; });
+          if (form.group && form.group.markAllAsTouched) form.group.markAllAsTouched();
+          __runHandler(form.submit.expression, scope, undefined);
+          __render();
+        });
+      } else {
+        __attachEvents(b, el, scope);
+      }
       return [b];
     }
     case 'switch': {
@@ -548,7 +942,7 @@ function __buildCore(el, scope, path) {
         var segment = document.createElement('button');
         segment.type = 'button';
         segment.className = 'switcher-option' + (String(switcherValue) === String(optionValue) ? ' selected' : '');
-        __buildNodes(child.children, scope, path + '/option' + childIndex).forEach(function (k) { segment.appendChild(k); });
+        __buildNodes(child.children, scope, path + '/option' + childIndex, kidsForm).forEach(function (k) { segment.appendChild(k); });
         if (switcherDisabled) segment.disabled = true;
         else segment.addEventListener('click', function () { __runChange(el, scope, optionValue); });
         switcher.appendChild(segment);
@@ -577,7 +971,7 @@ function __buildCore(el, scope, path) {
         choice.appendChild(circle);
         var choiceLabel = document.createElement('span');
         choiceLabel.className = 'control-label';
-        __buildNodes(child.children, scope, path + '/radio' + childIndex).forEach(function (k) { choiceLabel.appendChild(k); });
+        __buildNodes(child.children, scope, path + '/radio' + childIndex, kidsForm).forEach(function (k) { choiceLabel.appendChild(k); });
         choice.appendChild(choiceLabel);
         if (radioDisabled) choice.disabled = true;
         else choice.addEventListener('click', function () { __runChange(el, scope, choiceValue); });
@@ -683,8 +1077,9 @@ function __childInstance(path, def, props) {
   if (!inst) {
     var st = {};
     Object.keys(def.state).forEach(function (k) { st[k] = def.state[k]; });
-    inst = { state: st, props: {}, methods: {}, fresh: true };
+    inst = { state: st, props: {}, methods: {}, fresh: true, touched: {} };
     Object.keys(def.deps).forEach(function (k) { st[k] = __resolveDep(def.deps[k]); });
+    Object.keys(def.formInits || {}).forEach(function (k) { st[k] = __evalFormInit(def.formInits[k]); });
     inst.methods = __bind(def, inst);
     __instances[path] = inst;
   }
@@ -692,10 +1087,14 @@ function __childInstance(path, def, props) {
   def.inputs.forEach(function (n) { if (n in props) inst.state[n] = props[n]; });
   return inst;
 }
-function __childScope(inst) {
+function __childScope(inst, def) {
   var s = {}, k;
   for (k in inst.state) s[k] = inst.state[k];
   for (k in inst.methods) s[k] = inst.methods[k];
+  // Forms channels (Stage 8), the child instance's own stores.
+  s.__state = inst.state;
+  s.__touched = inst.touched;
+  s.__refs = def ? __refsFor(def.template.children, inst.state, inst.touched, s) : {};
   return s;
 }
 function __buildChild(el, scope, path) {
@@ -720,7 +1119,7 @@ function __buildChild(el, scope, path) {
     inst.fresh = false;
     if (def.onInit && inst.methods[def.onInit]) inst.methods[def.onInit]();
   }
-  var nodes = __buildNodes(def.template.children, __childScope(inst), path);
+  var nodes = __buildNodes(def.template.children, __childScope(inst, def), path);
   var domEvents = el.eventBindings.filter(function (ev) { return def.outputs.indexOf(ev.name) < 0; });
   if (domEvents.length && nodes[0] && nodes[0].addEventListener) {
     __attachEvents(nodes[0], { eventBindings: domEvents }, scope);

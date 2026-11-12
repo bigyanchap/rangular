@@ -66,13 +66,15 @@ the repo's actual behaviour today (Stage 3), not aspirations.
 | Lifecycle hooks (`ngOnInit`, `ngOnDestroy`) | Wired (Stage 3): `ngOnInit` runs once after first render, `ngOnDestroy` on unmount, `useEffect(..., [])` and its cleanup in generated code |
 | `HttpClient.get(url)` returning an Observable you `subscribe` to | Wired with a subset (Stage 3): an Observable-lite with `subscribe(next?, error?)` only; the supported component shape is `this.http.get(url).subscribe((data) => { this.field = data; });` |
 | Angular Material selection controls | Wired (Stage 6): `switch` mirrors `mat-slide-toggle`, `checkbox` mirrors `mat-checkbox`, `switcher` with `option` mirrors `mat-button-toggle-group`, and `radio-group` with `radio` mirrors `mat-radio-group`; all use `[checked]` or `[value]` in and `(change)` out with the next value as `$event` |
+| Template-driven forms (`[(ngModel)]`, validators as attributes, `#name="ngModel"` refs) | Wired (Stage 8) on `<input>` only: `[(ngModel)]` writes back through the field's state setter, the explicit `[ngModel]` plus `(ngModelChange)` pair works, `required` / `minlength` / `maxlength` / `email` / `pattern` attributes validate with Angular's error shapes, and refs expose `valid` / `invalid` / `touched` / `errors` to template expressions. See the Forms section below for the exact limits |
+| Reactive forms (`FormGroup`, `FormControl`, `Validators` from `@angular/forms`) | Wired (Stage 8): the classes are runtime classes, a group field is a stable ref-held instance, `[formGroup]` plus `formControlName` binds controls, and `profileForm.get('email')` evaluates in template expressions. See the Forms section below |
+| `<form (submit)="save()">` | Wired (Stage 8) as a lightweight form element: a `<button type="submit">` inside calls the handler after marking every ngModel input touched (and `markAllAsTouched()` on a reactive group). There is no NgForm object |
 
 **Not supported yet**: do not use these in Rangular source today:
 
 | Angular feature | Status today | Planned |
 |---|---|---|
-| `[(ngModel)]` / forms | Not supported. `[(x)]` syntax is *parsed* but degrades to a one-way `[x]` prop binding, no write-back, no forms model | Stage 8 |
-| Two-way binding `[(...)]` generally | Same as above: one-way prop binding only, no change event is generated for ordinary elements; Stage 6 controls use the explicit `[value]` plus `(change)` pattern instead | Stage 8 |
+| Two-way binding `[(x)]` beyond ngModel | Only `[(ngModel)]` on `<input>` is a real two-way binding (Stage 8). Any other `[(x)]` is *parsed* but degrades to a one-way `[x]` prop binding with no write-back; Stage 6 controls use the explicit `[value]` plus `(change)` pattern instead | Not planned beyond ngModel |
 | Routing (`@angular/router`, `<router-outlet>`) | Not supported, no router exists; a dashed/unknown tag is passed through or warns. The Stage 6 `switcher` is view state inside one screen, never a router | Stage 9 (map to native navigation) |
 | NgModules (`@NgModule`, `providers` arrays, module-scoped DI) | Not supported, resolution is import-based instead: `@Component` classes are entry points, and `@Injectable({ providedIn: 'root' })` classes are the injectable services (Stage 3). An `@NgModule` file errors with `CLS_NO_COMPONENT`; an `@Injectable` without `providedIn: 'root'` is not registered, so injecting it is a `DI_UNKNOWN_TOKEN` error | Not planned as modules |
 | Component constructor *bodies* | Not translated, only constructor parameter properties are read (they are the DI declarations). Do one-time setup in `ngOnInit` instead | Not planned |
@@ -216,6 +218,97 @@ from one curated set of Material style icons:
 - **Not in this stage.** Custom project icons (registering your own
   path data) come later. Today the curated set is the whole set. See
   `examples/icons/` and its recipe card.
+
+## Forms (Stage 8)
+
+Forms work the Angular way, in both flavours, with the boundaries
+stated plainly. Text entry is one block: `<input>` compiles to the
+`RgInput` primitive, a Material style field (label above the field,
+an outlined box from the tokens, an error line under it in the error
+colour).
+
+**A. The input block.** Attributes: `value` or `[value]`,
+`placeholder`, `label`, `error` (a static message or an `[error]`
+binding shown under the field), `[disabled]`. `type` picks the form
+of the field: `type="password"` is a secure entry, `type="email"`
+an email keyboard, `type="number"` a numeric keyboard. Events:
+`(input)` and `(change)` both deliver the text as `$event` to the
+`onChangeText` wiring, and `(blur)` maps to `onBlur`.
+
+**B. Template-driven binding.** On `<input>` only:
+
+- `[(ngModel)]="email"` compiles to `value={email}` plus a write
+  back into the field's state setter. The bound field becomes state
+  by definition. Bind to a plain field with a literal initial value;
+  a member path (`user.name`) warns `GEN_NGMODEL_EXPR` and binds one
+  way.
+- The explicit pair works too: `[ngModel]="email"` with
+  `(ngModelChange)="onEmail($event)"`.
+- ngModel anywhere else is a `GEN_NGMODEL_TARGET` error: selection
+  controls already have their `[checked]` / `[value]` plus
+  `(change)` contract, and this version does not grow a second one.
+- `ngModelOptions` is accepted and ignored. There is no form
+  registry to opt out of.
+
+**C. The form element and validation.** `<form (submit)="save()">`
+is a plain wrapper; a `<button type="submit">` statically inside it
+calls the submit handler, and a button with its own `(click)` keeps
+that click instead. Validators are attributes on the input:
+`required`, `minlength="3"`, `maxlength`, `email`, `pattern="..."`.
+Two Angular details hold exactly: `type="email"` does NOT imply the
+email validator (write the `email` attribute), and every validator
+except `required` passes an empty value. Errors are the runtime
+`Validators` results, in Angular's shapes (`{ required: true }`,
+`{ minlength: { requiredLength, actualLength } }`,
+`{ email: true }`, `{ pattern: { requiredPattern, actualValue } }`).
+
+- **Template references.** `#email="ngModel"` on an ngModel input
+  exposes `email.value`, `email.valid`, `email.invalid`,
+  `email.touched` and `email.errors` to TEMPLATE expressions only:
+  interpolation, `*ngIf`, `[disabled]`. Method bodies do not see
+  refs. The generated code materialises each ref as a small model
+  object next to the input's state; the preview computes the same
+  object.
+- **Touched.** An input becomes touched on blur. A submit attempt
+  marks every ngModel input in the form touched, so the standard
+  error pattern `<p *ngIf="email.invalid && email.touched">` shows
+  errors on save even for fields the user never visited, and tracks
+  validity live afterwards.
+- **Not built:** NgForm machinery. No `form.valid` over a
+  template-driven form, no `(ngSubmit)` event object, no control
+  registry. Gate the submit button with the refs.
+
+**D. Reactive forms.** `FormControl`, `FormGroup` and `Validators`
+imported from `@angular/forms` in source are the runtime classes of
+the same names. A field initialised with `new FormGroup(...)` or
+`new FormControl(...)` is a stable instance: the generated component
+holds it in a `useRef`, reads it as `profileFormRef.current`, and
+re-renders through a version counter subscribed to every control's
+`valueChanges`. The template surface is `[formGroup]="profileForm"`
+on the `<form>` and `formControlName="email"` on inputs (a static
+attribute; an unknown control name is a `GEN_FORM_CONTROL` error
+listing the group's controls). `profileForm.get('email')` evaluates
+in template expressions, generated code and preview alike, because
+the instance is real in all three. `(submit)` on a reactive form
+marks all controls touched, then calls the handler; handlers read
+`this.profileForm.value` and `.valid` as plain member reads.
+
+- **Preview initializer subset.** The preview builds the group by
+  evaluating the field initializer with a small hand-written
+  evaluator (no eval): literal initial values, `Validators.x`
+  references, validator calls like `Validators.minLength(3)`,
+  validator arrays, trailing commas, and a `FormGroup` object of
+  `FormControl`s. Anything richer warns `GEN_FORM_INITIALIZER`: the
+  generated app still runs the initializer verbatim, only the
+  preview cannot build the instance.
+- **Not built:** group-level validators (a group's `errors` is null
+  and its validity is all-controls-valid), `FormArray`, async
+  validators, `FormBuilder`, value changes streams beyond each
+  control's `valueChanges`, and template binding for a standalone
+  `FormControl` field (no `[formControl]` surface yet).
+
+See `examples/signup-form/` (template-driven) and
+`examples/profile-form/` (reactive) and their recipe cards.
 
 ## Child components (Stage 3, M5)
 

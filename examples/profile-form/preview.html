@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rangular preview: app-profile-form</title>
+<style>
+  * { box-sizing: border-box; }
+  /* Stage 4: every colour below resolves through these variables. The
+     declared theme is the default; the Light/Dark toggle in the preview
+     chrome flips data-theme on <html> and the other palette takes over,
+     the same token swap a generated app does with RgScreen theme. */
+  :root { --screen-bg: #ffffff; --surface-variant: #f0f4f9; --text: #1f1f1f; --text-muted: #5f6368; --primary: #0b57d0; --on-primary: #ffffff; --primary-container: #d3e3fd; --on-primary-container: #041e49; --border: #dadce0; --avatar: #7b1fa2; --on-avatar: #ffffff; --role-primary: #0b57d0; --role-on-primary: #ffffff; --role-primary-container: #d3e3fd; --role-on-primary-container: #041e49; --role-secondary: #00639b; --role-secondary-container: #cde6ff; --role-on-secondary-container: #001d32; --role-accent: #0b57d0; --role-background: #ffffff; --role-surface: #ffffff; --role-surface-variant: #f0f4f9; --role-on-surface: #1f1f1f; --role-on-surface-variant: #5f6368; --role-text: #1f1f1f; --role-text-muted: #5f6368; --role-error: #b3261e; --role-on-error: #ffffff; --role-danger: #b3261e; --role-border: #dadce0; --role-outline: #747775; --role-scrim: #000000; --role-avatar: #7b1fa2; --role-on-avatar: #ffffff; }
+  html[data-theme="light"] { --screen-bg: #ffffff; --surface-variant: #f0f4f9; --text: #1f1f1f; --text-muted: #5f6368; --primary: #0b57d0; --on-primary: #ffffff; --primary-container: #d3e3fd; --on-primary-container: #041e49; --border: #dadce0; --avatar: #7b1fa2; --on-avatar: #ffffff; --role-primary: #0b57d0; --role-on-primary: #ffffff; --role-primary-container: #d3e3fd; --role-on-primary-container: #041e49; --role-secondary: #00639b; --role-secondary-container: #cde6ff; --role-on-secondary-container: #001d32; --role-accent: #0b57d0; --role-background: #ffffff; --role-surface: #ffffff; --role-surface-variant: #f0f4f9; --role-on-surface: #1f1f1f; --role-on-surface-variant: #5f6368; --role-text: #1f1f1f; --role-text-muted: #5f6368; --role-error: #b3261e; --role-on-error: #ffffff; --role-danger: #b3261e; --role-border: #dadce0; --role-outline: #747775; --role-scrim: #000000; --role-avatar: #7b1fa2; --role-on-avatar: #ffffff; }
+  html[data-theme="dark"] { --screen-bg: #131314; --surface-variant: #282a2c; --text: #e3e3e3; --text-muted: #9aa0a6; --primary: #a8c7fa; --on-primary: #062e6f; --primary-container: #004a77; --on-primary-container: #d3e3fd; --border: #444746; --avatar: #d0bcff; --on-avatar: #381e72; --role-primary: #a8c7fa; --role-on-primary: #062e6f; --role-primary-container: #004a77; --role-on-primary-container: #d3e3fd; --role-secondary: #8ecbf2; --role-secondary-container: #004b70; --role-on-secondary-container: #cde6ff; --role-accent: #a8c7fa; --role-background: #131314; --role-surface: #1e1f20; --role-surface-variant: #282a2c; --role-on-surface: #e3e3e3; --role-on-surface-variant: #9aa0a6; --role-text: #e3e3e3; --role-text-muted: #9aa0a6; --role-error: #f2b8b5; --role-on-error: #601410; --role-danger: #f2b8b5; --role-border: #444746; --role-outline: #8e918f; --role-scrim: #000000; --role-avatar: #d0bcff; --role-on-avatar: #381e72; }
+  body { margin: 0; font-family: Roboto, system-ui, sans-serif; background: #e8eaed; display: flex; flex-direction: column; align-items: center; padding: 24px 12px; }
+  .preview-chrome { width: 360px; max-width: 100%; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 13px; color: #444746; }
+  .preview-chrome button { background: #ffffff; color: #0b57d0; border: 1px solid #dadce0; border-radius: 9999px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .screen { width: 360px; max-width: 100%; min-height: 640px; background: var(--screen-bg); color: var(--text); border-radius: 28px; overflow: hidden; box-shadow: 0 10px 28px rgba(0,0,0,.18); padding-bottom: 24px; }
+  .appbar { display: flex; align-items: center; gap: 12px; margin: 12px; background: var(--surface-variant); border-radius: 9999px; padding: 10px 16px; }
+  .search { flex: 1; color: var(--text-muted); font-size: 14px; }
+  .appbar-title { flex: 1; font-size: 20px; font-weight: 600; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--avatar); color: var(--on-avatar); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+  .avatar-lg { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; }
+  .icon { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+  .icon svg { display: block; }
+  .display { font-size: 32px; line-height: 40px; font-weight: 700; margin: 16px 16px 8px; }
+  .heading { font-size: 24px; line-height: 32px; font-weight: 700; margin: 0 0 8px; }
+  .title { font-size: 20px; line-height: 28px; font-weight: 600; margin: 0 0 8px; }
+  .body { font-size: 16px; line-height: 24px; color: var(--text-muted); margin: 0 16px 16px; }
+  .label { display: block; font-size: 14px; line-height: 20px; font-weight: 600; letter-spacing: .4px; margin: 0 16px 8px; }
+  .badge { display: inline-block; background: var(--primary-container); color: var(--on-primary-container); border-radius: 9999px; padding: 4px 12px; font-size: 12px; font-weight: 700; }
+  .card { background: var(--surface-variant); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin: 0 16px 16px; }
+  .card .body { margin: 0; font-size: 14px; }
+  .btn { display: block; margin: 8px 16px 0; background: var(--primary); color: var(--on-primary); border: none; border-radius: 9999px; padding: 0 24px; min-height: 48px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .btn[disabled] { opacity: .38; cursor: default; }
+  .form { display: flex; flex-direction: column; }
+  .field { display: flex; flex-direction: column; gap: 4px; margin: 8px 16px 0; }
+  .field-label { font-size: 14px; font-weight: 600; color: var(--text-muted); }
+  .field-input { font: inherit; font-size: 16px; color: var(--text); background: var(--role-surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .field-input[disabled] { opacity: .38; }
+  .field-error { color: var(--role-error); font-size: 12px; }
+  .switch, .checkbox { display: flex; align-items: center; gap: 12px; width: calc(100% - 32px); margin: 8px 16px 0; padding: 8px 0; background: transparent; border: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  .switch[disabled], .checkbox[disabled], .switcher-option[disabled], .radio-option[disabled] { opacity: .38; cursor: default; }
+  .switch-track { position: relative; width: 52px; height: 32px; flex: 0 0 52px; border: 2px solid var(--border); border-radius: 9999px; background: var(--surface-variant); transition: background-color .16s linear, border-color .16s linear; }
+  .switch.on .switch-track { background: var(--primary); border-color: var(--primary); }
+  .switch-knob { position: absolute; top: 2px; left: 2px; width: 24px; height: 24px; border-radius: 50%; background: var(--text-muted); transition: left .16s linear, background-color .16s linear; }
+  .switch.on .switch-knob { left: 22px; background: var(--on-primary); }
+  .control-label { flex: 1; font-size: 14px; }
+  .checkbox-box { width: 24px; height: 24px; flex: 0 0 24px; border: 2px solid var(--text-muted); border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; color: var(--on-primary); }
+  .checkbox.on .checkbox-box { background: var(--primary); border-color: var(--primary); }
+  .checkbox-mark { font-size: 16px; font-weight: 700; line-height: 1; }
+  .switcher { display: flex; gap: 4px; padding: 4px; margin: 8px 16px 0; background: var(--surface-variant); border: 1px solid var(--border); border-radius: 9999px; }
+  .switcher-option { flex: 1; min-height: 40px; border: none; border-radius: 9999px; background: transparent; color: var(--text); padding: 0 12px; font-size: 14px; cursor: pointer; }
+  .switcher-option.selected { background: var(--primary-container); color: var(--on-primary-container); font-weight: 600; }
+  .radio-option { display: flex; align-items: center; gap: 12px; width: calc(100% - 32px); margin: 0 16px; padding: 8px 0; background: transparent; border: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  .radio-circle { width: 24px; height: 24px; flex: 0 0 24px; border: 2px solid var(--text-muted); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
+  .radio-option.selected .radio-circle { border-color: var(--primary); }
+  .radio-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--primary); }
+  .list { border-top: 1px solid var(--border); }
+  .row { display: flex; gap: 12px; align-items: flex-start; padding: 11px 16px; border-bottom: 1px solid var(--border); }
+  .row-main { flex: 1; display: flex; flex-direction: column; }
+  .row-title { font-weight: 600; font-size: 14px; }
+  .row-sub { font-size: 13px; }
+  .row-detail { font-size: 12.5px; color: var(--text-muted); }
+  .row-time { font-size: 11px; color: var(--text-muted); }
+  .fab { display: inline-block; float: right; margin: 8px 16px 0 0; background: var(--primary-container); color: var(--on-primary-container); border-radius: 16px; padding: 13px 18px; font-size: 14px; font-weight: 600; box-shadow: 0 3px 8px rgba(0,0,0,.25); }
+</style>
+</head>
+<body>
+<div class="preview-chrome"><span>Rangular preview</span><button id="theme-toggle" type="button">Switch to dark theme</button></div>
+<div id="app">
+<div class="screen"><header class="appbar"><span class="icon" style="color: var(--role-text-muted)"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></span><span class="appbar-title">Profile</span><span class="avatar">P</span></header>
+<section class="card"><div class="form"><div class="field"><span class="field-label">Name</span><input class="field-input" type="text" placeholder="Your name" value=""></div>
+
+<div class="field"><span class="field-label">Email</span><input class="field-input" type="text" placeholder="you@example.com" value=""></div>
+
+<button class="btn" disabled>Save profile</button></div>
+</section></div>
+</div>
+<script>
+// Rangular interactive preview runtime (Stage 2).
+// State and methods are live: (click) handlers mutate state and re-render.
+const TEMPLATE = {"type":"root","children":[{"type":"element","tag":"screen","attrs":{},"booleanAttrs":[],"propBindings":[],"twoWayBindings":[],"eventBindings":[],"children":[{"type":"element","tag":"appbar","attrs":{"title":"Profile"},"booleanAttrs":[],"propBindings":[],"twoWayBindings":[],"eventBindings":[],"children":[],"pos":{"line":2,"column":3}},{"type":"element","tag":"card","attrs":{},"booleanAttrs":[],"propBindings":[],"twoWayBindings":[],"eventBindings":[],"children":[{"type":"element","tag":"form","attrs":{},"booleanAttrs":[],"propBindings":[{"name":"formGroup","expression":"profileForm"}],"twoWayBindings":[],"eventBindings":[{"name":"submit","expression":"save()"}],"children":[{"type":"element","tag":"input","attrs":{"label":"Name","placeholder":"Your name","formControlName":"name"},"booleanAttrs":[],"propBindings":[],"twoWayBindings":[],"eventBindings":[],"children":[],"pos":{"line":5,"column":7}},{"type":"element","tag":"p","attrs":{},"booleanAttrs":[],"propBindings":[],"twoWayBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"Name is required."}],"pos":{"line":6,"column":85}}],"pos":{"line":6,"column":7},"structural":{"name":"ngIf","expression":"profileForm.get('name').invalid && profileForm.get('name').touched"}},{"type":"element","tag":"input","attrs":{"label":"Email","placeholder":"you@example.com","formControlName":"email"},"booleanAttrs":[],"propBindings":[],"twoWayBindings":[],"eventBindings":[],"children":[],"pos":{"line":7,"column":7}},{"type":"element","tag":"p","attrs":{},"booleanAttrs":[],"propBindings":[],"twoWayBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"Enter a valid email address."}],"pos":{"line":8,"column":87}}],"pos":{"line":8,"column":7},"structural":{"name":"ngIf","expression":"profileForm.get('email').invalid && profileForm.get('email').touched"}},{"type":"element","tag":"button","attrs":{"type":"submit"},"booleanAttrs":[],"propBindings":[{"name":"disabled","expression":"profileForm.invalid"}],"twoWayBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"Save profile"}],"pos":{"line":9,"column":62}}],"pos":{"line":9,"column":7}}],"pos":{"line":4,"column":5}},{"type":"element","tag":"p","attrs":{},"booleanAttrs":[],"propBindings":[],"twoWayBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"Saved: "},{"type":"expr","expression":"summary"}],"pos":{"line":11,"column":24}}],"pos":{"line":11,"column":5},"structural":{"name":"ngIf","expression":"summary"}}],"pos":{"line":3,"column":3}}],"pos":{"line":1,"column":1}}]};
+const ICONS = {"menu":["M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"],"search":["M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"],"close":["M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"],"check":["M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"],"chevron-left":["M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"],"chevron-right":["M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"],"arrow-left":["M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"],"arrow-right":["M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"],"plus":["M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"],"minus":["M19 13H5v-2h14v2z"],"bell":["M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"],"heart":["M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"],"star":["M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"],"settings":["M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"],"home":["M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"],"person":["M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"],"calendar":["M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"],"alarm":["M22 5.72l-4.6-3.86-1.29 1.53 4.6 3.86L22 5.72zM7.88 3.39L6.6 1.86 2 5.71l1.29 1.53 4.59-3.85zM12.5 8H11v6l4.75 2.85.75-1.23-4-2.37V8zM12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9c4.97 0 9-4.03 9-9s-4.03-9-9-9z"],"play":["M8 5v14l11-7z"],"pause":["M6 19h4V5H6v14zm8-14v14h4V5h-4z"],"edit":["M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"],"delete":["M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"],"share":["M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"],"info":["M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"],"warning":["M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"],"mail":["M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"],"sun":["M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm-1 16.95h2V19.5h-2v2.95zm-7.45-3.91l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z"]};
+const state = {"summary":""};
+const FORM_INITS = {"profileForm":"new FormGroup({\n    name: new FormControl('', Validators.required),\n    email: new FormControl('', [Validators.required, Validators.email]),\n  })"};
+const methods = {
+  save: function () {
+state.summary = JSON.stringify(state.profileForm.value);
+  }
+};
+const SERVICES = {
+
+};
+const COMPONENTS = {
+
+};
+const ROOT_DEPS = {};
+const ROOT_ONINIT = null;
+
+function __tok(s) {
+  var t = [], i = 0;
+  while (i < s.length) {
+    var ch = s[i];
+    if (/\s/.test(ch)) { i++; continue; }
+    if (ch === '"' || ch === "'") {
+      var j = i + 1, v = '';
+      while (j < s.length && s[j] !== ch) {
+        if (s[j] === '\\' && j + 1 < s.length) { v += s[j + 1]; j += 2; }
+        else { v += s[j]; j++; }
+      }
+      t.push({ k: 'str', v: v }); i = j + 1; continue;
+    }
+    if (/[0-9]/.test(ch)) {
+      var j2 = i;
+      while (j2 < s.length && /[0-9.]/.test(s[j2])) j2++;
+      t.push({ k: 'num', v: s.slice(i, j2) }); i = j2; continue;
+    }
+    if (/[A-Za-z_$]/.test(ch)) {
+      var j3 = i;
+      while (j3 < s.length && /[A-Za-z0-9_$]/.test(s[j3])) j3++;
+      t.push({ k: 'id', v: s.slice(i, j3) }); i = j3; continue;
+    }
+    var three = s.slice(i, i + 3), two = s.slice(i, i + 2);
+    if (three === '===' || three === '!==') { t.push({ k: 'p', v: three }); i += 3; continue; }
+    if (['==', '!=', '<=', '>=', '&&', '||'].indexOf(two) >= 0) { t.push({ k: 'p', v: two }); i += 2; continue; }
+    if ('+-*/%<>!?:.,()[]|'.indexOf(ch) >= 0) { t.push({ k: 'p', v: ch }); i++; continue; }
+    throw new Error('preview: unexpected character ' + ch);
+  }
+  t.push({ k: 'eof', v: '' });
+  return t;
+}
+function __parse(src) {
+  var toks = __tok(src), pos = 0;
+  function peek() { return toks[pos]; }
+  function next() { return toks[pos++]; }
+  function atP(v) { var t = peek(); return t.k === 'p' && t.v === v; }
+  function expect(v) { if (!atP(v)) throw new Error('preview: expected ' + v); next(); }
+  var BP = { '||': 1, '&&': 2, '==': 3, '===': 3, '!=': 3, '!==': 3, '<': 4, '>': 4, '<=': 4, '>=': 4, '+': 5, '-': 5, '*': 6, '/': 6, '%': 6 };
+  function parsePipe() {
+    var inp = parseCond();
+    while (atP('|')) {
+      next();
+      var nm = next();
+      if (nm.k !== 'id') throw new Error('preview: pipe name expected');
+      var args = [];
+      while (atP(':')) { next(); args.push(parseCond()); }
+      inp = { type: 'pipe', input: inp, name: nm.v, args: args };
+    }
+    return inp;
+  }
+  function parseCond() {
+    var test = parseBin(1);
+    if (atP('?')) {
+      next();
+      var cons = parsePipe();
+      expect(':');
+      var alt = parseCond();
+      return { type: 'conditional', test: test, consequent: cons, alternate: alt };
+    }
+    return test;
+  }
+  function parseBin(min) {
+    var left = parseUnary();
+    for (;;) {
+      var t = peek();
+      if (t.k !== 'p') break;
+      var pw = BP[t.v];
+      if (pw === undefined || pw < min) break;
+      var op = next().v;
+      var right = parseBin(pw + 1);
+      left = { type: 'binary', op: op, left: left, right: right };
+    }
+    return left;
+  }
+  function parseUnary() {
+    var t = peek();
+    if (t.k === 'p' && (t.v === '!' || t.v === '-')) {
+      var op = next().v;
+      return { type: 'unary', op: op, argument: parseUnary() };
+    }
+    return parsePost();
+  }
+  function parsePost() {
+    var e = parsePrim();
+    for (;;) {
+      if (atP('.')) {
+        next();
+        var pr = next();
+        if (pr.k !== 'id') throw new Error('preview: property expected');
+        e = { type: 'member', object: e, property: pr.v };
+      } else if (atP('[')) {
+        next();
+        var ix = parsePipe();
+        expect(']');
+        e = { type: 'index', object: e, index: ix };
+      } else if (atP('(')) {
+        next();
+        var args = [];
+        if (!atP(')')) {
+          args.push(parsePipe());
+          while (atP(',')) { next(); args.push(parsePipe()); }
+        }
+        expect(')');
+        e = { type: 'call', callee: e, args: args };
+      } else break;
+    }
+    return e;
+  }
+  function parsePrim() {
+    var t = next();
+    if (t.k === 'id') {
+      if (t.v === 'true') return { type: 'literal', value: true };
+      if (t.v === 'false') return { type: 'literal', value: false };
+      if (t.v === 'null') return { type: 'literal', value: null };
+      return { type: 'identifier', name: t.v };
+    }
+    if (t.k === 'num') return { type: 'literal', value: Number(t.v) };
+    if (t.k === 'str') return { type: 'literal', value: t.v };
+    if (t.k === 'p' && t.v === '(') { var inner = parsePipe(); expect(')'); return inner; }
+    throw new Error('preview: unexpected token ' + t.v);
+  }
+  var e = parsePipe();
+  if (peek().k !== 'eof') throw new Error('preview: trailing tokens');
+  return e;
+}
+function __pipe(name, value) {
+  switch (name) {
+    case 'uppercase': return typeof value === 'string' ? value.toUpperCase() : value;
+    case 'lowercase': return typeof value === 'string' ? value.toLowerCase() : value;
+    case 'titlecase': return typeof value === 'string' ? value.replace(/\w\S*/g, function (w) { return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); }) : value;
+    case 'json': return JSON.stringify(value);
+    default: throw new Error("preview: unknown pipe '" + name + "'");
+  }
+}
+function __eval(e, scope) {
+  switch (e.type) {
+    case 'literal': return e.value;
+    case 'identifier': return scope[e.name];
+    case 'member': {
+      // Template references (Stage 8): a member chain rooted at an
+      // ngModel ref name reads the ref's live validation object.
+      if (e.object.type === 'identifier' && scope.__refs
+        && Object.prototype.hasOwnProperty.call(scope.__refs, e.object.name)) {
+        var ro = scope.__refs[e.object.name];
+        if (ro === null || ro === undefined) return undefined;
+        return ro[e.property];
+      }
+      var o = __eval(e.object, scope);
+      if (o === null || o === undefined) return undefined;
+      return o[e.property];
+    }
+    case 'index': {
+      var o2 = __eval(e.object, scope);
+      if (o2 === null || o2 === undefined) return undefined;
+      return o2[__eval(e.index, scope)];
+    }
+    case 'call': {
+      var args = e.args.map(function (a) { return __eval(a, scope); });
+      if (e.callee.type === 'member') {
+        var obj = __eval(e.callee.object, scope);
+        if (obj === null || obj === undefined) return undefined;
+        var fn = obj[e.callee.property];
+        if (typeof fn !== 'function') throw new Error('preview: ' + e.callee.property + ' is not a function');
+        return fn.apply(obj, args);
+      }
+      var f = __eval(e.callee, scope);
+      if (typeof f !== 'function') throw new Error('preview: attempted to call a non-function');
+      return f.apply(null, args);
+    }
+    case 'unary': {
+      var v = __eval(e.argument, scope);
+      if (e.op === '!') return !v;
+      if (e.op === '-') return -v;
+      return +v;
+    }
+    case 'binary': {
+      if (e.op === '&&') { var l = __eval(e.left, scope); return l ? __eval(e.right, scope) : l; }
+      if (e.op === '||') { var l2 = __eval(e.left, scope); return l2 ? l2 : __eval(e.right, scope); }
+      var a = __eval(e.left, scope), b = __eval(e.right, scope);
+      switch (e.op) {
+        case '+': return a + b;
+        case '-': return a - b;
+        case '*': return a * b;
+        case '/': return a / b;
+        case '%': return a % b;
+        case '==': return a == b;
+        case '===': return a === b;
+        case '!=': return a != b;
+        case '!==': return a !== b;
+        case '<': return a < b;
+        case '>': return a > b;
+        case '<=': return a <= b;
+        case '>=': return a >= b;
+      }
+      throw new Error('preview: bad operator ' + e.op);
+    }
+    case 'conditional':
+      return __eval(e.test, scope) ? __eval(e.consequent, scope) : __eval(e.alternate, scope);
+    case 'pipe':
+      return __pipe(e.name, __eval(e.input, scope));
+  }
+}
+function __evalSrc(src, scope) { return __eval(__parse(src), scope); }
+var __rootTouched = {};
+function __scope(extra) {
+  var s = {}, k;
+  for (k in state) s[k] = state[k];
+  for (k in methods) s[k] = methods[k];
+  if (extra) for (k in extra) s[k] = extra[k];
+  // Forms channels (Stage 8): __state is the backing store ngModel
+  // writes land in (scopes are copies), __touched persists per input
+  // across re-renders, __refs carries the live ngModel ref objects.
+  s.__state = state;
+  s.__touched = __rootTouched;
+  s.__refs = __refsFor(TEMPLATE.children, state, __rootTouched, s);
+  return s;
+}
+function __extend(scope, extra) {
+  var s = {}, k;
+  for (k in scope) s[k] = scope[k];
+  for (k in extra) s[k] = extra[k];
+  return s;
+}
+function __binding(el, name, scope) {
+  for (var i = 0; i < el.propBindings.length; i++) {
+    if (el.propBindings[i].name === name) {
+      try { return __evalSrc(el.propBindings[i].expression, scope); }
+      catch (err) { console.warn(err); return undefined; }
+    }
+  }
+  return undefined;
+}
+function __attr(el, name, scope) {
+  var b = __binding(el, name, scope);
+  if (b !== undefined) return b;
+  return el.attrs[name];
+}
+function __parseNgFor(expr) {
+  var segs = expr.split(';').map(function (x) { return x.trim(); }).filter(Boolean);
+  var m = /^let\s+([A-Za-z_$][\w$]*)\s+of\s+(.+)$/.exec(segs[0] || '');
+  if (!m) return null;
+  var parts = { item: m[1], source: m[2], index: null };
+  for (var i = 1; i < segs.length; i++) {
+    var lm = /^let\s+([A-Za-z_$][\w$]*)\s*=\s*index$/.exec(segs[i]);
+    if (lm) parts.index = lm[1];
+  }
+  return parts;
+}
+function __buildNodes(nodes, scope, path, form) {
+  var out = [];
+  nodes.forEach(function (n, i) {
+    __buildNode(n, scope, path + '/' + i, form).forEach(function (d) { out.push(d); });
+  });
+  return out;
+}
+function __buildNode(node, scope, path, form) {
+  if (node.type === 'text') {
+    var txt = '';
+    node.parts.forEach(function (p) {
+      if (p.type === 'static') txt += p.value;
+      else {
+        try {
+          var v = __evalSrc(p.expression, scope);
+          txt += (v === undefined || v === null) ? '' : String(v);
+        } catch (err) { console.warn(err); txt += '{{ ' + p.expression + ' }}'; }
+      }
+    });
+    return [document.createTextNode(txt)];
+  }
+  return __buildElement(node, scope, path, form);
+}
+function __buildElement(el, scope, path, form) {
+  if (el.structural && el.structural.name === 'ngIf') {
+    var cond;
+    try { cond = __evalSrc(el.structural.expression.split(';')[0].trim(), scope); }
+    catch (err) { console.warn(err); cond = false; }
+    if (!cond) return [];
+    return __buildCore(el, scope, path, form);
+  }
+  if (el.structural && el.structural.name === 'ngFor') {
+    var parts = __parseNgFor(el.structural.expression);
+    if (!parts) { console.warn('preview: unparseable *ngFor'); return __buildCore(el, scope, path, form); }
+    var items;
+    try { items = __evalSrc(parts.source, scope); }
+    catch (err) { console.warn(err); items = []; }
+    if (!items || typeof items.length !== 'number') return [];
+    var out = [];
+    for (var idx = 0; idx < items.length; idx++) {
+      var extra = {};
+      extra[parts.item] = items[idx];
+      if (parts.index) extra[parts.index] = idx;
+      __buildCore(el, __extend(scope, extra), path + '/for' + idx, form).forEach(function (d) { out.push(d); });
+    }
+    return out;
+  }
+  return __buildCore(el, scope, path, form);
+}
+function __attachEvents(dom, el, scope) {
+  el.eventBindings.forEach(function (ev) {
+    if (ev.name !== 'click') {
+      console.warn('preview: only (click) handlers are wired, got (' + ev.name + ')');
+      return;
+    }
+    dom.addEventListener('click', function (event) {
+      __runHandler(ev.expression, scope, event);
+      __render();
+    });
+  });
+}
+function __runHandler(src, scope, event) {
+  var s = __extend(scope, { $event: event });
+  try {
+    var e = __parse(src);
+    if (e.type === 'call') { __eval(e, s); return; }
+    if (e.type === 'identifier') {
+      var fn = s[e.name];
+      if (typeof fn === 'function') { fn(); return; }
+      console.warn('preview: handler ' + e.name + ' is not a method');
+      return;
+    }
+    __eval(e, s);
+  } catch (err) { console.warn(err); }
+}
+function __truthy(value) { return value === true || value === 'true'; }
+function __kebabRole(role) { return String(role).replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase(); }
+function __iconSize(el, scope) {
+  var v = __controlValue(el, 'size', scope);
+  var n = typeof v === 'number' ? v : (typeof v === 'string' && v !== '' ? Number(v) : NaN);
+  if (!isFinite(n)) return 24;
+  var scale = [20, 24, 28], best = scale[0];
+  for (var i = 0; i < scale.length; i++) {
+    if (Math.abs(scale[i] - n) < Math.abs(best - n)) best = scale[i];
+  }
+  return best;
+}
+function __icon(name, size, colorRole) {
+  var paths = ICONS[name] || [];
+  var span = document.createElement('span');
+  span.className = 'icon';
+  if (colorRole && span.setAttribute) span.setAttribute('style', 'color: var(--role-' + __kebabRole(colorRole) + ')');
+  var svg = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">';
+  paths.forEach(function (d) { svg += '<path d="' + d + '"/>'; });
+  svg += '</svg>';
+  span.innerHTML = svg;
+  return span;
+}
+function __controlValue(el, name, scope) {
+  var bound = __binding(el, name, scope);
+  if (bound !== undefined) return bound;
+  if (el.booleanAttrs.indexOf(name) >= 0) return true;
+  return el.attrs[name];
+}
+function __runChange(el, scope, value) {
+  el.eventBindings.forEach(function (ev) {
+    if (ev.name !== 'change') return;
+    var s = __extend(scope, { $event: value });
+    try {
+      var e = __parse(ev.expression);
+      if (e.type === 'call') { __eval(e, s); return; }
+      if (e.type === 'identifier') {
+        var fn = s[e.name];
+        if (typeof fn === 'function') { fn(value); return; }
+        console.warn('preview: change handler ' + e.name + ' is not a method');
+        return;
+      }
+      __eval(e, s);
+    } catch (err) { console.warn(err); }
+  });
+  __render();
+}
+// Forms runtime (Stage 8). Plain-JS mirrors of the @rangular/runtime
+// forms core (Validators, FormControl, FormGroup semantics and error
+// shapes), plus the mini evaluator for form field initializers and the
+// ngModel ref builder. The preview never uses eval on author code: the
+// initializer shapes are parsed by hand, like everything else here.
+function __isEmptyValue(v) {
+  return v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0);
+}
+function __valueLength(v) {
+  return (typeof v === 'string' || Array.isArray(v)) ? v.length : String(v).length;
+}
+var __Validators = {
+  required: function (v) { return __isEmptyValue(v) ? { required: true } : null; },
+  minLength: function (n) {
+    return function (v) {
+      if (__isEmptyValue(v)) return null;
+      var len = __valueLength(v);
+      return len < n ? { minlength: { requiredLength: n, actualLength: len } } : null;
+    };
+  },
+  maxLength: function (n) {
+    return function (v) {
+      if (__isEmptyValue(v)) return null;
+      var len = __valueLength(v);
+      return len > n ? { maxlength: { requiredLength: n, actualLength: len } } : null;
+    };
+  },
+  email: function (v) {
+    if (__isEmptyValue(v)) return null;
+    return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/.test(String(v)) ? null : { email: true };
+  },
+  pattern: function (p) {
+    var rp = String(p);
+    if (rp.charAt(0) !== '^') rp = '^' + rp;
+    if (rp.charAt(rp.length - 1) !== '$') rp = rp + '$';
+    var re = new RegExp(rp);
+    return function (v) {
+      if (__isEmptyValue(v)) return null;
+      return re.test(String(v)) ? null : { pattern: { requiredPattern: rp, actualValue: v } };
+    };
+  }
+};
+function __validateValue(value, fns) {
+  var merged = null;
+  (fns || []).forEach(function (fn) {
+    var errs = fn(value);
+    if (errs) {
+      merged = merged || {};
+      Object.keys(errs).forEach(function (k) { merged[k] = errs[k]; });
+    }
+  });
+  return merged;
+}
+function __validatorsOf(el, scope) {
+  var fns = [];
+  function argOf(attr, binding) {
+    var b = __binding(el, binding, scope);
+    if (b !== undefined) return b;
+    var a = el.attrs[attr];
+    if (a === undefined) return undefined;
+    return isNaN(Number(a)) ? a : Number(a);
+  }
+  if (el.booleanAttrs.indexOf('required') >= 0
+    || (el.attrs['required'] !== undefined && el.attrs['required'] !== 'false')) fns.push(__Validators.required);
+  var min = argOf('minlength', 'minlength');
+  if (min !== undefined) fns.push(__Validators.minLength(min));
+  var max = argOf('maxlength', 'maxlength');
+  if (max !== undefined) fns.push(__Validators.maxLength(max));
+  if (el.booleanAttrs.indexOf('email') >= 0
+    || (el.attrs['email'] !== undefined && el.attrs['email'] !== 'false')) fns.push(__Validators.email);
+  var pat = argOf('pattern', 'pattern');
+  if (pat !== undefined) fns.push(__Validators.pattern(pat));
+  return fns;
+}
+function __makeControl(args) {
+  var spec = args.length > 1 ? args[1] : null;
+  var c = {
+    value: args.length ? args[0] : null,
+    touched: false,
+    dirty: false,
+    errors: null,
+    __validators: spec === null || spec === undefined ? [] : (Array.isArray(spec) ? spec : [spec]),
+    setValue: function (v) {
+      c.value = v;
+      c.dirty = true;
+      c.errors = __validateValue(c.value, c.__validators);
+    },
+    markAsTouched: function () { c.touched = true; }
+  };
+  c.errors = __validateValue(c.value, c.__validators);
+  Object.defineProperty(c, 'valid', { get: function () { return c.errors === null; } });
+  Object.defineProperty(c, 'invalid', { get: function () { return c.errors !== null; } });
+  return c;
+}
+function __makeGroup(controls) {
+  var g = {
+    controls: controls || {},
+    get: function (name) { return g.controls[name]; },
+    markAllAsTouched: function () {
+      Object.keys(g.controls).forEach(function (k) { g.controls[k].markAsTouched(); });
+    }
+  };
+  Object.defineProperty(g, 'value', {
+    get: function () {
+      var out = {};
+      Object.keys(g.controls).forEach(function (k) { out[k] = g.controls[k].value; });
+      return out;
+    }
+  });
+  Object.defineProperty(g, 'valid', {
+    get: function () {
+      return Object.keys(g.controls).every(function (k) { return g.controls[k].valid; });
+    }
+  });
+  Object.defineProperty(g, 'invalid', { get: function () { return !g.valid; } });
+  Object.defineProperty(g, 'touched', {
+    get: function () {
+      return Object.keys(g.controls).some(function (k) { return g.controls[k].touched; });
+    }
+  });
+  return g;
+}
+function __evalFormInit(src) {
+  var s = String(src), i = 0;
+  function ws() { while (i < s.length && /\s/.test(s[i])) i++; }
+  function parseArgs() {
+    ws();
+    var args = [];
+    if (s[i] === '(') {
+      i++;
+      ws();
+      if (s[i] !== ')') {
+        for (;;) {
+          args.push(parseValue());
+          ws();
+          if (s[i] === ',') { i++; ws(); if (s[i] === ')') break; continue; }
+          break;
+        }
+      }
+      ws();
+      if (s[i] === ')') i++;
+    }
+    return args;
+  }
+  function parseValue() {
+    ws();
+    var ch = s[i];
+    if (ch === "'" || ch === '"') {
+      var j = i + 1, v = '';
+      while (j < s.length && s[j] !== ch) {
+        if (s[j] === '\\' && j + 1 < s.length) { v += s[j + 1]; j += 2; }
+        else { v += s[j]; j++; }
+      }
+      i = j + 1;
+      return v;
+    }
+    if (ch === '[') {
+      i++;
+      var arr = [];
+      ws();
+      if (s[i] !== ']') {
+        for (;;) {
+          arr.push(parseValue());
+          ws();
+          if (s[i] === ',') { i++; ws(); if (s[i] === ']') break; continue; }
+          break;
+        }
+      }
+      ws();
+      if (s[i] === ']') i++;
+      return arr;
+    }
+    if (ch === '{') {
+      i++;
+      var obj = {};
+      ws();
+      if (s[i] !== '}') {
+        for (;;) {
+          ws();
+          if (s[i] === '}') break;
+          var key;
+          if (s[i] === "'" || s[i] === '"') key = parseValue();
+          else {
+            var km = /^[A-Za-z_$][\w$]*/.exec(s.slice(i));
+            if (!km) throw new Error('preview: bad key in form initializer');
+            key = km[0];
+            i += km[0].length;
+          }
+          ws();
+          if (s[i] === ':') i++;
+          obj[key] = parseValue();
+          ws();
+          if (s[i] === ',') { i++; continue; }
+          break;
+        }
+      }
+      ws();
+      if (s[i] === '}') i++;
+      return obj;
+    }
+    if (s.substr(i, 3) === 'new' && !/[A-Za-z0-9_$]/.test(s[i + 3] || '')) {
+      i += 3;
+      ws();
+      var nm = /^[A-Za-z_$][\w$]*/.exec(s.slice(i));
+      if (!nm) throw new Error('preview: bad form initializer');
+      i += nm[0].length;
+      var args = parseArgs();
+      if (nm[0] === 'FormControl') return __makeControl(args);
+      if (nm[0] === 'FormGroup') return __makeGroup(args[0]);
+      throw new Error('preview: unsupported form initializer ' + nm[0]);
+    }
+    var idm = /^[A-Za-z_$][\w$]*/.exec(s.slice(i));
+    if (idm) {
+      var name = idm[0];
+      i += name.length;
+      if (name === 'true') return true;
+      if (name === 'false') return false;
+      if (name === 'null') return null;
+      if (name === 'Validators') {
+        ws();
+        if (s[i] === '.') {
+          i++;
+          var vm = /^[A-Za-z_$][\w$]*/.exec(s.slice(i));
+          if (!vm) throw new Error('preview: bad Validators reference');
+          i += vm[0].length;
+          ws();
+          if (s[i] === '(') {
+            var vargs = parseArgs();
+            return __Validators[vm[0]].apply(null, vargs);
+          }
+          return __Validators[vm[0]];
+        }
+      }
+      throw new Error('preview: unsupported identifier in form initializer: ' + name);
+    }
+    var num = /^-?\d+(\.\d+)?/.exec(s.slice(i));
+    if (num) { i += num[0].length; return Number(num[0]); }
+    throw new Error('preview: cannot evaluate form initializer');
+  }
+  try {
+    return parseValue();
+  } catch (err) {
+    console.warn(err);
+    return undefined;
+  }
+}
+function __refsFor(nodes, stateObj, touched, scope) {
+  var refs = {};
+  function walk(list) {
+    (list || []).forEach(function (n) {
+      if (n.type !== 'element') return;
+      if (COMPONENTS[n.tag]) return;
+      if (n.tag === 'input' && n.ref && n.refExport === 'ngModel') {
+        var expr = null;
+        (n.twoWayBindings || []).forEach(function (b) { if (b.name === 'ngModel') expr = b.expression; });
+        if (!expr) n.propBindings.forEach(function (b) { if (b.name === 'ngModel') expr = b.expression; });
+        if (expr && /^[A-Za-z_$][\w$]*$/.test(expr.trim())) {
+          var field = expr.trim();
+          var errs = __validateValue(stateObj[field], __validatorsOf(n, scope));
+          refs[n.ref] = {
+            value: stateObj[field], errors: errs,
+            valid: errs === null, invalid: errs !== null,
+            touched: !!touched[n.ref]
+          };
+        }
+      }
+      walk(n.children);
+    });
+  }
+  walk(nodes);
+  return refs;
+}
+function __formCtx(el, scope) {
+  var ctx = { submit: null, group: null, touchedKeys: [], touched: (scope && scope.__touched) || {} };
+  el.eventBindings.forEach(function (ev) {
+    if (ev.name === 'submit' || ev.name === 'ngSubmit') ctx.submit = ev;
+  });
+  var g = __binding(el, 'formGroup', scope);
+  if (g !== undefined && g !== null) ctx.group = g;
+  return ctx;
+}
+function __buildInput(el, scope, form) {
+  var wrap = document.createElement('div');
+  wrap.className = 'field';
+  var labelText = __attr(el, 'label', scope);
+  if (labelText) {
+    var ls = document.createElement('span');
+    ls.className = 'field-label';
+    ls.textContent = String(labelText);
+    wrap.appendChild(ls);
+  }
+  var input = document.createElement('input');
+  input.className = 'field-input';
+  var typeAttr = el.attrs['type'];
+  input.type = typeAttr === 'password' ? 'password' : typeAttr === 'email' ? 'email' : typeAttr === 'number' ? 'number' : 'text';
+  var ph = __attr(el, 'placeholder', scope);
+  if (ph) input.setAttribute('placeholder', String(ph));
+  var fcn = el.attrs['formControlName'];
+  var control = null;
+  if (fcn !== undefined && form && form.group && form.group.get) control = form.group.get(fcn);
+  var tw = null, pair = null;
+  (el.twoWayBindings || []).forEach(function (b) { if (b.name === 'ngModel') tw = b; });
+  el.propBindings.forEach(function (b) { if (b.name === 'ngModel') pair = b; });
+  var model = tw || pair;
+  var field = null;
+  if (model && /^[A-Za-z_$][\w$]*$/.test(model.expression.trim())) field = model.expression.trim();
+  var value;
+  if (control) value = control.value;
+  else if (model) {
+    try { value = __evalSrc(model.expression, scope); }
+    catch (err) { console.warn(err); value = undefined; }
+  } else {
+    var vb = __binding(el, 'value', scope);
+    value = vb !== undefined ? vb : el.attrs['value'];
+  }
+  input.value = value === undefined || value === null ? '' : String(value);
+  if (__truthy(__controlValue(el, 'disabled', scope))) input.disabled = true;
+  var touchedKey = el.ref || field;
+  if (form && field && touchedKey && form.touchedKeys.indexOf(touchedKey) < 0) form.touchedKeys.push(touchedKey);
+  input.addEventListener('input', function () {
+    var v = input.value;
+    if (control) control.setValue(v);
+    if (tw && field && scope.__state) scope.__state[field] = v;
+    el.eventBindings.forEach(function (ev) {
+      if (ev.name === 'ngModelChange' || ev.name === 'input') __runHandler(ev.expression, scope, v);
+    });
+    __render();
+  });
+  input.addEventListener('change', function () {
+    el.eventBindings.forEach(function (ev) {
+      if (ev.name === 'change') __runHandler(ev.expression, scope, input.value);
+    });
+    __render();
+  });
+  input.addEventListener('blur', function () {
+    if (control) control.markAsTouched();
+    if (field && scope.__touched && touchedKey) scope.__touched[touchedKey] = true;
+    el.eventBindings.forEach(function (ev) {
+      if (ev.name === 'blur') __runHandler(ev.expression, scope, undefined);
+    });
+    __render();
+  });
+  wrap.appendChild(input);
+  var errText = __attr(el, 'error', scope);
+  if (errText) {
+    var es = document.createElement('span');
+    es.className = 'field-error';
+    es.textContent = String(errText);
+    wrap.appendChild(es);
+  }
+  return wrap;
+}
+function __buildCore(el, scope, path, form) {
+  if (COMPONENTS[el.tag]) return __buildChild(el, scope, path);
+  var kidsForm = form;
+  if (el.tag === 'form') kidsForm = __formCtx(el, scope);
+  var kids = __buildNodes(el.children, scope, path, kidsForm);
+  function wrap(tag, cls) {
+    var d = document.createElement(tag);
+    if (cls) d.className = cls;
+    kids.forEach(function (k) { d.appendChild(k); });
+    return [d];
+  }
+  var title = __attr(el, 'title', scope);
+  switch (el.tag) {
+    case 'screen': return wrap('div', 'screen');
+    case 'appbar': {
+      var bar = document.createElement('header');
+      bar.className = 'appbar';
+      bar.appendChild(__icon('menu', 24, 'textMuted'));
+      var search = __attr(el, 'search', scope);
+      var mid = document.createElement('span');
+      if (search) { mid.className = 'search'; mid.textContent = String(search); }
+      else { mid.className = 'appbar-title'; mid.textContent = title ? String(title) : ''; }
+      bar.appendChild(mid);
+      var av = document.createElement('span');
+      av.className = 'avatar';
+      av.textContent = (title ? String(title) : 'R').charAt(0);
+      bar.appendChild(av);
+      return [bar];
+    }
+    case 'h1': return wrap('h1', 'display');
+    case 'h2': return wrap('h2', 'heading');
+    case 'h3': return wrap('h3', 'title');
+    case 'p': return wrap('p', 'body');
+    case 'label': return wrap('span', 'label');
+    case 'span': {
+      var sp = wrap('span', '');
+      if (el.attrs['class']) sp[0].className = el.attrs['class'];
+      return sp;
+    }
+    case 'card': return wrap('section', 'card');
+    case 'form': return wrap('div', 'form');
+    case 'input': return [__buildInput(el, scope, form)];
+    case 'button': {
+      var b = document.createElement('button');
+      b.className = 'btn';
+      if (__binding(el, 'disabled', scope)) b.disabled = true;
+      kids.forEach(function (k) { b.appendChild(k); });
+      // Form submit (Stage 8): a submit button inside a form with a
+      // (submit) handler runs that handler, first marking every ngModel
+      // input touched (and every control of a reactive group), the
+      // same composition the compiler generates.
+      var hasClick = false;
+      el.eventBindings.forEach(function (ev) { if (ev.name === 'click') hasClick = true; });
+      if (el.attrs['type'] === 'submit' && form && form.submit && !hasClick) {
+        b.addEventListener('click', function () {
+          if (b.disabled) return;
+          form.touchedKeys.forEach(function (k) { form.touched[k] = true; });
+          if (form.group && form.group.markAllAsTouched) form.group.markAllAsTouched();
+          __runHandler(form.submit.expression, scope, undefined);
+          __render();
+        });
+      } else {
+        __attachEvents(b, el, scope);
+      }
+      return [b];
+    }
+    case 'switch': {
+      var switchChecked = __truthy(__controlValue(el, 'checked', scope));
+      var sw = document.createElement('button');
+      sw.type = 'button';
+      sw.className = 'switch' + (switchChecked ? ' on' : '');
+      var swTrack = document.createElement('span');
+      swTrack.className = 'switch-track';
+      var swKnob = document.createElement('span');
+      swKnob.className = 'switch-knob';
+      swTrack.appendChild(swKnob);
+      sw.appendChild(swTrack);
+      var swLabel = document.createElement('span');
+      swLabel.className = 'control-label';
+      kids.forEach(function (k) { swLabel.appendChild(k); });
+      sw.appendChild(swLabel);
+      if (__truthy(__controlValue(el, 'disabled', scope))) sw.disabled = true;
+      else sw.addEventListener('click', function () { __runChange(el, scope, !switchChecked); });
+      return [sw];
+    }
+    case 'checkbox': {
+      var checkboxChecked = __truthy(__controlValue(el, 'checked', scope));
+      var checkbox = document.createElement('button');
+      checkbox.type = 'button';
+      checkbox.className = 'checkbox' + (checkboxChecked ? ' on' : '');
+      var checkboxBox = document.createElement('span');
+      checkboxBox.className = 'checkbox-box';
+      if (checkboxChecked) {
+        checkboxBox.appendChild(__icon('check', 20, 'onPrimary'));
+      }
+      checkbox.appendChild(checkboxBox);
+      var checkboxLabel = document.createElement('span');
+      checkboxLabel.className = 'control-label';
+      kids.forEach(function (k) { checkboxLabel.appendChild(k); });
+      checkbox.appendChild(checkboxLabel);
+      if (__truthy(__controlValue(el, 'disabled', scope))) checkbox.disabled = true;
+      else checkbox.addEventListener('click', function () { __runChange(el, scope, !checkboxChecked); });
+      return [checkbox];
+    }
+    case 'switcher': {
+      var switcher = document.createElement('div');
+      switcher.className = 'switcher';
+      var switcherValue = __controlValue(el, 'value', scope);
+      var switcherDisabled = __truthy(__controlValue(el, 'disabled', scope));
+      el.children.forEach(function (child, childIndex) {
+        if (child.type !== 'element' || child.tag !== 'option') return;
+        var optionValue = __controlValue(child, 'value', scope);
+        var segment = document.createElement('button');
+        segment.type = 'button';
+        segment.className = 'switcher-option' + (String(switcherValue) === String(optionValue) ? ' selected' : '');
+        __buildNodes(child.children, scope, path + '/option' + childIndex, kidsForm).forEach(function (k) { segment.appendChild(k); });
+        if (switcherDisabled) segment.disabled = true;
+        else segment.addEventListener('click', function () { __runChange(el, scope, optionValue); });
+        switcher.appendChild(segment);
+      });
+      return [switcher];
+    }
+    case 'radio-group': {
+      var radioGroup = document.createElement('div');
+      radioGroup.className = 'radio-group';
+      var radioValue = __controlValue(el, 'value', scope);
+      var radioDisabled = __truthy(__controlValue(el, 'disabled', scope));
+      el.children.forEach(function (child, childIndex) {
+        if (child.type !== 'element' || child.tag !== 'radio') return;
+        var choiceValue = __controlValue(child, 'value', scope);
+        var selected = String(radioValue) === String(choiceValue);
+        var choice = document.createElement('button');
+        choice.type = 'button';
+        choice.className = 'radio-option' + (selected ? ' selected' : '');
+        var circle = document.createElement('span');
+        circle.className = 'radio-circle';
+        if (selected) {
+          var dot = document.createElement('span');
+          dot.className = 'radio-dot';
+          circle.appendChild(dot);
+        }
+        choice.appendChild(circle);
+        var choiceLabel = document.createElement('span');
+        choiceLabel.className = 'control-label';
+        __buildNodes(child.children, scope, path + '/radio' + childIndex, kidsForm).forEach(function (k) { choiceLabel.appendChild(k); });
+        choice.appendChild(choiceLabel);
+        if (radioDisabled) choice.disabled = true;
+        else choice.addEventListener('click', function () { __runChange(el, scope, choiceValue); });
+        radioGroup.appendChild(choice);
+      });
+      return [radioGroup];
+    }
+    case 'list': return wrap('div', 'list');
+    case 'row': {
+      var row = document.createElement('div');
+      row.className = 'row';
+      if (el.booleanAttrs.indexOf('avatar') >= 0) {
+        var avl = document.createElement('span');
+        avl.className = 'avatar-lg';
+        avl.textContent = (title ? String(title) : '•').charAt(0);
+        row.appendChild(avl);
+      }
+      var main = document.createElement('span');
+      main.className = 'row-main';
+      var rt = document.createElement('span');
+      rt.className = 'row-title';
+      rt.textContent = title ? String(title) : '';
+      main.appendChild(rt);
+      var sub = __attr(el, 'subtitle', scope);
+      if (sub) {
+        var rs = document.createElement('span');
+        rs.className = 'row-sub';
+        rs.textContent = String(sub);
+        main.appendChild(rs);
+      }
+      var det = __attr(el, 'detail', scope);
+      if (det) {
+        var rd = document.createElement('span');
+        rd.className = 'row-detail';
+        rd.textContent = String(det);
+        main.appendChild(rd);
+      }
+      kids.forEach(function (k) { main.appendChild(k); });
+      row.appendChild(main);
+      var tm = __attr(el, 'time', scope);
+      if (tm) {
+        var rtEl = document.createElement('span');
+        rtEl.className = 'row-time';
+        rtEl.textContent = String(tm);
+        row.appendChild(rtEl);
+      }
+      __attachEvents(row, el, scope);
+      return [row];
+    }
+    case 'icon': {
+      var iconName = __attr(el, 'name', scope);
+      if (!iconName) return [];
+      return [__icon(String(iconName), __iconSize(el, scope), __attr(el, 'color', scope))];
+    }
+    case 'fab': {
+      var f = wrap('div', 'fab')[0];
+      if (!el.children.length) {
+        var lbl = __attr(el, 'label', scope);
+        f.textContent = lbl ? String(lbl) : 'Compose';
+      }
+      __attachEvents(f, el, scope);
+      return [f];
+    }
+    case 'header': return wrap('header', '');
+    case 'section': return wrap('section', '');
+    default: return wrap('div', '');
+  }
+}
+var __svcCache = {};
+var __instances = {};
+function __httpStub() {
+  return { get: function () { return { subscribe: function () { return { unsubscribe: function () {} }; } }; } };
+}
+function __resolveDep(token) {
+  return token === 'HttpClient' ? __httpStub() : __service(token);
+}
+function __bind(def, inst) {
+  var fns = {};
+  Object.keys(def.methods).forEach(function (name) {
+    fns[name] = function () {
+      var args = [inst.state, fns, inst.props];
+      for (var i = 0; i < arguments.length; i++) args.push(arguments[i]);
+      return def.methods[name].apply(null, args);
+    };
+  });
+  return fns;
+}
+function __service(name) {
+  if (__svcCache[name]) return __svcCache[name];
+  var def = SERVICES[name];
+  if (!def) { console.warn('preview: no service named ' + name); return {}; }
+  var st = {};
+  Object.keys(def.state).forEach(function (k) { st[k] = def.state[k]; });
+  var inst = { state: st, props: {}, methods: {} };
+  __svcCache[name] = st;
+  Object.keys(def.deps).forEach(function (k) { st[k] = __resolveDep(def.deps[k]); });
+  inst.methods = __bind(def, inst);
+  Object.keys(inst.methods).forEach(function (m) { st[m] = inst.methods[m]; });
+  return st;
+}
+function __childInstance(path, def, props) {
+  var inst = __instances[path];
+  if (!inst) {
+    var st = {};
+    Object.keys(def.state).forEach(function (k) { st[k] = def.state[k]; });
+    inst = { state: st, props: {}, methods: {}, fresh: true, touched: {} };
+    Object.keys(def.deps).forEach(function (k) { st[k] = __resolveDep(def.deps[k]); });
+    Object.keys(def.formInits || {}).forEach(function (k) { st[k] = __evalFormInit(def.formInits[k]); });
+    inst.methods = __bind(def, inst);
+    __instances[path] = inst;
+  }
+  inst.props = props;
+  def.inputs.forEach(function (n) { if (n in props) inst.state[n] = props[n]; });
+  return inst;
+}
+function __childScope(inst, def) {
+  var s = {}, k;
+  for (k in inst.state) s[k] = inst.state[k];
+  for (k in inst.methods) s[k] = inst.methods[k];
+  // Forms channels (Stage 8), the child instance's own stores.
+  s.__state = inst.state;
+  s.__touched = inst.touched;
+  s.__refs = def ? __refsFor(def.template.children, inst.state, inst.touched, s) : {};
+  return s;
+}
+function __buildChild(el, scope, path) {
+  var def = COMPONENTS[el.tag];
+  var props = {};
+  el.propBindings.forEach(function (b) {
+    var v = __binding(el, b.name, scope);
+    if (v !== undefined) props[b.name] = v;
+  });
+  Object.keys(el.attrs).forEach(function (k) { props[k] = el.attrs[k]; });
+  el.booleanAttrs.forEach(function (a) { props[a] = true; });
+  el.eventBindings.forEach(function (ev) {
+    if (def.outputs.indexOf(ev.name) >= 0) {
+      var cap = 'on' + ev.name.charAt(0).toUpperCase() + ev.name.slice(1);
+      props[cap] = (function (expr, sc) {
+        return function (value) { __runHandler(expr, sc, value); __render(); };
+      })(ev.expression, scope);
+    }
+  });
+  var inst = __childInstance(path, def, props);
+  if (inst.fresh) {
+    inst.fresh = false;
+    if (def.onInit && inst.methods[def.onInit]) inst.methods[def.onInit]();
+  }
+  var nodes = __buildNodes(def.template.children, __childScope(inst, def), path);
+  var domEvents = el.eventBindings.filter(function (ev) { return def.outputs.indexOf(ev.name) < 0; });
+  if (domEvents.length && nodes[0] && nodes[0].addEventListener) {
+    __attachEvents(nodes[0], { eventBindings: domEvents }, scope);
+  }
+  return nodes;
+}
+function __render() {
+  var app = document.getElementById('app');
+  app.innerHTML = '';
+  __buildNodes(TEMPLATE.children, __scope(), 'root').forEach(function (n) { app.appendChild(n); });
+}
+__render();
+
+
+// Root form instances (Stage 8): build the FormGroup/FormControl fields
+// from their initializers, then re-render with live values and validity.
+Object.keys(FORM_INITS).forEach(function (k) { state[k] = __evalFormInit(FORM_INITS[k]); });
+__render();
+
+// Preview theme toggle (Stage 4): flips data-theme on <html>; the CSS
+// variables in <style> do the rest. Guarded so non-DOM harnesses and
+// older pages without the chrome button simply skip it.
+var __previewTheme = 'light';
+var __themeBtn = document.getElementById('theme-toggle');
+function __syncThemeBtn() {
+  if (__themeBtn) __themeBtn.textContent = __previewTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
+}
+if (__themeBtn) {
+  __themeBtn.addEventListener('click', function () {
+    __previewTheme = __previewTheme === 'dark' ? 'light' : 'dark';
+    if (document.documentElement && document.documentElement.setAttribute) {
+      document.documentElement.setAttribute('data-theme', __previewTheme);
+    }
+    __syncThemeBtn();
+  });
+  __syncThemeBtn();
+}
+</script>
+</body>
+</html>

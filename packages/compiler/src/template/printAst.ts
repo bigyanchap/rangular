@@ -17,9 +17,10 @@ export function printAst(root: TemplateRoot): string {
       for (const [k, v] of Object.entries(node.attrs)) bits.push(`${k}="${v}"`);
       for (const b of node.booleanAttrs) bits.push(b);
       for (const p of node.propBindings) bits.push(`[${p.name}]="${p.expression}"`);
+      for (const p of node.twoWayBindings) bits.push(`[(${p.name})]="${p.expression}"`);
       for (const e of node.eventBindings) bits.push(`(${e.name})="${e.expression}"`);
       if (node.structural) bits.push(`*${node.structural.name}="${node.structural.expression}"`);
-      if (node.ref) bits.push(`#${node.ref}`);
+      if (node.ref) bits.push(node.refExport ? `#${node.ref}="${node.refExport}"` : `#${node.ref}`);
       lines.push(indent + bits.join(' '));
       walk(node.children, depth + 1);
     }

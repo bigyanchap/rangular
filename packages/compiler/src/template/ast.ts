@@ -29,10 +29,15 @@ export interface ElementNode {
   /** Attributes present without a value, e.g. `avatar`. */
   booleanAttrs: string[];
   propBindings: PropBinding[];
+  /** Two-way bindings from `[(name)]="expr"` (Stage 8); kept apart from
+   *  propBindings because a two-way binding also writes back. */
+  twoWayBindings: PropBinding[];
   eventBindings: EventBinding[];
   structural?: StructuralDirective;
   /** Template reference variable name from `#ref`, without '#'. */
   ref?: string;
+  /** The exportAs value of a template reference, e.g. `#email="ngModel"` (Stage 8). */
+  refExport?: string;
   children: TemplateNode[];
   pos: SourcePos;
 }

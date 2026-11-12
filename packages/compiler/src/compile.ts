@@ -4,6 +4,7 @@ import {
   parseClassFile,
   ServiceInfo,
 } from './class/parseComponent';
+import { analyzeFormInitializer, isFormInitializer } from './class/formInit';
 import { ChildUnitInput, generateComponent } from './codegen/generate';
 import { SourceMapV3 } from './codegen/sourceMap';
 import { Diagnostic, error, warning } from './diagnostics';
@@ -137,7 +138,11 @@ function isTemplateDriven(code: string): boolean {
     || code === 'GEN_CONTROL_NESTING'
     || code === 'GEN_ICON_UNKNOWN'
     || code === 'GEN_ICON_NAME'
-    || code === 'GEN_ICON_SIZE';
+    || code === 'GEN_ICON_SIZE'
+    || code === 'GEN_NGMODEL_TARGET'
+    || code === 'GEN_NGMODEL_EXPR'
+    || code === 'GEN_FORM_CONTROL'
+    || code === 'GEN_FORMGROUP_TYPE';
 }
 
 function isStyleDriven(code: string): boolean {
@@ -346,6 +351,29 @@ export function compileComponent(options: CompileOptions): CompileResult {
   }
 
   const services = [...servicesByName.values()];
+  // Reactive form initializers the preview cannot evaluate (Stage 8):
+  // the generated app runs them verbatim, so this is a warning, and it
+  // belongs to the class file that declares the field.
+  for (const [info, file] of [
+    [component, entryKey] as const,
+    ...children.map((c) => [c.info, c.fileName ?? entryKey] as const),
+  ]) {
+    for (const field of info.fields) {
+      if (!isFormInitializer(field.initializer)) continue;
+      const analysis = analyzeFormInitializer(field.initializer!);
+      if (!analysis.supported) {
+        diagnostics.push({
+          ...warning(
+            'GEN_FORM_INITIALIZER',
+            `Field '${field.name}' of ${info.className} has a form initializer the preview cannot evaluate (${analysis.reason ?? 'unsupported shape'}); the generated app runs it as written, but the preview renders the form without live values`,
+            undefined, undefined,
+            'Keep form initializers to literals, Validators references and validator calls: new FormGroup({ email: new FormControl(\'\', [Validators.required, Validators.email]) })',
+          ),
+          file,
+        });
+      }
+    }
+  }
   if (options.sourceMap) fileSources.set(entryTemplateFile, templateSource);
   const { code, diagnostics: genDiags, sourceMap } = generateComponent(component, root, css, {
     children,

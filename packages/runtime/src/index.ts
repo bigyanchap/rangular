@@ -1,11 +1,13 @@
 /**
  * @rangular/runtime, small pure-TypeScript helpers for generated apps.
  * EventEmitter (for @Output), a tiny signal implementation, a DI Container,
- * the ReactiveService base class generated services extend (Stage 3), and
- * HttpClient, an Observable-lite wrapper over fetch (Stage 3). No react or
- * react-native imports live in this file: generated components bridge
- * services to React themselves (useSyncExternalStore over __subscribe /
- * __getVersion), so this package stays environment-free and unit-testable.
+ * the ReactiveService base class generated services extend (Stage 3),
+ * HttpClient, an Observable-lite wrapper over fetch (Stage 3), and the
+ * forms core (Stage 8): Validators, FormControl and FormGroup, mirroring
+ * @angular/forms semantics. No react or react-native imports live in this
+ * file: generated components bridge services to React themselves
+ * (useSyncExternalStore over __subscribe / __getVersion), so this package
+ * stays environment-free and unit-testable.
  */
 
 export type Listener<T> = (value: T) => void;
@@ -179,5 +181,190 @@ export class Container {
       throw new Error(`Rangular DI: no provider registered for token '${name}'`);
     }
     return this.providers.get(token) as T;
+  }
+}
+
+// --- Forms (Stage 8) ---------------------------------------------------------
+//
+// The @angular/forms core, at the size Rangular templates can drive:
+// Validators, FormControl and FormGroup, plus validateValue, the merge
+// helper generated code uses for template-driven (ngModel) inputs.
+// Semantics and error shapes follow Angular:
+//
+//   required              -> { required: true }
+//   minLength(n)          -> { minlength: { requiredLength: n, actualLength: len } }
+//   maxLength(n)          -> { maxlength: { requiredLength: n, actualLength: len } }
+//   email                 -> { email: true }
+//   pattern(p)            -> { pattern: { requiredPattern, actualValue } }
+//
+// As in Angular, every validator except `required` treats an empty value
+// (null, undefined, '') as valid: emptiness is `required`'s job alone.
+// A control is valid exactly when its merged errors object is null.
+
+export type ValidationErrors = { [key: string]: unknown };
+export type ValidatorFn = (value: unknown) => ValidationErrors | null;
+
+function isEmptyValue(value: unknown): boolean {
+  return value === null || value === undefined || value === ''
+    || (Array.isArray(value) && value.length === 0);
+}
+
+function valueLength(value: unknown): number {
+  if (typeof value === 'string' || Array.isArray(value)) return value.length;
+  return String(value).length;
+}
+
+// Angular's own email check is a very long RFC regex; this is the same
+// shape (local part, @, dotted domain, a TLD of at least two letters),
+// kept readable on purpose.
+const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/;
+
+/** Anchor a string pattern the way Angular does: ^ at the start, $ at the end. */
+function anchorPattern(pattern: string): string {
+  let out = pattern;
+  if (!out.startsWith('^')) out = `^${out}`;
+  if (!out.endsWith('$')) out = `${out}$`;
+  return out;
+}
+
+export const Validators = {
+  required(value: unknown): ValidationErrors | null {
+    return isEmptyValue(value) ? { required: true } : null;
+  },
+
+  minLength(requiredLength: number): ValidatorFn {
+    return (value: unknown) => {
+      if (isEmptyValue(value)) return null;
+      const actualLength = valueLength(value);
+      return actualLength < requiredLength
+        ? { minlength: { requiredLength, actualLength } }
+        : null;
+    };
+  },
+
+  maxLength(requiredLength: number): ValidatorFn {
+    return (value: unknown) => {
+      if (isEmptyValue(value)) return null;
+      const actualLength = valueLength(value);
+      return actualLength > requiredLength
+        ? { maxlength: { requiredLength, actualLength } }
+        : null;
+    };
+  },
+
+  email(value: unknown): ValidationErrors | null {
+    if (isEmptyValue(value)) return null;
+    return EMAIL_RE.test(String(value)) ? null : { email: true };
+  },
+
+  pattern(p: string | RegExp): ValidatorFn {
+    const requiredPattern = typeof p === 'string' ? anchorPattern(p) : p.source;
+    const regex = typeof p === 'string' ? new RegExp(requiredPattern) : p;
+    return (value: unknown) => {
+      if (isEmptyValue(value)) return null;
+      return regex.test(String(value))
+        ? null
+        : { pattern: { requiredPattern, actualValue: value } };
+    };
+  },
+};
+
+/** Run validators in order and merge their error objects; null when all pass. */
+export function validateValue(value: unknown, validators: ValidatorFn[]): ValidationErrors | null {
+  let merged: ValidationErrors | null = null;
+  for (const validator of validators) {
+    const errors = validator(value);
+    if (errors) merged = { ...(merged ?? {}), ...errors };
+  }
+  return merged;
+}
+
+/**
+ * One reactive form control (Stage 8). Holds a value, validates it on
+ * construction and on every setValue, tracks touched/dirty the way
+ * Angular does, and exposes valueChanges as an Observable-lite.
+ */
+export class FormControl {
+  value: unknown;
+  errors: ValidationErrors | null = null;
+  touched = false;
+  dirty = false;
+  readonly valueChanges: ObservableLite<unknown>;
+  private readonly validators: ValidatorFn[];
+  private readonly listeners = new Set<(value: unknown) => void>();
+
+  constructor(initialValue: unknown = null, validators?: ValidatorFn | ValidatorFn[] | null) {
+    this.value = initialValue;
+    this.validators = validators == null ? [] : Array.isArray(validators) ? [...validators] : [validators];
+    this.valueChanges = {
+      subscribe: (next?: (value: unknown) => void) => {
+        if (next) this.listeners.add(next);
+        return { unsubscribe: () => { if (next) this.listeners.delete(next); } };
+      },
+    };
+    this.revalidate();
+  }
+
+  get valid(): boolean { return this.errors === null; }
+  get invalid(): boolean { return this.errors !== null; }
+  get pristine(): boolean { return !this.dirty; }
+  get untouched(): boolean { return !this.touched; }
+
+  setValue(value: unknown): void {
+    this.value = value;
+    this.dirty = true;
+    this.revalidate();
+    for (const listener of [...this.listeners]) listener(value);
+  }
+
+  markAsTouched(): void { this.touched = true; }
+  markAsDirty(): void { this.dirty = true; }
+
+  private revalidate(): void {
+    this.errors = validateValue(this.value, this.validators);
+  }
+}
+
+/**
+ * A named set of FormControls (Stage 8). The group's value is the plain
+ * object of control values; the group is valid exactly when every
+ * control is valid. There are no group-level validators in this version,
+ * so the group's own errors are always null, as in Angular when no group
+ * validator is registered.
+ */
+export class FormGroup {
+  readonly controls: Record<string, FormControl>;
+
+  constructor(controls: Record<string, FormControl>) {
+    this.controls = controls;
+  }
+
+  get(name: string): FormControl {
+    return this.controls[name];
+  }
+
+  get value(): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const [name, control] of Object.entries(this.controls)) out[name] = control.value;
+    return out;
+  }
+
+  get valid(): boolean {
+    return Object.values(this.controls).every((c) => c.valid);
+  }
+
+  get invalid(): boolean { return !this.valid; }
+  get errors(): ValidationErrors | null { return null; }
+
+  get touched(): boolean {
+    return Object.values(this.controls).some((c) => c.touched);
+  }
+
+  get dirty(): boolean {
+    return Object.values(this.controls).some((c) => c.dirty);
+  }
+
+  markAllAsTouched(): void {
+    for (const control of Object.values(this.controls)) control.markAsTouched();
   }
 }

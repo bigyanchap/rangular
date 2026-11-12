@@ -98,15 +98,16 @@ flowchart TB
 | M7 | CLI, source maps, error messages, Awaken Me dogfood | ✅ Done (Stage 5) |
 | - | **Stage 6: Controls**, Material style switch, checkbox, segmented page switcher and radio group, settings example | ✅ Done |
 | - | **Stage 7: Icons**, one `<icon>` block over a curated set of 27 Material style icons, compile time name validation, icons example | ✅ Done |
-| - | Stages 8 to 12: forms, routing, pickers and overlays, data display, language completeness and app readiness | Planned, see [docs/ROADMAP.md](docs/ROADMAP.md) |
+| - | **Stage 8: Forms**, the `<input>` block (`RgInput`), `[(ngModel)]` two-way binding with attribute validators and template refs, a lightweight `<form (submit)>` element, reactive `FormGroup` / `FormControl` / `Validators`, signup-form and profile-form examples | ✅ Done |
+| - | Stages 9 to 12: routing, pickers and overlays, data display, language completeness and app readiness | Planned, see [docs/ROADMAP.md](docs/ROADMAP.md) |
 
 ## Packages
 
 | Package | What it is |
 |---|---|
 | `@rangular/compiler` | Template parser + expression (Pratt) parser, `@Component` extractor (TypeScript compiler API), CSS-subset parser, RN code generator, HTML preview renderer |
-| `@rangular/runtime` | Pure-TypeScript helpers for generated apps: `EventEmitter`, `signal()`, DI `Container`, `ReactiveService` (service reactivity base), `HttpClient` (Observable-lite over fetch), `pipe()` |
-| `@rangular/ui` | Rangular Material: `tokens.ts` (pure TS), `icons.ts` (the curated icon set as SVG path data) + shipped-source RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`, `RgSwitch`, `RgCheckbox`, `RgSwitcher`, `RgOption`, `RgRadioGroup`, `RgRadio`, `RgIcon`) |
+| `@rangular/runtime` | Pure-TypeScript helpers for generated apps: `EventEmitter`, `signal()`, DI `Container`, `ReactiveService` (service reactivity base), `HttpClient` (Observable-lite over fetch), `pipe()`, forms classes (`Validators`, `validateValue`, `FormControl`, `FormGroup`) |
+| `@rangular/ui` | Rangular Material: `tokens.ts` (pure TS), `icons.ts` (the curated icon set as SVG path data) + shipped-source RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`, `RgSwitch`, `RgCheckbox`, `RgSwitcher`, `RgOption`, `RgRadioGroup`, `RgRadio`, `RgIcon`, `RgInput`) |
 | `@rangular/cli` | `rangular build`, `rangular ast`, `rangular preview`, `rangular catalog`, `rangular watch`, `rangular init`, `rangular doctor` (build/preview/doctor accept `--json`; build accepts `--source-map`) |
 
 > Note: `@rangular/ui` primitives and other shipped-source files for generated
@@ -437,6 +438,59 @@ off-scale size warns (`GEN_ICON_SIZE`) and snaps to the nearest
 on-scale size, the same rule styles use. Custom project icons are
 not in this stage; they are planned as a register-your-own path set.
 
+## Stage 8: forms, the Angular way
+
+Two more examples:
+
+- `examples/signup-form/`, a create account form the
+  template-driven way: `[(ngModel)]`, attribute validators,
+  `#name="ngModel"` refs, error lines, submit gating.
+- `examples/profile-form/`, a profile form the reactive way: a
+  `FormGroup` built in the class, `[formGroup]` and
+  `formControlName`, errors through `profileForm.get('email')`.
+
+**The input block.** `<input>` compiles to `RgInput`, a Material
+style field: label above the field, an outlined box from the
+tokens, placeholder, an error line under the field, a disabled
+state. `type="password"` is a secure entry, `type="email"` and
+`type="number"` pick the keyboard. `(input)` and `(change)` deliver
+the text as `$event`; `(blur)` maps to `onBlur`.
+
+**Template-driven forms.** `[(ngModel)]="email"` on an `<input>`
+is a real two-way binding: the value in, a write back through the
+field's state setter out. The `[ngModel]` plus `(ngModelChange)`
+pair works too. Validators are attributes (`required`,
+`minlength`, `maxlength`, `email`, `pattern`) checked by the
+runtime `Validators`, with Angular's error shapes; `type="email"`
+alone does not validate, exactly as in Angular. A
+`#email="ngModel"` ref exposes `valid`, `invalid`, `touched` and
+`errors` to template expressions, so
+`<p *ngIf="email.invalid && email.touched">` and a submit button
+gated by `[disabled]="email.invalid"` just work. ngModel on any
+other element is a `GEN_NGMODEL_TARGET` error: the Stage 6
+controls already have their `(change)` contract.
+
+**The form element.** `<form (submit)="save()">` wraps the fields;
+a `<button type="submit">` inside runs the handler after marking
+every ngModel input touched, so errors appear on save. There is no
+NgForm object and no form-wide validity for template-driven forms;
+gate with the refs.
+
+**Reactive forms.** `FormGroup`, `FormControl` and `Validators`
+imported from `@angular/forms` are runtime classes. A group field
+is a stable instance held in a ref in the generated code; control
+changes re-render through a version counter subscribed to each
+control's `valueChanges`. `formControlName` binds a control of the
+enclosing `[formGroup]` form, an unknown name is a compile error
+naming the real controls, and handlers read
+`this.profileForm.value` directly. The preview builds the same
+group from the field initializer with a small evaluator (literal
+values, `Validators` references and calls, validator arrays); a
+richer initializer warns `GEN_FORM_INITIALIZER` and still compiles
+for the app. Group-level validators, `FormArray` and async
+validators are not in this stage. The full boundary list is the
+Forms section of [docs/VIBE_CODING.md](docs/VIBE_CODING.md).
+
 ## v1 is complete
 
 What v1 is: an Angular-style component, template, service and DI
@@ -445,7 +499,7 @@ system in light and dark, an interactive preview that behaves like the
 app, machine-readable diagnostics with fixes, a full CLI, and a recipe
 card proving every capability on a tiny example.
 
-Deliberately post-v1: forms and two-way binding (Stage 8), routing
+Deliberately post-v1: routing
 (Stage 9), animations, the full RxJS surface, content projection
 (Stage 12), per-expression source maps, device screenshot goldens,
 and following the OS dark mode setting by default. The full

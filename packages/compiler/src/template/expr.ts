@@ -220,25 +220,102 @@ export function exprToString(expr: Expr): string {
 }
 
 /**
+ * Options for exprToCode (Stage 8, forms):
+ * - renames: identifier -> replacement code, applied at every identifier
+ *   leaf. Codegen uses it for reactive form fields, whose template reads
+ *   (`profileForm.value`) must reach the ref-held instance
+ *   (`profileFormRef.current.value`).
+ * - refBases: template reference name -> generated model object name.
+ *   Only the ROOT of a member/index/call chain is renamed: `email.invalid`
+ *   becomes `emailModel.invalid`, while a bare `email` still names the
+ *   component field itself.
+ */
+export interface ExprToCodeOptions {
+  renames?: Map<string, string>;
+  refBases?: Map<string, string>;
+}
+
+/** The root identifier of a member/index/call chain, when it has one. */
+function chainRoot(expr: Expr): string | undefined {
+  switch (expr.type) {
+    case 'identifier': return expr.name;
+    case 'member':
+    case 'index': return chainRoot(expr.object);
+    case 'call': return chainRoot(expr.callee);
+    default: return undefined;
+  }
+}
+
+/** Rename the root identifier of a chain (see chainRoot) to `to`. */
+function renameChainRoot(expr: Expr, to: string): Expr {
+  switch (expr.type) {
+    case 'identifier': return { type: 'identifier', name: to };
+    case 'member': return { ...expr, object: renameChainRoot(expr.object, to) };
+    case 'index': return { ...expr, object: renameChainRoot(expr.object, to) };
+    case 'call': return { ...expr, callee: renameChainRoot(expr.callee, to) };
+    default: return expr;
+  }
+}
+
+/**
+ * Rewrite every member/index/call chain whose root is a template
+ * reference name so the chain reads from the generated model object.
+ * Sub-expressions (arguments, operands, pipe inputs) are visited too.
+ */
+function withRefRoots(expr: Expr, refBases: Map<string, string>): Expr {
+  const visitChildren = (e: Expr): Expr => {
+    switch (e.type) {
+      case 'member': return { ...e, object: visit(e.object) };
+      case 'index': return { ...e, object: visit(e.object), index: visit(e.index) };
+      case 'call': return { ...e, callee: visit(e.callee), args: e.args.map(visit) };
+      case 'unary': return { ...e, argument: visit(e.argument) };
+      case 'binary': return { ...e, left: visit(e.left), right: visit(e.right) };
+      case 'conditional':
+        return { ...e, test: visit(e.test), consequent: visit(e.consequent), alternate: visit(e.alternate) };
+      case 'pipe': return { ...e, input: visit(e.input), args: e.args.map(visit) };
+      default: return e;
+    }
+  };
+  const visit = (e: Expr): Expr => {
+    if (e.type === 'member' || e.type === 'index' || e.type === 'call') {
+      const root = chainRoot(e);
+      const model = root !== undefined ? refBases.get(root) : undefined;
+      if (model !== undefined) return visitChildren(renameChainRoot(e, model));
+    }
+    return visitChildren(e);
+  };
+  return visit(expr);
+}
+
+/**
  * Translate a template expression into generated-code source.
  * Pipes have no RN equivalent yet: they are emitted as a call to a runtime
  * `pipe(name, value, ...args)` helper so the shape stays explicit.
  */
-export function exprToCode(source: string): string {
+export function exprToCode(source: string, options: ExprToCodeOptions = {}): string {
   try {
-    const expr = parseExpression(source);
-    return codeOf(expr);
+    let expr = parseExpression(source);
+    if (options.refBases && options.refBases.size) expr = withRefRoots(expr, options.refBases);
+    return codeOf(expr, options.renames);
   } catch {
     return source.trim(); // fall back to the raw text; diagnostics are raised elsewhere
   }
 }
 
-function codeOf(expr: Expr): string {
-  if (expr.type === 'pipe') {
-    const args = expr.args.map(codeOf).join(', ');
-    return `pipe('${expr.name}', ${codeOf(expr.input)}${args ? `, ${args}` : ''})`;
+function codeOf(expr: Expr, renames?: Map<string, string>): string {
+  switch (expr.type) {
+    case 'pipe': {
+      const args = expr.args.map((a) => codeOf(a, renames)).join(', ');
+      return `pipe('${expr.name}', ${codeOf(expr.input, renames)}${args ? `, ${args}` : ''})`;
+    }
+    case 'binary': return `(${codeOf(expr.left, renames)} ${expr.op} ${codeOf(expr.right, renames)})`;
+    case 'conditional':
+      return `(${codeOf(expr.test, renames)} ? ${codeOf(expr.consequent, renames)} : ${codeOf(expr.alternate, renames)})`;
+    case 'identifier': return renames?.get(expr.name) ?? expr.name;
+    case 'member': return `${codeOf(expr.object, renames)}.${expr.property}`;
+    case 'index': return `${codeOf(expr.object, renames)}[${codeOf(expr.index, renames)}]`;
+    case 'call': return `${codeOf(expr.callee, renames)}(${expr.args.map((a) => codeOf(a, renames)).join(', ')})`;
+    case 'unary': return `${expr.op}${codeOf(expr.argument, renames)}`;
+    case 'literal': return expr.raw;
   }
-  if (expr.type === 'binary') return `(${codeOf(expr.left)} ${expr.op} ${codeOf(expr.right)})`;
-  if (expr.type === 'conditional') return `(${codeOf(expr.test)} ? ${codeOf(expr.consequent)} : ${codeOf(expr.alternate)})`;
-  return exprToString(expr);
 }

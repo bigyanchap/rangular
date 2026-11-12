@@ -105,6 +105,13 @@ interface Ctx {
    * call becomes (react: `onSaved`, preview state mode: `props.onSaved`).
    */
   outputCallbacks?: Map<string, string>;
+  /**
+   * Reactive form fields (Stage 8): fields initialised with
+   * new FormGroup(...) / new FormControl(...). In react mode they are
+   * held in a ref, so `this.profileForm` reads as `profileFormRef.current`;
+   * in state mode they live in the preview state like any other field.
+   */
+  formFields?: Set<string>;
   /** Set when the current statement uses an unsupported construct. */
   unsupported?: string;
 }
@@ -240,6 +247,8 @@ class Translator {
     if (callback) return callback;
     if (c.mode === 'service') return `this.${name}`;
     if (c.methodNames.has(name)) return c.mode === 'state' ? `methods.${name}` : name;
+    // Stage 8: a reactive form instance is ref-held in generated code.
+    if (c.mode === 'react' && c.formFields?.has(name)) return `${name}Ref.current`;
     return c.mode === 'state' ? `state.${name}` : name;
   }
 
@@ -395,6 +404,8 @@ export interface MethodHost {
 export interface TranslateOptions {
   /** @Output field name -> callback expression for `.emit(...)` calls. */
   outputCallbacks?: Map<string, string>;
+  /** Reactive form fields held in refs in generated code (Stage 8). */
+  formFields?: Set<string>;
 }
 
 /**
@@ -418,6 +429,7 @@ export function translateMethods(
       mode, fieldNames, methodNames, stateFields,
       methodName: method.name, diagnostics,
       outputCallbacks: options.outputCallbacks,
+      formFields: options.formFields,
     };
     const translator = new Translator(ctx);
     const lines = translator.statements(statements, '');

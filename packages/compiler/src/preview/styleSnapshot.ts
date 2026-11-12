@@ -76,6 +76,11 @@ function allRoles(mode: ThemeMode): Record<string, StyleRecord> {
       borderColor: c.outline, selectedBorderColor: c.primary, dotBackground: c.primary,
       borderRadius: t.radius.full, width: 24, height: 24, dotWidth: 12, dotHeight: 12,
     },
+    input: {
+      background: c.surface, borderColor: c.outline, borderRadius: t.radius.sm,
+      color: c.text, fontSize: ty.bodyLarge.fontSize,
+    },
+    inputError: { color: c.error, fontSize: ty.caption.fontSize },
     textDisplay: { fontSize: ty.display.fontSize, lineHeight: ty.display.lineHeight, fontWeight: 700 },
     textHeading: { fontSize: ty.heading.fontSize, lineHeight: ty.heading.lineHeight, fontWeight: 700 },
     textTitle: { fontSize: ty.title.fontSize, lineHeight: ty.title.lineHeight, fontWeight: 600 },
@@ -104,6 +109,7 @@ function rolesForElement(el: ElementNode): string[] {
     case 'checkbox': return ['checkbox'];
     case 'switcher': return ['switcher'];
     case 'radio-group': return ['radio'];
+    case 'input': return ['input', 'inputError'];
     case 'span': return el.attrs['class'] === 'badge' ? ['badge'] : [];
     default: return [];
   }

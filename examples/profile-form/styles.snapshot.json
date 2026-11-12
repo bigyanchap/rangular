@@ -1,0 +1,97 @@
+{
+  "example": "profile-form",
+  "themes": {
+    "light": {
+      "roles": {
+        "appbar": {
+          "background": "#f0f4f9",
+          "borderRadius": 9999,
+          "gap": 12
+        },
+        "avatar": {
+          "background": "#7b1fa2",
+          "color": "#ffffff"
+        },
+        "button": {
+          "background": "#0b57d0",
+          "color": "#ffffff",
+          "borderRadius": 9999,
+          "minHeight": 48
+        },
+        "card": {
+          "background": "#f0f4f9",
+          "borderColor": "#dadce0",
+          "borderRadius": 16,
+          "padding": 16
+        },
+        "input": {
+          "background": "#ffffff",
+          "borderColor": "#747775",
+          "borderRadius": 8,
+          "color": "#1f1f1f",
+          "fontSize": 16
+        },
+        "inputError": {
+          "color": "#b3261e",
+          "fontSize": 12
+        },
+        "screen": {
+          "background": "#ffffff",
+          "color": "#1f1f1f"
+        },
+        "textBody": {
+          "fontSize": 16,
+          "lineHeight": 24,
+          "color": "#5f6368"
+        }
+      },
+      "styles": {}
+    },
+    "dark": {
+      "roles": {
+        "appbar": {
+          "background": "#282a2c",
+          "borderRadius": 9999,
+          "gap": 12
+        },
+        "avatar": {
+          "background": "#d0bcff",
+          "color": "#381e72"
+        },
+        "button": {
+          "background": "#a8c7fa",
+          "color": "#062e6f",
+          "borderRadius": 9999,
+          "minHeight": 48
+        },
+        "card": {
+          "background": "#282a2c",
+          "borderColor": "#444746",
+          "borderRadius": 16,
+          "padding": 16
+        },
+        "input": {
+          "background": "#1e1f20",
+          "borderColor": "#8e918f",
+          "borderRadius": 8,
+          "color": "#e3e3e3",
+          "fontSize": 16
+        },
+        "inputError": {
+          "color": "#f2b8b5",
+          "fontSize": 12
+        },
+        "screen": {
+          "background": "#131314",
+          "color": "#e3e3e3"
+        },
+        "textBody": {
+          "fontSize": 16,
+          "lineHeight": 24,
+          "color": "#9aa0a6"
+        }
+      },
+      "styles": {}
+    }
+  }
+}

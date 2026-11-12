@@ -1,11 +1,14 @@
 import { colours, theme } from '../../../ui/src/tokens';
 import { ICON_PATHS, ICON_SIZES, DEFAULT_ICON_SIZE } from '../../../ui/src/icons';
+import { FormGroup, ValidatorFn, Validators, validateValue } from '../../../runtime/src/index';
 import { ComponentField, ComponentInfo, ServiceInfo } from '../class/parseComponent';
+import { evaluateFormInitializer, isFormInitializer } from '../class/formInit';
 import { ChildUnitInput, outputPropName } from '../codegen/generate';
 import { translateMethods } from '../codegen/methods';
 import { nearestOnScale } from '../style/css';
 import { ElementNode, TemplateNode, TemplateRoot } from '../template/ast';
 import { evaluateExpression, Scope } from '../template/evaluate';
+import { ngModelBindingOf, plainFieldOf, ValidatorSpec, validatorsOf } from '../template/forms';
 import { literalValue } from '../template/literal';
 import { parseNgFor, parseNgIf } from '../template/structural';
 
@@ -47,6 +50,22 @@ export function evaluateLiteral(initializer: string): unknown {
   return r.ok ? r.value : undefined;
 }
 
+/**
+ * Add the reactive form instances of a host's fields to a preview state
+ * (Stage 8): a field initialised with new FormGroup(...) or
+ * new FormControl(...) becomes the real runtime instance, built by the
+ * shared initializer evaluator. Initializers outside the supported
+ * subset are skipped here; compile.ts reports them with
+ * GEN_FORM_INITIALIZER.
+ */
+function addFormInstances(state: Record<string, unknown>, fields: ComponentField[]): void {
+  for (const f of fields) {
+    if (!f.initializer || !isFormInitializer(f.initializer)) continue;
+    const built = evaluateFormInitializer(f.initializer);
+    if (built.ok) state[f.name] = built.value;
+  }
+}
+
 /** The preview state: every field whose initializer is a literal structure. */
 export function componentState(component: ComponentInfo): Record<string, unknown> {
   const state: Record<string, unknown> = {};
@@ -55,6 +74,7 @@ export function componentState(component: ComponentInfo): Record<string, unknown
     const v = evaluateLiteral(f.initializer);
     if (v !== undefined) state[f.name] = v;
   }
+  addFormInstances(state, component.fields);
   return state;
 }
 
@@ -69,7 +89,17 @@ function stateWithInputs(host: { fields: ComponentField[] }): Record<string, unk
     const v = evaluateLiteral(f.initializer);
     if (v !== undefined) state[f.name] = v;
   }
+  addFormInstances(state, host.fields);
   return state;
+}
+
+/** The form field initializers of a host, field name -> source text (Stage 8). */
+function formInitsOf(host: { fields: ComponentField[] }): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const f of host.fields) {
+    if (f.initializer && isFormInitializer(f.initializer)) out[f.name] = f.initializer;
+  }
+  return out;
 }
 
 /** Preview stand-in for HttpClient: get() returns an Observable that never emits. */
@@ -132,12 +162,24 @@ export function iconSvg(name: string, size: number, colorRole?: string): string 
 const UNSET = Symbol('unset');
 
 /** Evaluate an expression against a scope; UNSET on any failure. */
-function evalSafe(source: string, scope: Scope): unknown {
+function evalSafe(source: string, scope: Scope, refs?: Scope): unknown {
   try {
-    const v = evaluateExpression(source, scope);
+    const v = evaluateExpression(source, scope, refs);
     return v === undefined ? UNSET : v;
   } catch {
     return UNSET;
+  }
+}
+
+/** One validator spec as a runtime ValidatorFn, its argument evaluated in scope. */
+function validatorFnOf(spec: ValidatorSpec, scope: Scope): ValidatorFn {
+  const arg = spec.argSource === undefined ? undefined : evalSafe(spec.argSource, scope);
+  switch (spec.fn) {
+    case 'required': return Validators.required;
+    case 'email': return Validators.email;
+    case 'minLength': return Validators.minLength(typeof arg === 'number' ? arg : 0);
+    case 'maxLength': return Validators.maxLength(typeof arg === 'number' ? arg : 0);
+    case 'pattern': return Validators.pattern(typeof arg === 'string' ? arg : '');
   }
 }
 
@@ -191,6 +233,44 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   };
   assignDeps(baseScope, component);
 
+  // --- Template references (Stage 8) ---------------------------------------
+  // The ngModel refs of the component whose template is being painted:
+  // #email="ngModel" exposes the input's live validation state
+  // (value, errors, valid, invalid, touched) to template expressions.
+  // The static paint is the pre-interaction paint, so touched is false.
+  // Child components compute their own refs when they render.
+  let currentRefs: Scope = {};
+  const computeRefs = (nodes: TemplateNode[], stateObj: Scope, scope: Scope): Scope => {
+    const refs: Scope = {};
+    const walk = (list: TemplateNode[]): void => {
+      for (const node of list) {
+        if (node.type !== 'element') continue;
+        if (childDefs.has(node.tag)) continue;
+        if (node.tag.toLowerCase() === 'input' && node.ref && node.refExport === 'ngModel') {
+          const ng = ngModelBindingOf(node);
+          const field = ng ? plainFieldOf(ng.expression) : undefined;
+          if (field) {
+            const errors = validateValue(
+              stateObj[field],
+              validatorsOf(node).map((spec) => validatorFnOf(spec, scope)),
+            );
+            refs[node.ref] = {
+              value: stateObj[field],
+              errors,
+              valid: errors === null,
+              invalid: errors !== null,
+              touched: false,
+            };
+          }
+        }
+        walk(node.children);
+      }
+    };
+    walk(nodes);
+    return refs;
+  };
+  currentRefs = computeRefs(ast.children, state, baseScope);
+
   const renderNodes = (nodes: TemplateNode[], scope: Scope): string =>
     nodes.map((n) => renderNode(n, scope)).join('\n');
 
@@ -199,7 +279,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
       return node.parts
         .map((p) => {
           if (p.type === 'static') return escapeHtml(p.value);
-          const v = evalSafe(p.expression, scope);
+          const v = evalSafe(p.expression, scope, currentRefs);
           return v === UNSET ? escapeHtml(`{{ ${p.expression} }}`) : escapeHtml(String(v ?? ''));
         })
         .join('');
@@ -211,7 +291,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   const bound = (el: ElementNode, name: string, scope: Scope): string | undefined => {
     const b = el.propBindings.find((x) => x.name === name);
     if (b) {
-      const v = evalSafe(b.expression, scope);
+      const v = evalSafe(b.expression, scope, currentRefs);
       if (v !== UNSET) return String(v ?? '');
     }
     return el.attrs[name];
@@ -221,7 +301,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   const rawBound = (el: ElementNode, name: string, scope: Scope): unknown => {
     const b = el.propBindings.find((x) => x.name === name);
     if (b) {
-      const v = evalSafe(b.expression, scope);
+      const v = evalSafe(b.expression, scope, currentRefs);
       if (v !== UNSET) return v;
     }
     if (el.booleanAttrs.includes(name)) return true;
@@ -240,14 +320,14 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   const renderElement = (el: ElementNode, scope: Scope): string => {
     if (el.structural?.name === 'ngIf') {
       const parts = parseNgIf(el.structural.expression);
-      const v = evalSafe(parts.condition, scope);
+      const v = evalSafe(parts.condition, scope, currentRefs);
       if (v === UNSET || !v) return '';
       return renderCore({ ...el, structural: undefined }, scope);
     }
     if (el.structural?.name === 'ngFor') {
       const { parts } = parseNgFor(el.structural.expression);
       if (!parts) return '';
-      const items = evalSafe(parts.source, scope);
+      const items = evalSafe(parts.source, scope, currentRefs);
       if (!Array.isArray(items)) return '';
       return items
         .map((item, idx) => {
@@ -272,7 +352,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
     const inputNames = new Set(def.info.fields.filter((f) => f.isInput).map((f) => f.name));
     for (const b of el.propBindings) {
       if (!inputNames.has(b.name)) continue;
-      const v = evalSafe(b.expression, parentScope);
+      const v = evalSafe(b.expression, parentScope, currentRefs);
       if (v !== UNSET) scope[b.name] = v;
     }
     for (const [name, value] of Object.entries(el.attrs)) {
@@ -280,12 +360,64 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
     }
     for (const a of el.booleanAttrs) if (inputNames.has(a)) scope[a] = true;
     assignDeps(scope, def.info);
-    return renderNodes(def.ast.children, scope);
+    // The child's template reads its own ngModel refs (Stage 8).
+    const parentRefs = currentRefs;
+    currentRefs = computeRefs(def.ast.children, scope, scope);
+    const html = renderNodes(def.ast.children, scope);
+    currentRefs = parentRefs;
+    return html;
   };
 
   const renderCore = (el: ElementNode, scope: Scope): string => {
     const childDef = childDefs.get(el.tag);
     if (childDef) return renderChild(el, childDef, scope);
+    // Forms (Stage 8): a form paints as a plain wrapper; its [formGroup]
+    // instance is handed to descendant inputs through the scope so a
+    // formControlName input paints its control's current value. The
+    // static paint is pre-interaction, like every other control.
+    if (el.tag === 'form') {
+      const fg = el.propBindings.find((b) => b.name === 'formGroup');
+      let childScope = scope;
+      if (fg) {
+        const g = evalSafe(fg.expression, scope, currentRefs);
+        if (g !== UNSET && g !== null && g !== undefined) {
+          childScope = { ...scope, __formGroup: g };
+        }
+      }
+      return `<div class="form">${renderNodes(el.children, childScope)}</div>`;
+    }
+    if (el.tag === 'input') {
+      const labelText = bound(el, 'label', scope);
+      const placeholder = bound(el, 'placeholder', scope);
+      const errorText = bound(el, 'error', scope);
+      let value = '';
+      const fcn = el.attrs['formControlName'];
+      const group = scope['__formGroup'] as FormGroup | undefined;
+      const ng = ngModelBindingOf(el);
+      const valueBinding = el.propBindings.find((b) => b.name === 'value');
+      if (fcn !== undefined && group && typeof group.get === 'function') {
+        const control = group.get(fcn);
+        if (control) value = String(control.value ?? '');
+      } else if (ng) {
+        const v = evalSafe(ng.expression, scope, currentRefs);
+        if (v !== UNSET) value = String(v ?? '');
+      } else if (valueBinding) {
+        const v = evalSafe(valueBinding.expression, scope, currentRefs);
+        if (v !== UNSET) value = String(v ?? '');
+      } else if (el.attrs['value'] !== undefined) {
+        value = el.attrs['value'];
+      }
+      const typeAttr = el.attrs['type'];
+      const inputType = typeAttr === 'password' ? 'password'
+        : typeAttr === 'email' ? 'email'
+        : typeAttr === 'number' ? 'number' : 'text';
+      const disabled = truthy(rawBound(el, 'disabled', scope));
+      return `<div class="field">` +
+        (labelText ? `<span class="field-label">${escapeHtml(labelText)}</span>` : '') +
+        `<input class="field-input" type="${inputType}"${placeholder ? ` placeholder="${escapeHtml(placeholder)}"` : ''} value="${escapeHtml(value)}"${disabled ? ' disabled' : ''}>` +
+        (errorText ? `<span class="field-error">${escapeHtml(errorText)}</span>` : '') +
+        `</div>`;
+    }
     const inner = renderNodes(el.children, scope);
     const title = bound(el, 'title', scope) ?? '';
     switch (el.tag) {
@@ -419,6 +551,12 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .card .body { margin: 0; font-size: ${t.typography.body.fontSize}px; }
   .btn { display: block; margin: ${t.spacing.sm}px ${t.spacing.lg}px 0; background: var(--primary); color: var(--on-primary); border: none; border-radius: ${t.radius.full}px; padding: 0 ${t.spacing.xxl}px; min-height: 48px; font-size: ${t.typography.label.fontSize}px; font-weight: 600; cursor: pointer; }
   .btn[disabled] { opacity: .38; cursor: default; }
+  .form { display: flex; flex-direction: column; }
+  .field { display: flex; flex-direction: column; gap: ${t.spacing.xs}px; margin: ${t.spacing.sm}px ${t.spacing.lg}px 0; }
+  .field-label { font-size: ${t.typography.label.fontSize}px; font-weight: 600; color: var(--text-muted); }
+  .field-input { font: inherit; font-size: ${t.typography.bodyLarge.fontSize}px; color: var(--text); background: var(--role-surface); border: 1px solid var(--border); border-radius: ${t.radius.sm}px; padding: 10px ${t.spacing.md}px; }
+  .field-input[disabled] { opacity: .38; }
+  .field-error { color: var(--role-error); font-size: ${t.typography.caption.fontSize}px; }
   .switch, .checkbox { display: flex; align-items: center; gap: ${t.spacing.md}px; width: calc(100% - ${t.spacing.lg * 2}px); margin: ${t.spacing.sm}px ${t.spacing.lg}px 0; padding: ${t.spacing.sm}px 0; background: transparent; border: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
   .switch[disabled], .checkbox[disabled], .switcher-option[disabled], .radio-option[disabled] { opacity: .38; cursor: default; }
   .switch-track { position: relative; width: 52px; height: 32px; flex: 0 0 52px; border: 2px solid var(--border); border-radius: ${t.radius.full}px; background: var(--surface-variant); transition: background-color .16s linear, border-color .16s linear; }
@@ -529,10 +667,16 @@ export function previewScript(
     for (const f of child.info.fields) {
       if (f.isOutput) outputCallbacks.set(f.name, `props.${outputPropName(f.name)}`);
     }
+    // Form instances cannot be JSON serialized; the page rebuilds them
+    // from the initializer source with its own mini evaluator (Stage 8).
+    const childFormInits = formInitsOf(child.info);
+    const childState = stateWithInputs(child.info);
+    for (const k of Object.keys(childFormInits)) delete childState[k];
     componentEntries.push(
       `  ${jsonForScript(child.info.selector)}: {\n` +
       `    "template": ${jsonForScript(child.ast)},\n` +
-      `    "state": ${jsonForScript(stateWithInputs(child.info))},\n` +
+      `    "state": ${jsonForScript(childState)},\n` +
+      `    "formInits": ${jsonForScript(childFormInits)},\n` +
       `    "deps": ${jsonForScript(depsOf(child.info.constructorDeps))},\n` +
       `    "inputs": ${jsonForScript(child.info.fields.filter((f) => f.isInput).map((f) => f.name))},\n` +
       `    "outputs": ${jsonForScript(child.info.fields.filter((f) => f.isOutput).map((f) => f.name))},\n` +
@@ -544,12 +688,18 @@ export function previewScript(
   const rootOnInit = component.methods.includes('ngOnInit') ? '"ngOnInit"' : 'null';
   const needsWiring = Object.keys(rootDeps).length > 0 || rootOnInit !== 'null';
   const declaredTheme = declaredThemeOf(ast);
+  // Root form instances: excluded from the serialized state (instances
+  // do not survive JSON) and rebuilt in the page from FORM_INITS.
+  const rootFormInits = formInitsOf(component);
+  const serialState: Record<string, unknown> = { ...state };
+  for (const k of Object.keys(rootFormInits)) delete serialState[k];
 
   return `// Rangular interactive preview runtime (Stage 2).
 // State and methods are live: (click) handlers mutate state and re-render.
 const TEMPLATE = ${jsonForScript(ast)};
 const ICONS = ${jsonForScript(ICON_PATHS)};
-const state = ${jsonForScript(state)};
+const state = ${jsonForScript(serialState)};
+const FORM_INITS = ${jsonForScript(rootFormInits)};
 const methods = {
 ${methodEntries.join(',\n')}
 };
@@ -561,7 +711,7 @@ ${componentEntries.join(',\n')}
 };
 const ROOT_DEPS = ${jsonForScript(rootDeps)};
 const ROOT_ONINIT = ${rootOnInit};
-${PAGE_RUNTIME}${needsWiring ? `\n${ROOT_WIRING}` : ''}
+${PAGE_RUNTIME}${needsWiring ? `\n${ROOT_WIRING}` : ''}${Object.keys(rootFormInits).length ? `\n${ROOT_FORM_WIRING}` : ''}
 ${themeWiring(declaredTheme)}`;
 }
 
@@ -608,6 +758,19 @@ if (ROOT_ONINIT && typeof methods[ROOT_ONINIT] === 'function') {
   methods[ROOT_ONINIT]();
   __render();
 }
+`;
+
+/**
+ * Appended after the page runtime when the root component has reactive
+ * form fields (Stage 8): the instances are built only once the runtime
+ * (and its Validators table) exists, then the screen re-renders with
+ * live form values.
+ */
+const ROOT_FORM_WIRING = String.raw`
+// Root form instances (Stage 8): build the FormGroup/FormControl fields
+// from their initializers, then re-render with live values and validity.
+Object.keys(FORM_INITS).forEach(function (k) { state[k] = __evalFormInit(FORM_INITS[k]); });
+__render();
 `;
 
 /**
@@ -756,6 +919,14 @@ function __eval(e, scope) {
     case 'literal': return e.value;
     case 'identifier': return scope[e.name];
     case 'member': {
+      // Template references (Stage 8): a member chain rooted at an
+      // ngModel ref name reads the ref's live validation object.
+      if (e.object.type === 'identifier' && scope.__refs
+        && Object.prototype.hasOwnProperty.call(scope.__refs, e.object.name)) {
+        var ro = scope.__refs[e.object.name];
+        if (ro === null || ro === undefined) return undefined;
+        return ro[e.property];
+      }
       var o = __eval(e.object, scope);
       if (o === null || o === undefined) return undefined;
       return o[e.property];
@@ -812,11 +983,18 @@ function __eval(e, scope) {
   }
 }
 function __evalSrc(src, scope) { return __eval(__parse(src), scope); }
+var __rootTouched = {};
 function __scope(extra) {
   var s = {}, k;
   for (k in state) s[k] = state[k];
   for (k in methods) s[k] = methods[k];
   if (extra) for (k in extra) s[k] = extra[k];
+  // Forms channels (Stage 8): __state is the backing store ngModel
+  // writes land in (scopes are copies), __touched persists per input
+  // across re-renders, __refs carries the live ngModel ref objects.
+  s.__state = state;
+  s.__touched = __rootTouched;
+  s.__refs = __refsFor(TEMPLATE.children, state, __rootTouched, s);
   return s;
 }
 function __extend(scope, extra) {
@@ -850,14 +1028,14 @@ function __parseNgFor(expr) {
   }
   return parts;
 }
-function __buildNodes(nodes, scope, path) {
+function __buildNodes(nodes, scope, path, form) {
   var out = [];
   nodes.forEach(function (n, i) {
-    __buildNode(n, scope, path + '/' + i).forEach(function (d) { out.push(d); });
+    __buildNode(n, scope, path + '/' + i, form).forEach(function (d) { out.push(d); });
   });
   return out;
 }
-function __buildNode(node, scope, path) {
+function __buildNode(node, scope, path, form) {
   if (node.type === 'text') {
     var txt = '';
     node.parts.forEach(function (p) {
@@ -871,19 +1049,19 @@ function __buildNode(node, scope, path) {
     });
     return [document.createTextNode(txt)];
   }
-  return __buildElement(node, scope, path);
+  return __buildElement(node, scope, path, form);
 }
-function __buildElement(el, scope, path) {
+function __buildElement(el, scope, path, form) {
   if (el.structural && el.structural.name === 'ngIf') {
     var cond;
     try { cond = __evalSrc(el.structural.expression.split(';')[0].trim(), scope); }
     catch (err) { console.warn(err); cond = false; }
     if (!cond) return [];
-    return __buildCore(el, scope, path);
+    return __buildCore(el, scope, path, form);
   }
   if (el.structural && el.structural.name === 'ngFor') {
     var parts = __parseNgFor(el.structural.expression);
-    if (!parts) { console.warn('preview: unparseable *ngFor'); return __buildCore(el, scope, path); }
+    if (!parts) { console.warn('preview: unparseable *ngFor'); return __buildCore(el, scope, path, form); }
     var items;
     try { items = __evalSrc(parts.source, scope); }
     catch (err) { console.warn(err); items = []; }
@@ -893,11 +1071,11 @@ function __buildElement(el, scope, path) {
       var extra = {};
       extra[parts.item] = items[idx];
       if (parts.index) extra[parts.index] = idx;
-      __buildCore(el, __extend(scope, extra), path + '/for' + idx).forEach(function (d) { out.push(d); });
+      __buildCore(el, __extend(scope, extra), path + '/for' + idx, form).forEach(function (d) { out.push(d); });
     }
     return out;
   }
-  return __buildCore(el, scope, path);
+  return __buildCore(el, scope, path, form);
 }
 function __attachEvents(dom, el, scope) {
   el.eventBindings.forEach(function (ev) {
@@ -972,9 +1150,363 @@ function __runChange(el, scope, value) {
   });
   __render();
 }
-function __buildCore(el, scope, path) {
+// Forms runtime (Stage 8). Plain-JS mirrors of the @rangular/runtime
+// forms core (Validators, FormControl, FormGroup semantics and error
+// shapes), plus the mini evaluator for form field initializers and the
+// ngModel ref builder. The preview never uses eval on author code: the
+// initializer shapes are parsed by hand, like everything else here.
+function __isEmptyValue(v) {
+  return v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0);
+}
+function __valueLength(v) {
+  return (typeof v === 'string' || Array.isArray(v)) ? v.length : String(v).length;
+}
+var __Validators = {
+  required: function (v) { return __isEmptyValue(v) ? { required: true } : null; },
+  minLength: function (n) {
+    return function (v) {
+      if (__isEmptyValue(v)) return null;
+      var len = __valueLength(v);
+      return len < n ? { minlength: { requiredLength: n, actualLength: len } } : null;
+    };
+  },
+  maxLength: function (n) {
+    return function (v) {
+      if (__isEmptyValue(v)) return null;
+      var len = __valueLength(v);
+      return len > n ? { maxlength: { requiredLength: n, actualLength: len } } : null;
+    };
+  },
+  email: function (v) {
+    if (__isEmptyValue(v)) return null;
+    return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/.test(String(v)) ? null : { email: true };
+  },
+  pattern: function (p) {
+    var rp = String(p);
+    if (rp.charAt(0) !== '^') rp = '^' + rp;
+    if (rp.charAt(rp.length - 1) !== '$') rp = rp + '$';
+    var re = new RegExp(rp);
+    return function (v) {
+      if (__isEmptyValue(v)) return null;
+      return re.test(String(v)) ? null : { pattern: { requiredPattern: rp, actualValue: v } };
+    };
+  }
+};
+function __validateValue(value, fns) {
+  var merged = null;
+  (fns || []).forEach(function (fn) {
+    var errs = fn(value);
+    if (errs) {
+      merged = merged || {};
+      Object.keys(errs).forEach(function (k) { merged[k] = errs[k]; });
+    }
+  });
+  return merged;
+}
+function __validatorsOf(el, scope) {
+  var fns = [];
+  function argOf(attr, binding) {
+    var b = __binding(el, binding, scope);
+    if (b !== undefined) return b;
+    var a = el.attrs[attr];
+    if (a === undefined) return undefined;
+    return isNaN(Number(a)) ? a : Number(a);
+  }
+  if (el.booleanAttrs.indexOf('required') >= 0
+    || (el.attrs['required'] !== undefined && el.attrs['required'] !== 'false')) fns.push(__Validators.required);
+  var min = argOf('minlength', 'minlength');
+  if (min !== undefined) fns.push(__Validators.minLength(min));
+  var max = argOf('maxlength', 'maxlength');
+  if (max !== undefined) fns.push(__Validators.maxLength(max));
+  if (el.booleanAttrs.indexOf('email') >= 0
+    || (el.attrs['email'] !== undefined && el.attrs['email'] !== 'false')) fns.push(__Validators.email);
+  var pat = argOf('pattern', 'pattern');
+  if (pat !== undefined) fns.push(__Validators.pattern(pat));
+  return fns;
+}
+function __makeControl(args) {
+  var spec = args.length > 1 ? args[1] : null;
+  var c = {
+    value: args.length ? args[0] : null,
+    touched: false,
+    dirty: false,
+    errors: null,
+    __validators: spec === null || spec === undefined ? [] : (Array.isArray(spec) ? spec : [spec]),
+    setValue: function (v) {
+      c.value = v;
+      c.dirty = true;
+      c.errors = __validateValue(c.value, c.__validators);
+    },
+    markAsTouched: function () { c.touched = true; }
+  };
+  c.errors = __validateValue(c.value, c.__validators);
+  Object.defineProperty(c, 'valid', { get: function () { return c.errors === null; } });
+  Object.defineProperty(c, 'invalid', { get: function () { return c.errors !== null; } });
+  return c;
+}
+function __makeGroup(controls) {
+  var g = {
+    controls: controls || {},
+    get: function (name) { return g.controls[name]; },
+    markAllAsTouched: function () {
+      Object.keys(g.controls).forEach(function (k) { g.controls[k].markAsTouched(); });
+    }
+  };
+  Object.defineProperty(g, 'value', {
+    get: function () {
+      var out = {};
+      Object.keys(g.controls).forEach(function (k) { out[k] = g.controls[k].value; });
+      return out;
+    }
+  });
+  Object.defineProperty(g, 'valid', {
+    get: function () {
+      return Object.keys(g.controls).every(function (k) { return g.controls[k].valid; });
+    }
+  });
+  Object.defineProperty(g, 'invalid', { get: function () { return !g.valid; } });
+  Object.defineProperty(g, 'touched', {
+    get: function () {
+      return Object.keys(g.controls).some(function (k) { return g.controls[k].touched; });
+    }
+  });
+  return g;
+}
+function __evalFormInit(src) {
+  var s = String(src), i = 0;
+  function ws() { while (i < s.length && /\s/.test(s[i])) i++; }
+  function parseArgs() {
+    ws();
+    var args = [];
+    if (s[i] === '(') {
+      i++;
+      ws();
+      if (s[i] !== ')') {
+        for (;;) {
+          args.push(parseValue());
+          ws();
+          if (s[i] === ',') { i++; ws(); if (s[i] === ')') break; continue; }
+          break;
+        }
+      }
+      ws();
+      if (s[i] === ')') i++;
+    }
+    return args;
+  }
+  function parseValue() {
+    ws();
+    var ch = s[i];
+    if (ch === "'" || ch === '"') {
+      var j = i + 1, v = '';
+      while (j < s.length && s[j] !== ch) {
+        if (s[j] === '\\' && j + 1 < s.length) { v += s[j + 1]; j += 2; }
+        else { v += s[j]; j++; }
+      }
+      i = j + 1;
+      return v;
+    }
+    if (ch === '[') {
+      i++;
+      var arr = [];
+      ws();
+      if (s[i] !== ']') {
+        for (;;) {
+          arr.push(parseValue());
+          ws();
+          if (s[i] === ',') { i++; ws(); if (s[i] === ']') break; continue; }
+          break;
+        }
+      }
+      ws();
+      if (s[i] === ']') i++;
+      return arr;
+    }
+    if (ch === '{') {
+      i++;
+      var obj = {};
+      ws();
+      if (s[i] !== '}') {
+        for (;;) {
+          ws();
+          if (s[i] === '}') break;
+          var key;
+          if (s[i] === "'" || s[i] === '"') key = parseValue();
+          else {
+            var km = /^[A-Za-z_$][\w$]*/.exec(s.slice(i));
+            if (!km) throw new Error('preview: bad key in form initializer');
+            key = km[0];
+            i += km[0].length;
+          }
+          ws();
+          if (s[i] === ':') i++;
+          obj[key] = parseValue();
+          ws();
+          if (s[i] === ',') { i++; continue; }
+          break;
+        }
+      }
+      ws();
+      if (s[i] === '}') i++;
+      return obj;
+    }
+    if (s.substr(i, 3) === 'new' && !/[A-Za-z0-9_$]/.test(s[i + 3] || '')) {
+      i += 3;
+      ws();
+      var nm = /^[A-Za-z_$][\w$]*/.exec(s.slice(i));
+      if (!nm) throw new Error('preview: bad form initializer');
+      i += nm[0].length;
+      var args = parseArgs();
+      if (nm[0] === 'FormControl') return __makeControl(args);
+      if (nm[0] === 'FormGroup') return __makeGroup(args[0]);
+      throw new Error('preview: unsupported form initializer ' + nm[0]);
+    }
+    var idm = /^[A-Za-z_$][\w$]*/.exec(s.slice(i));
+    if (idm) {
+      var name = idm[0];
+      i += name.length;
+      if (name === 'true') return true;
+      if (name === 'false') return false;
+      if (name === 'null') return null;
+      if (name === 'Validators') {
+        ws();
+        if (s[i] === '.') {
+          i++;
+          var vm = /^[A-Za-z_$][\w$]*/.exec(s.slice(i));
+          if (!vm) throw new Error('preview: bad Validators reference');
+          i += vm[0].length;
+          ws();
+          if (s[i] === '(') {
+            var vargs = parseArgs();
+            return __Validators[vm[0]].apply(null, vargs);
+          }
+          return __Validators[vm[0]];
+        }
+      }
+      throw new Error('preview: unsupported identifier in form initializer: ' + name);
+    }
+    var num = /^-?\d+(\.\d+)?/.exec(s.slice(i));
+    if (num) { i += num[0].length; return Number(num[0]); }
+    throw new Error('preview: cannot evaluate form initializer');
+  }
+  try {
+    return parseValue();
+  } catch (err) {
+    console.warn(err);
+    return undefined;
+  }
+}
+function __refsFor(nodes, stateObj, touched, scope) {
+  var refs = {};
+  function walk(list) {
+    (list || []).forEach(function (n) {
+      if (n.type !== 'element') return;
+      if (COMPONENTS[n.tag]) return;
+      if (n.tag === 'input' && n.ref && n.refExport === 'ngModel') {
+        var expr = null;
+        (n.twoWayBindings || []).forEach(function (b) { if (b.name === 'ngModel') expr = b.expression; });
+        if (!expr) n.propBindings.forEach(function (b) { if (b.name === 'ngModel') expr = b.expression; });
+        if (expr && /^[A-Za-z_$][\w$]*$/.test(expr.trim())) {
+          var field = expr.trim();
+          var errs = __validateValue(stateObj[field], __validatorsOf(n, scope));
+          refs[n.ref] = {
+            value: stateObj[field], errors: errs,
+            valid: errs === null, invalid: errs !== null,
+            touched: !!touched[n.ref]
+          };
+        }
+      }
+      walk(n.children);
+    });
+  }
+  walk(nodes);
+  return refs;
+}
+function __formCtx(el, scope) {
+  var ctx = { submit: null, group: null, touchedKeys: [], touched: (scope && scope.__touched) || {} };
+  el.eventBindings.forEach(function (ev) {
+    if (ev.name === 'submit' || ev.name === 'ngSubmit') ctx.submit = ev;
+  });
+  var g = __binding(el, 'formGroup', scope);
+  if (g !== undefined && g !== null) ctx.group = g;
+  return ctx;
+}
+function __buildInput(el, scope, form) {
+  var wrap = document.createElement('div');
+  wrap.className = 'field';
+  var labelText = __attr(el, 'label', scope);
+  if (labelText) {
+    var ls = document.createElement('span');
+    ls.className = 'field-label';
+    ls.textContent = String(labelText);
+    wrap.appendChild(ls);
+  }
+  var input = document.createElement('input');
+  input.className = 'field-input';
+  var typeAttr = el.attrs['type'];
+  input.type = typeAttr === 'password' ? 'password' : typeAttr === 'email' ? 'email' : typeAttr === 'number' ? 'number' : 'text';
+  var ph = __attr(el, 'placeholder', scope);
+  if (ph) input.setAttribute('placeholder', String(ph));
+  var fcn = el.attrs['formControlName'];
+  var control = null;
+  if (fcn !== undefined && form && form.group && form.group.get) control = form.group.get(fcn);
+  var tw = null, pair = null;
+  (el.twoWayBindings || []).forEach(function (b) { if (b.name === 'ngModel') tw = b; });
+  el.propBindings.forEach(function (b) { if (b.name === 'ngModel') pair = b; });
+  var model = tw || pair;
+  var field = null;
+  if (model && /^[A-Za-z_$][\w$]*$/.test(model.expression.trim())) field = model.expression.trim();
+  var value;
+  if (control) value = control.value;
+  else if (model) {
+    try { value = __evalSrc(model.expression, scope); }
+    catch (err) { console.warn(err); value = undefined; }
+  } else {
+    var vb = __binding(el, 'value', scope);
+    value = vb !== undefined ? vb : el.attrs['value'];
+  }
+  input.value = value === undefined || value === null ? '' : String(value);
+  if (__truthy(__controlValue(el, 'disabled', scope))) input.disabled = true;
+  var touchedKey = el.ref || field;
+  if (form && field && touchedKey && form.touchedKeys.indexOf(touchedKey) < 0) form.touchedKeys.push(touchedKey);
+  input.addEventListener('input', function () {
+    var v = input.value;
+    if (control) control.setValue(v);
+    if (tw && field && scope.__state) scope.__state[field] = v;
+    el.eventBindings.forEach(function (ev) {
+      if (ev.name === 'ngModelChange' || ev.name === 'input') __runHandler(ev.expression, scope, v);
+    });
+    __render();
+  });
+  input.addEventListener('change', function () {
+    el.eventBindings.forEach(function (ev) {
+      if (ev.name === 'change') __runHandler(ev.expression, scope, input.value);
+    });
+    __render();
+  });
+  input.addEventListener('blur', function () {
+    if (control) control.markAsTouched();
+    if (field && scope.__touched && touchedKey) scope.__touched[touchedKey] = true;
+    el.eventBindings.forEach(function (ev) {
+      if (ev.name === 'blur') __runHandler(ev.expression, scope, undefined);
+    });
+    __render();
+  });
+  wrap.appendChild(input);
+  var errText = __attr(el, 'error', scope);
+  if (errText) {
+    var es = document.createElement('span');
+    es.className = 'field-error';
+    es.textContent = String(errText);
+    wrap.appendChild(es);
+  }
+  return wrap;
+}
+function __buildCore(el, scope, path, form) {
   if (COMPONENTS[el.tag]) return __buildChild(el, scope, path);
-  var kids = __buildNodes(el.children, scope, path);
+  var kidsForm = form;
+  if (el.tag === 'form') kidsForm = __formCtx(el, scope);
+  var kids = __buildNodes(el.children, scope, path, kidsForm);
   function wrap(tag, cls) {
     var d = document.createElement(tag);
     if (cls) d.className = cls;
@@ -1010,12 +1542,30 @@ function __buildCore(el, scope, path) {
       return sp;
     }
     case 'card': return wrap('section', 'card');
+    case 'form': return wrap('div', 'form');
+    case 'input': return [__buildInput(el, scope, form)];
     case 'button': {
       var b = document.createElement('button');
       b.className = 'btn';
       if (__binding(el, 'disabled', scope)) b.disabled = true;
       kids.forEach(function (k) { b.appendChild(k); });
-      __attachEvents(b, el, scope);
+      // Form submit (Stage 8): a submit button inside a form with a
+      // (submit) handler runs that handler, first marking every ngModel
+      // input touched (and every control of a reactive group), the
+      // same composition the compiler generates.
+      var hasClick = false;
+      el.eventBindings.forEach(function (ev) { if (ev.name === 'click') hasClick = true; });
+      if (el.attrs['type'] === 'submit' && form && form.submit && !hasClick) {
+        b.addEventListener('click', function () {
+          if (b.disabled) return;
+          form.touchedKeys.forEach(function (k) { form.touched[k] = true; });
+          if (form.group && form.group.markAllAsTouched) form.group.markAllAsTouched();
+          __runHandler(form.submit.expression, scope, undefined);
+          __render();
+        });
+      } else {
+        __attachEvents(b, el, scope);
+      }
       return [b];
     }
     case 'switch': {
@@ -1067,7 +1617,7 @@ function __buildCore(el, scope, path) {
         var segment = document.createElement('button');
         segment.type = 'button';
         segment.className = 'switcher-option' + (String(switcherValue) === String(optionValue) ? ' selected' : '');
-        __buildNodes(child.children, scope, path + '/option' + childIndex).forEach(function (k) { segment.appendChild(k); });
+        __buildNodes(child.children, scope, path + '/option' + childIndex, kidsForm).forEach(function (k) { segment.appendChild(k); });
         if (switcherDisabled) segment.disabled = true;
         else segment.addEventListener('click', function () { __runChange(el, scope, optionValue); });
         switcher.appendChild(segment);
@@ -1096,7 +1646,7 @@ function __buildCore(el, scope, path) {
         choice.appendChild(circle);
         var choiceLabel = document.createElement('span');
         choiceLabel.className = 'control-label';
-        __buildNodes(child.children, scope, path + '/radio' + childIndex).forEach(function (k) { choiceLabel.appendChild(k); });
+        __buildNodes(child.children, scope, path + '/radio' + childIndex, kidsForm).forEach(function (k) { choiceLabel.appendChild(k); });
         choice.appendChild(choiceLabel);
         if (radioDisabled) choice.disabled = true;
         else choice.addEventListener('click', function () { __runChange(el, scope, choiceValue); });
@@ -1202,8 +1752,9 @@ function __childInstance(path, def, props) {
   if (!inst) {
     var st = {};
     Object.keys(def.state).forEach(function (k) { st[k] = def.state[k]; });
-    inst = { state: st, props: {}, methods: {}, fresh: true };
+    inst = { state: st, props: {}, methods: {}, fresh: true, touched: {} };
     Object.keys(def.deps).forEach(function (k) { st[k] = __resolveDep(def.deps[k]); });
+    Object.keys(def.formInits || {}).forEach(function (k) { st[k] = __evalFormInit(def.formInits[k]); });
     inst.methods = __bind(def, inst);
     __instances[path] = inst;
   }
@@ -1211,10 +1762,14 @@ function __childInstance(path, def, props) {
   def.inputs.forEach(function (n) { if (n in props) inst.state[n] = props[n]; });
   return inst;
 }
-function __childScope(inst) {
+function __childScope(inst, def) {
   var s = {}, k;
   for (k in inst.state) s[k] = inst.state[k];
   for (k in inst.methods) s[k] = inst.methods[k];
+  // Forms channels (Stage 8), the child instance's own stores.
+  s.__state = inst.state;
+  s.__touched = inst.touched;
+  s.__refs = def ? __refsFor(def.template.children, inst.state, inst.touched, s) : {};
   return s;
 }
 function __buildChild(el, scope, path) {
@@ -1239,7 +1794,7 @@ function __buildChild(el, scope, path) {
     inst.fresh = false;
     if (def.onInit && inst.methods[def.onInit]) inst.methods[def.onInit]();
   }
-  var nodes = __buildNodes(def.template.children, __childScope(inst), path);
+  var nodes = __buildNodes(def.template.children, __childScope(inst, def), path);
   var domEvents = el.eventBindings.filter(function (ev) { return def.outputs.indexOf(ev.name) < 0; });
   if (domEvents.length && nodes[0] && nodes[0].addEventListener) {
     __attachEvents(nodes[0], { eventBindings: domEvents }, scope);

@@ -26,6 +26,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { Svg, Path } from 'react-native-svg';
@@ -113,6 +114,21 @@ function buildStyles(t: Theme) {
     buttonPressed: { opacity: 0.85 },
     buttonDisabled: { opacity: 0.38 },
     buttonLabel: { color: c.onPrimary, fontSize: t.typography.label.fontSize, fontWeight: '600' },
+    inputWrap: { marginHorizontal: t.spacing.lg, marginBottom: t.spacing.md },
+    inputLabel: {
+      fontSize: t.typography.label.fontSize, fontWeight: '600',
+      color: c.textMuted, marginBottom: t.spacing.xs,
+    },
+    inputField: {
+      borderWidth: 1, borderColor: c.outline, borderRadius: t.radius.sm,
+      backgroundColor: c.surface, paddingHorizontal: t.spacing.md, paddingVertical: 10,
+      fontSize: t.typography.bodyLarge.fontSize, color: c.text,
+    },
+    inputFieldError: { borderColor: c.error },
+    inputError: {
+      color: c.error, fontSize: t.typography.caption.fontSize, marginTop: t.spacing.xs,
+    },
+    inputDisabled: { opacity: 0.38 },
     controlRow: {
       minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: t.spacing.md,
       paddingVertical: t.spacing.sm, paddingHorizontal: t.spacing.lg,
@@ -229,6 +245,39 @@ export function RgButton({ children, disabled, onPress, style }: any) {
     >
       <Text style={styles.buttonLabel}>{children}</Text>
     </Pressable>
+  );
+}
+
+/**
+ * One text field with the Material form field look (Stage 8): a label
+ * above the field, an outlined box from the tokens, and an error line
+ * under the field in the error colour. This is what template <input>
+ * elements compile to, template-driven (ngModel) and reactive
+ * (formControlName) alike. The value is controlled: the owner passes
+ * `value` in and receives the next text through onChangeText, exactly
+ * the contract the compiler wires for [(ngModel)] and FormControls.
+ * `secure` is the password form of the template's type attribute;
+ * keyboardType passes the template's email/number choice through.
+ */
+export function RgInput({ value, onChangeText, onBlur, placeholder, label, error, disabled, secure, keyboardType, style }: any) {
+  const t = useRgTheme();
+  const styles = stylesFor(t);
+  return (
+    <View style={[styles.inputWrap, style]}>
+      {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
+      <TextInput
+        style={[styles.inputField, error ? styles.inputFieldError : null, disabled ? styles.inputDisabled : null]}
+        value={value}
+        onChangeText={onChangeText}
+        onBlur={onBlur}
+        placeholder={placeholder}
+        placeholderTextColor={t.colors.textMuted}
+        editable={!disabled}
+        secureTextEntry={!!secure}
+        keyboardType={keyboardType}
+      />
+      {error ? <Text style={styles.inputError}>{error}</Text> : null}
+    </View>
   );
 }
 
