@@ -104,7 +104,7 @@ Scan the QR code with Expo Go. A bare name creates the app in the
 checkout's `apps/` folder; an explicit path (`init ../my-app --app`)
 is used as given. The app depends on `@rangular/ui` and
 `@rangular/runtime` through `file:` specifiers pointing at this
-checkout, carries the Expo SDK 54 pin set, and its starter component
+checkout, carries the Expo SDK 58 pin set, and its starter component
 (`src/app.component.ts`) is already compiled into `src/AppRoot.tsx`
 by the real compiler. Edit the component, recompile it with
 `rangular build` as the app README spells out, and Expo reloads.

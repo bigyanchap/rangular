@@ -880,11 +880,13 @@ See `examples/mailbox-pro/` and its recipe card.
   (`watchFolders` on the repo root, `nodeModulesPaths` for both
   roots), so the app always builds against the checkout it was
   scaffolded from.
-- **The pins are the Expo SDK 54 set**: `expo ~54.0.0`,
-  `react 19.1.0`, `react-native 0.81.4`, `react-native-svg 15.12.1`,
-  `babel-preset-expo ~54.0.0` (dev). They were chosen for mutual
-  compatibility from the SDK's published set, not re-verified against
-  a live registry from the build environment.
+- **The pins are the Expo SDK 58 set**: `expo ~58.0.0`,
+  `react 19.3.0`, `react-native 0.88.1`, `react-native-svg 15.16.0`,
+  `babel-preset-expo ~58.0.0` (dev). They were chosen for mutual
+  compatibility from the SDK's published set, not installed or
+  device-verified from the build environment. The set moved from
+  SDK 54 to SDK 58 on 2026-11-12 because the store build of Expo Go
+  supports SDK 58 only and refused an SDK 54 app.
 - **The starter is compiled at scaffold time**: `src/app.component.ts`
   and its template are the usual starter source, and `src/AppRoot.tsx`
   is the real compiler output for it, generated during `init`, not a

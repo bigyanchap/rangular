@@ -205,11 +205,14 @@ function fileDepOf(fromDir: string, toDir: string): string {
  * by the real compiler, so what App.tsx imports is genuine compiler
  * output, not a stored sample.
  *
- * The dependency pins are the Expo SDK 54 set (expo ~54, react 19.1,
- * react-native 0.81, react-native-svg 15.12, babel-preset-expo ~54),
- * chosen for mutual compatibility per the SDK 54 release; they were
- * not re-verified against a live registry from this environment, and
- * the app README says so.
+ * The dependency pins are the Expo SDK 58 set (expo ~58, react 19.3,
+ * react-native 0.88, react-native-svg 15.16, babel-preset-expo ~58),
+ * chosen for mutual compatibility per the SDK 58 release. The set
+ * moved from SDK 54 to SDK 58 on 2026-11-12 because the store build
+ * of Expo Go supports SDK 58 only and refused an SDK 54 app. The pins
+ * come from the SDK's published compatibility set; they were not
+ * installed or device-verified from this environment, and the app
+ * README says so.
  */
 function initApp(dirArg: string): void {
   const repoRoot = rangularRepoRoot();
@@ -262,14 +265,14 @@ function initApp(dirArg: string): void {
     dependencies: {
       '@rangular/runtime': fileDepOf(appDir, path.join(repoRoot, 'packages', 'runtime')),
       '@rangular/ui': fileDepOf(appDir, path.join(repoRoot, 'packages', 'ui')),
-      expo: '~54.0.0',
-      react: '19.1.0',
-      'react-native': '0.81.4',
-      'react-native-svg': '15.12.1',
+      expo: '~58.0.0',
+      react: '19.3.0',
+      'react-native': '0.88.1',
+      'react-native-svg': '15.16.0',
     },
     devDependencies: {
       '@babel/core': '^7.25.2',
-      'babel-preset-expo': '~54.0.0',
+      'babel-preset-expo': '~58.0.0',
       typescript: '~5.9.2',
     },
   }, null, 2) + '\n');
@@ -386,11 +389,12 @@ the generated app behaves.
   builds against that checkout. Move the app and those paths move
   with it only if the relative layout is kept; edit them if you
   relocate the app on its own.
-- The Expo pins (expo ~54, react 19.1, react-native 0.81,
-  react-native-svg 15.12, babel-preset-expo ~54) are the Expo SDK 54
-  set, chosen for mutual compatibility. They were selected from the
-  SDK's published compatibility, not re-verified against a live
-  registry when this scaffold was written.
+- The Expo pins (expo ~58, react 19.3, react-native 0.88,
+  react-native-svg 15.16, babel-preset-expo ~58) are the Expo SDK 58
+  set, chosen for mutual compatibility. The set moved from SDK 54 to
+  SDK 58 because the store build of Expo Go supports SDK 58 only.
+  They were selected from the SDK's published compatibility, not
+  installed or device-verified when this scaffold was written.
 - \`metro.config.js\` is the standard monorepo config: it watches the
   Rangular repo root (so the file: packages resolve) and looks for
   node_modules in both the app and the repo root.

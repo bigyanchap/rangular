@@ -568,11 +568,11 @@ test('scaffold: init --app at an explicit path writes a real Expo app around gen
   }
   const pkg = JSON.parse(fs.readFileSync(path.join(appDir, 'package.json'), 'utf8'));
   assert.equal(pkg.name, 'my-app');
-  assert.equal(pkg.dependencies['expo'], '~54.0.0');
-  assert.equal(pkg.dependencies['react'], '19.1.0');
-  assert.equal(pkg.dependencies['react-native'], '0.81.4');
-  assert.equal(pkg.dependencies['react-native-svg'], '15.12.1');
-  assert.equal(pkg.devDependencies['babel-preset-expo'], '~54.0.0');
+  assert.equal(pkg.dependencies['expo'], '~58.0.0');
+  assert.equal(pkg.dependencies['react'], '19.3.0');
+  assert.equal(pkg.dependencies['react-native'], '0.88.1');
+  assert.equal(pkg.dependencies['react-native-svg'], '15.16.0');
+  assert.equal(pkg.devDependencies['babel-preset-expo'], '~58.0.0');
   for (const dep of ['@rangular/ui', '@rangular/runtime']) {
     const spec = pkg.dependencies[dep] as string;
     assert.ok(spec.startsWith('file:'), `${dep} is a file: dependency`);
