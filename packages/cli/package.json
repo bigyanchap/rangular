@@ -1,1 +1,1 @@
-{"bin":{"rangular":"src/cli.ts"},"description":"Command line interface for the Rangular compiler.","main":"src/cli.ts","name":"@rangular/cli","version":"0.1.0"}
+{"bin":{"rangular":"src/cli.ts"},"description":"Command line interface for the Rangular compiler.","license":"Apache-2.0","main":"src/cli.ts","name":"@rangular/cli","version":"0.1.0"}

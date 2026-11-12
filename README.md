@@ -774,3 +774,11 @@ resolvers and lazy loading, hardware back wiring for the navigator,
 per-expression source maps, device screenshot goldens, and following
 the OS dark mode setting by default. The full sequence is in
 [docs/ROADMAP.md](docs/ROADMAP.md).
+
+## License
+
+Rangular is free and open source, licensed under the Apache License
+2.0, with copyright held by Bigyan Chapagain. Use it for anything,
+including commercial apps of any size; the license also carries a
+patent grant and does not grant rights to the Rangular name. The
+full text is in [LICENSE](LICENSE).
