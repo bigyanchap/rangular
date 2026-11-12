@@ -200,7 +200,7 @@ export function parseExpression(source: string): Expr {
   return expr;
 }
 
-/** Canonical, fully-parenthesised string form — used by tests and codegen. */
+/** Canonical, fully-parenthesised string form, used by tests and codegen. */
 export function exprToString(expr: Expr): string {
   switch (expr.type) {
     case 'identifier': return expr.name;

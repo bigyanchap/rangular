@@ -5,9 +5,9 @@ import * as ts from 'typescript';
  * strings, numbers, booleans, null, arrays and objects (nested), with
  * unary minus on numbers. Anything else (identifiers, calls, spreads,
  * methods, template substitutions) is NOT a literal and reports
- * { ok: false } — callers keep their warning + TODO behaviour for those.
+ * { ok: false }, callers keep their warning + TODO behaviour for those.
  *
- * Implemented by walking the TypeScript AST — never by eval/Function.
+ * Implemented by walking the TypeScript AST, never by eval/Function.
  */
 export function literalValue(initializer: string): { ok: boolean; value?: unknown } {
   const sf = ts.createSourceFile(
@@ -60,7 +60,7 @@ function walk(node: ts.Expression): { ok: boolean; value?: unknown } {
         if (!r.ok) return { ok: false };
         out[key] = r.value;
       } else if (ts.isShorthandPropertyAssignment(prop)) {
-        // `({ x })` refers to a variable — not a literal.
+        // `({ x })` refers to a variable, not a literal.
         return { ok: false };
       } else {
         return { ok: false };

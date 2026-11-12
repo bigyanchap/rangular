@@ -1,0 +1,22 @@
+<screen>
+  <appbar title="Showcase" search="Search the showcase"></appbar>
+  <h1>Design tokens, live</h1>
+  <p>Every colour, space and type size on this screen comes from the Rangular Material token scales. Flip the preview to dark and only the token values change.</p>
+  <label>Text variants</label>
+  <h2>Heading, at the heading step</h2>
+  <h3>Title, at the title step</h3>
+  <p>Body text at the body step, muted by colour role, never by a hand-picked grey.</p>
+  <card>
+    <h3>Inside a card</h3>
+    <p class="card-note">A card note: body step, muted colour, from a .class rule in the component styles.</p>
+    <button (click)="primaryTap()">Primary action</button>
+    <button [disabled]="true">Disabled action</button>
+    <p *ngIf="taps > 0">Primary tapped {{ taps }} times</p>
+  </card>
+  <label>List and badge</label>
+  <list>
+    <row avatar *ngFor="let item of items; let i = index" [title]="item.title" [subtitle]="item.subtitle" [time]="item.time"></row>
+    <row title="System" subtitle="Theme tokens" time="Now"><span class="badge">{{ unread }} unread</span></row>
+  </list>
+  <fab (click)="primaryTap()">Compose</fab>
+</screen>

@@ -4,7 +4,7 @@ export type Scope = Record<string, unknown>;
 
 /**
  * Evaluate a parsed template expression against a scope object.
- * This walks the expression AST produced by the Pratt parser — it never
+ * This walks the expression AST produced by the Pratt parser, it never
  * uses eval/Function on source text.
  *
  * Semantics follow Angular templates pragmatically:

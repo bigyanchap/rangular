@@ -1,13 +1,13 @@
-# AGENTS.md — working in the Rangular repo
+# AGENTS.md: working in the Rangular repo
 
 Rangular is a standalone transpiler: you write Angular-style code
 (TypeScript classes with `@Component`, HTML-like templates) and it compiles
-to React Native `.tsx`. The target is RN JavaScript/JSX — Hermes makes the
+to React Native `.tsx`. The target is RN JavaScript/JSX. Hermes makes the
 bytecode. Rangular does not fork Angular and does not parse TypeScript by
 hand (it uses the TypeScript compiler API).
 
 **Before writing any Rangular source, read the delta tables in
-[docs/VIBE_CODING.md](docs/VIBE_CODING.md)** — Rangular looks like Angular
+[docs/VIBE_CODING.md](docs/VIBE_CODING.md)**, Rangular looks like Angular
 but is a subset of it, and it is not React. The machine-readable list of
 everything you may use is [catalog.md](catalog.md) / `catalog.json`.
 
@@ -19,11 +19,11 @@ everything you may use is [catalog.md](catalog.md) / `catalog.json`.
 | `packages/cli/src/cli.ts` | The `rangular` CLI: `build`, `ast`, `preview`, `catalog` |
 | `packages/runtime/src/index.ts` | Pure-TS helpers for generated apps: `EventEmitter`, `signal()`, `Container`, `ReactiveService` (base class generated services extend), `HttpClient` (Observable-lite over fetch), `pipe()` |
 | `packages/ui/src/tokens.ts` | Rangular Material design tokens (pure TS, part of the build) |
-| `packages/ui/src/primitives.tsx` | RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`) — shipped source for generated apps, deliberately excluded from this repo's `tsc` build |
-| `examples/hello/`, `examples/counter/`, `examples/inbox/`, `examples/profile/`, `examples/favourite/`, `examples/shared-inbox/` | Tiny single-capability examples, each with a recipe-card `README.md`, golden generated `.tsx` and `preview.html` (profile is the Stage 2.5 proof-test example: written from these docs alone; favourite = child components, shared-inbox = services/DI/lifecycle) |
-| `tests/` | `node:test` suites — parser, expressions, codegen, methods, runtime, tokens, catalog/vibe layer, Stage 3 (children, services, HttpClient, preview behaviour via a DOM shim) |
+| `packages/ui/src/primitives.tsx` | RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`) plus the theme context (`RgThemeProvider`, `useRgTheme`); all colours come from the active theme, shipped source for generated apps, deliberately excluded from this repo's `tsc` build |
+| `examples/hello/`, `examples/counter/`, `examples/inbox/`, `examples/profile/`, `examples/favourite/`, `examples/shared-inbox/`, `examples/showcase/` | Tiny single-capability examples, each with a recipe-card `README.md`, golden generated `.tsx` and `preview.html` (profile is the Stage 2.5 proof-test example: written from these docs alone; favourite = child components, shared-inbox = services/DI/lifecycle, showcase = tokens/theming/snapping) |
+| `tests/` | `node:test` suites, parser, expressions, codegen, methods, runtime, tokens, catalog/vibe layer, Stage 3 (children, services, HttpClient, preview behaviour via a DOM shim), Stage 4 (token completeness, primitives hex guard, CSS snapping, preview theme toggle, no-em-dash guard) |
 | `docs/` | `PINPOINT_MAP.md` (design map), `LEARNING_LIST.md` (the 77 things), `BLOCK_DIAGRAM.md` (architecture), `UI_POLISH.md` (polish system), `VIBE_CODING.md` (AI-facing layer + delta tables) |
-| `catalog.json`, `catalog.md` | GENERATED from the code by `rangular catalog` — never hand-edit |
+| `catalog.json`, `catalog.md` | GENERATED from the code by `rangular catalog`, never hand-edit |
 | `llms.txt` | AI-readable index of the whole repo |
 
 ## Commands
@@ -62,10 +62,13 @@ node dist/packages/cli/src/cli.js catalog --out .
    the golden-file tests and the catalog staleness test.
 4. **One obvious way.** Follow the tag→primitive mapping (`TAG_MAP` in
    `packages/compiler/src/codegen/generate.ts`, rendered in `catalog.md`).
-   Do not invent new tags, props or events — if a block is missing, add it
+   Do not invent new tags, props or events. If a block is missing, add it
    to the mapping + primitives + catalog properly instead of working around it.
 5. **Unsupported constructs produce coded diagnostics, never broken
    output.** Add the code to `DIAGNOSTIC_CODES` in
    `packages/compiler/src/diagnostics.ts`, give it a concrete `fix:`
-   suggestion, and degrade with a warning + TODO comment in generated code —
+   suggestion, and degrade with a warning + TODO comment in generated code,
    following the existing `METHOD_UNSUPPORTED` / `GEN_NGIF_ELSE_TODO` pattern.
+6. **No em dashes anywhere in this repo** (they read as machine-written).
+   Write plainly, like a person: commas, periods, colons, hyphens. A guard
+   test scans the repo and fails if U+2014 appears in any tracked text file.

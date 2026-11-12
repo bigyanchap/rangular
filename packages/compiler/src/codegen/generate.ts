@@ -44,6 +44,7 @@ export const TAG_MAP: Record<string, TagMapping> = {
   header: { component: 'View', fromUi: false },
   span: { component: 'Text', fromUi: false },
   p: { component: 'Text', fromUi: false, variant: 'body' },
+  label: { component: 'Text', fromUi: false, variant: 'label' },
   h1: { component: 'Text', fromUi: false, variant: 'display' },
   h2: { component: 'Text', fromUi: false, variant: 'heading' },
   h3: { component: 'Text', fromUi: false, variant: 'title' },
@@ -193,7 +194,7 @@ class Generator {
       if (dep.typeName === HTTP_CLIENT || this.rootServices.has(dep.typeName)) continue;
       this.diagnostics.push(error(
         'DI_UNKNOWN_TOKEN',
-        `${owner}: no provider for '${dep.typeName}' (injected as '${dep.propertyName}') — it is not an @Injectable({ providedIn: 'root' }) service in this compilation and not HttpClient`,
+        `${owner}: no provider for '${dep.typeName}' (injected as '${dep.propertyName}'), it is not an @Injectable({ providedIn: 'root' }) service in this compilation and not HttpClient`,
         undefined, undefined,
         `Make '${dep.typeName}' an @Injectable({ providedIn: 'root' }) class and import it from the component file (imports are followed transitively), or inject HttpClient`,
       ));
@@ -209,7 +210,7 @@ class Generator {
         lines.push(`  ${field.name}${field.type ? `: ${field.type}` : ''} = ${field.initializer};`);
       } else if (field.initializer) {
         this.diagnostics.push(warning('GEN_FIELD', `Service '${svc.className}': field '${field.name}' has a non-literal initializer; not hoisted`, undefined, undefined, `Initialise '${field.name}' with a literal (including arrays/objects of literals) or assign it in the constructor`));
-        lines.push(`  // TODO: field '${field.name}' has a non-literal initializer (${field.initializer}) — not hoisted; wire it up manually for now.`);
+        lines.push(`  // TODO: field '${field.name}' has a non-literal initializer (${field.initializer}), not hoisted; wire it up manually for now.`);
       } else if (field.type) {
         lines.push(`  ${field.name}: ${field.type};`);
       }
@@ -267,7 +268,7 @@ class Generator {
           cycleReported = true;
           this.diagnostics.push(error(
             'DI_CYCLE',
-            `Service dependency cycle detected at '${name}' — registrations cannot be ordered`,
+            `Service dependency cycle detected at '${name}', registrations cannot be ordered`,
             undefined, undefined,
             'Break the cycle: have one service stop injecting the other (pass the value through a method call instead)',
           ));
@@ -324,7 +325,7 @@ class Generator {
           'GEN_FIELD_STATE',
           `Field '${field.name}' is assigned in a method but has a non-literal initializer; it cannot be hoisted to useState yet`,
           undefined, undefined,
-          `Initialise '${field.name}' with a literal (0, 'text', true, [ ... ], { ... }) so it can become state — e.g. ${field.name} = 0;`,
+          `Initialise '${field.name}' with a literal (0, 'text', true, [ ... ], { ... }) so it can become state, e.g. ${field.name} = 0;`,
         ));
       }
     }
@@ -377,9 +378,9 @@ class Generator {
       } else {
         diagnostics.push(warning(
           'GEN_UNKNOWN_TAG',
-          `Unknown tag <${el.tag}> — emitted as <View>. Use a known block or a component tag.`,
+          `Unknown tag <${el.tag}>, emitted as <View>. Use a known block or a component tag.`,
           el.pos.line, el.pos.column,
-          'Known blocks: screen, appbar, card, list, row, fab, button, input, h1, h2, h3, p, span, div, section, header — or use a Capitalised component tag',
+          'Known blocks: screen, appbar, card, list, row, fab, button, input, h1, h2, h3, p, span, label, div, section, header, or use a Capitalised component tag',
         ));
         componentName = 'View';
         this.usedRn.add('View');
@@ -409,7 +410,7 @@ class Generator {
         }
         const { prop, known } = eventPropName(ev.name, el.tag);
         if (!known) {
-          lines.push(`${indent}{/* (${ev.name}) has no standard RN prop — mapped to ${prop} */}`);
+          lines.push(`${indent}{/* (${ev.name}) has no standard RN prop, mapped to ${prop} */}`);
         }
         props.push(isBareRef ? `${prop}={${src}}` : `${prop}={() => ${codeExpr(src)}}`);
       }
@@ -452,12 +453,12 @@ class Generator {
         if (parts.elseRef || parts.thenRef) {
           diagnostics.push(warning(
             'GEN_NGIF_ELSE_TODO',
-            `*ngIf with 'else'/'then' microsyntax is not generated yet — element emitted unconditionally`,
+            `*ngIf with 'else'/'then' microsyntax is not generated yet, element emitted unconditionally`,
             el.pos.line, el.pos.column,
             'Split it into two elements: one with *ngIf="cond" and a second with *ngIf="!(cond)"',
           ));
           return [
-            `${indent}{/* TODO(M5+): *ngIf else/then — "${el.structural.expression}" */}`,
+            `${indent}{/* TODO(M5+): *ngIf else/then, "${el.structural.expression}" */}`,
             ...renderCore(stripped, depth, []),
           ];
         }
@@ -474,7 +475,7 @@ class Generator {
         diagnostics.push(...forDiags);
         if (!parts) {
           return [
-            `${indent}{/* TODO: unparseable *ngFor="${el.structural.expression}" — element emitted once */}`,
+            `${indent}{/* TODO: unparseable *ngFor="${el.structural.expression}", element emitted once */}`,
             ...renderCore(stripped, depth, []),
           ];
         }
@@ -492,9 +493,9 @@ class Generator {
 
       diagnostics.push(warning(
         'GEN_STRUCTURAL_TODO',
-        `*${el.structural.name} is not supported yet — element emitted unconditionally`,
+        `*${el.structural.name} is not supported yet, element emitted unconditionally`,
         el.pos.line, el.pos.column,
-        'Only *ngIf and *ngFor are supported — rewrite the element with one of those',
+        'Only *ngIf and *ngFor are supported, rewrite the element with one of those',
       ));
       return [
         `${indent}{/* TODO: *${el.structural.name}="${el.structural.expression}" */}`,
@@ -545,7 +546,7 @@ class Generator {
         depLines.push(`  useSyncExternalStore((cb) => ${dep.propertyName}.__subscribe(cb), () => ${dep.propertyName}.__getVersion());`);
       } else {
         this.validateDeps(`Component ${component.className}`, [dep]);
-        depLines.push(`  // TODO(Rangular DI): no provider for '${dep.typeName}' — '${dep.propertyName}' is unavailable.`);
+        depLines.push(`  // TODO(Rangular DI): no provider for '${dep.typeName}', '${dep.propertyName}' is unavailable.`);
       }
     }
 
@@ -560,7 +561,7 @@ class Generator {
           fieldLines.push(`  const ${field.name} = ${field.initializer};`);
         }
       } else if (field.initializer) {
-        fieldLines.push(`  // TODO: field '${field.name}' has a non-literal initializer (${field.initializer}) — not hoisted; wire it up manually for now.`);
+        fieldLines.push(`  // TODO: field '${field.name}' has a non-literal initializer (${field.initializer}), not hoisted; wire it up manually for now.`);
         diagnostics.push(warning('GEN_FIELD', `Field '${field.name}' has a non-literal initializer; not hoisted`, undefined, undefined, `Initialise '${field.name}' with a literal (including arrays/objects of literals) or wire the value up manually in the generated component`));
       }
     }
@@ -595,7 +596,7 @@ class Generator {
     }
 
     // A template whose root is a structural directive (or several roots)
-    // cannot be returned bare — `{cond && (...)}` alone is not valid JSX —
+    // cannot be returned bare, `{cond && (...)}` alone is not valid JSX,
     // so it is wrapped in a fragment. A single plain element root (the
     // common <screen> shape) is returned as-is, exactly as in Stage 2.
     const only = ast.children.length === 1 ? ast.children[0] : undefined;
@@ -638,7 +639,7 @@ function styleKeyFor(prefix: string, key: string): string {
 /**
  * Generate a React Native .tsx from a parsed component, its template AST
  * and its parsed styles. Stage 3: the optional context carries the child
- * components and services resolved through the entry's imports — everything
+ * components and services resolved through the entry's imports, everything
  * is emitted into the same file (see the Generator note above).
  */
 export function generateComponent(

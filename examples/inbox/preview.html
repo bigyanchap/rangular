@@ -1,37 +1,49 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Rangular preview — app-inbox</title>
+<title>Rangular preview: app-inbox</title>
 <style>
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: Roboto, system-ui, sans-serif; background: #e8eaed; display: flex; justify-content: center; padding: 24px 12px; }
-  .screen { width: 360px; max-width: 100%; min-height: 640px; background: #ffffff; color: #1f1f1f; border-radius: 28px; overflow: hidden; box-shadow: 0 10px 28px rgba(0,0,0,.18); padding-bottom: 24px; }
-  .appbar { display: flex; align-items: center; gap: 12px; margin: 12px; background: #f0f4f9; border-radius: 9999px; padding: 10px 16px; }
-  .search { flex: 1; color: #5f6368; font-size: 14px; }
+  /* Stage 4: every colour below resolves through these variables. The
+     declared theme is the default; the Light/Dark toggle in the preview
+     chrome flips data-theme on <html> and the other palette takes over,
+     the same token swap a generated app does with RgScreen theme. */
+  :root { --screen-bg: #ffffff; --surface-variant: #f0f4f9; --text: #1f1f1f; --text-muted: #5f6368; --primary: #0b57d0; --on-primary: #ffffff; --primary-container: #d3e3fd; --on-primary-container: #041e49; --border: #dadce0; --avatar: #7b1fa2; --on-avatar: #ffffff; }
+  html[data-theme="light"] { --screen-bg: #ffffff; --surface-variant: #f0f4f9; --text: #1f1f1f; --text-muted: #5f6368; --primary: #0b57d0; --on-primary: #ffffff; --primary-container: #d3e3fd; --on-primary-container: #041e49; --border: #dadce0; --avatar: #7b1fa2; --on-avatar: #ffffff; }
+  html[data-theme="dark"] { --screen-bg: #131314; --surface-variant: #282a2c; --text: #e3e3e3; --text-muted: #9aa0a6; --primary: #a8c7fa; --on-primary: #062e6f; --primary-container: #004a77; --on-primary-container: #d3e3fd; --border: #444746; --avatar: #d0bcff; --on-avatar: #381e72; }
+  body { margin: 0; font-family: Roboto, system-ui, sans-serif; background: #e8eaed; display: flex; flex-direction: column; align-items: center; padding: 24px 12px; }
+  .preview-chrome { width: 360px; max-width: 100%; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 13px; color: #444746; }
+  .preview-chrome button { background: #ffffff; color: #0b57d0; border: 1px solid #dadce0; border-radius: 9999px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .screen { width: 360px; max-width: 100%; min-height: 640px; background: var(--screen-bg); color: var(--text); border-radius: 28px; overflow: hidden; box-shadow: 0 10px 28px rgba(0,0,0,.18); padding-bottom: 24px; }
+  .appbar { display: flex; align-items: center; gap: 12px; margin: 12px; background: var(--surface-variant); border-radius: 9999px; padding: 10px 16px; }
+  .search { flex: 1; color: var(--text-muted); font-size: 14px; }
   .appbar-title { flex: 1; font-size: 20px; font-weight: 600; }
-  .avatar { width: 28px; height: 28px; border-radius: 50%; background: #7b1fa2; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
-  .avatar-lg { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; background: #0b57d0; color: #ffffff; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--avatar); color: var(--on-avatar); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+  .avatar-lg { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; }
   .display { font-size: 32px; line-height: 40px; font-weight: 700; margin: 16px 16px 8px; }
   .heading { font-size: 24px; line-height: 32px; font-weight: 700; margin: 0 0 8px; }
   .title { font-size: 20px; line-height: 28px; font-weight: 600; margin: 0 0 8px; }
-  .body { font-size: 16px; line-height: 24px; color: #5f6368; margin: 0 16px 16px; }
-  .card { background: #f0f4f9; border: 1px solid #dadce0; border-radius: 16px; padding: 16px; margin: 0 16px 16px; }
+  .body { font-size: 16px; line-height: 24px; color: var(--text-muted); margin: 0 16px 16px; }
+  .label { display: block; font-size: 14px; line-height: 20px; font-weight: 600; letter-spacing: .4px; margin: 0 16px 8px; }
+  .badge { display: inline-block; background: var(--primary-container); color: var(--on-primary-container); border-radius: 9999px; padding: 4px 12px; font-size: 12px; font-weight: 700; }
+  .card { background: var(--surface-variant); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin: 0 16px 16px; }
   .card .body { margin: 0; font-size: 14px; }
-  .btn { display: block; margin: 8px 16px 0; background: #0b57d0; color: #ffffff; border: none; border-radius: 9999px; padding: 0 24px; min-height: 48px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .btn { display: block; margin: 8px 16px 0; background: var(--primary); color: var(--on-primary); border: none; border-radius: 9999px; padding: 0 24px; min-height: 48px; font-size: 14px; font-weight: 600; cursor: pointer; }
   .btn[disabled] { opacity: .38; cursor: default; }
-  .list { border-top: 1px solid #dadce0; }
-  .row { display: flex; gap: 12px; align-items: flex-start; padding: 11px 16px; border-bottom: 1px solid #dadce0; }
+  .list { border-top: 1px solid var(--border); }
+  .row { display: flex; gap: 12px; align-items: flex-start; padding: 11px 16px; border-bottom: 1px solid var(--border); }
   .row-main { flex: 1; display: flex; flex-direction: column; }
   .row-title { font-weight: 600; font-size: 14px; }
   .row-sub { font-size: 13px; }
-  .row-detail { font-size: 12.5px; color: #5f6368; }
-  .row-time { font-size: 11px; color: #5f6368; }
-  .fab { display: inline-block; float: right; margin: 8px 16px 0 0; background: #c2e7ff; color: #001d35; border-radius: 16px; padding: 13px 18px; font-size: 14px; font-weight: 600; box-shadow: 0 3px 8px rgba(0,0,0,.25); }
+  .row-detail { font-size: 12.5px; color: var(--text-muted); }
+  .row-time { font-size: 11px; color: var(--text-muted); }
+  .fab { display: inline-block; float: right; margin: 8px 16px 0 0; background: var(--primary-container); color: var(--on-primary-container); border-radius: 16px; padding: 13px 18px; font-size: 14px; font-weight: 600; box-shadow: 0 3px 8px rgba(0,0,0,.25); }
 </style>
 </head>
 <body>
+<div class="preview-chrome"><span>Rangular preview</span><button id="theme-toggle" type="button">Switch to dark theme</button></div>
 <div id="app">
 <div class="screen"><header class="appbar"><span class="appbar-menu">&#9776;</span><span class="search">Search in mail</span><span class="avatar">M</span></header>
 <h1 class="display">Inbox</h1>
@@ -400,7 +412,12 @@ function __buildCore(el, scope, path) {
     case 'h2': return wrap('h2', 'heading');
     case 'h3': return wrap('h3', 'title');
     case 'p': return wrap('p', 'body');
-    case 'span': return wrap('span', '');
+    case 'label': return wrap('span', 'label');
+    case 'span': {
+      var sp = wrap('span', '');
+      if (el.attrs['class']) sp[0].className = el.attrs['class'];
+      return sp;
+    }
     case 'card': return wrap('section', 'card');
     case 'button': {
       var b = document.createElement('button');
@@ -554,6 +571,24 @@ function __render() {
 }
 __render();
 
+// Preview theme toggle (Stage 4): flips data-theme on <html>; the CSS
+// variables in <style> do the rest. Guarded so non-DOM harnesses and
+// older pages without the chrome button simply skip it.
+var __previewTheme = 'light';
+var __themeBtn = document.getElementById('theme-toggle');
+function __syncThemeBtn() {
+  if (__themeBtn) __themeBtn.textContent = __previewTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
+}
+if (__themeBtn) {
+  __themeBtn.addEventListener('click', function () {
+    __previewTheme = __previewTheme === 'dark' ? 'light' : 'dark';
+    if (document.documentElement && document.documentElement.setAttribute) {
+      document.documentElement.setAttribute('data-theme', __previewTheme);
+    }
+    __syncThemeBtn();
+  });
+  __syncThemeBtn();
+}
 </script>
 </body>
 </html>

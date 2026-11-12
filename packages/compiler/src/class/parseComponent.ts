@@ -14,7 +14,7 @@ export interface ComponentField {
 export interface MethodParam {
   /** Bare parameter name, e.g. `step` or `$event`. */
   name: string;
-  /** Full source text, e.g. `step: number = 1` — preserved in generated .tsx. */
+  /** Full source text, e.g. `step: number = 1`, preserved in generated .tsx. */
   text: string;
 }
 
@@ -51,10 +51,10 @@ export interface ComponentInfo {
   constructorBody?: string;
 }
 
-/** An @Injectable class (Stage 3, M6) — same member shape as a component. */
+/** An @Injectable class (Stage 3, M6), same member shape as a component. */
 export interface ServiceInfo {
   className: string;
-  /** True only for @Injectable({ providedIn: 'root' }) — the injectable kind. */
+  /** True only for @Injectable({ providedIn: 'root' }), the injectable kind. */
   providedInRoot: boolean;
   fields: ComponentField[];
   methods: string[];
@@ -147,7 +147,7 @@ function readMembers(
 /**
  * Constructor parameter properties (Stage 3 DI): a parameter counts as an
  * injected dependency only when it carries an accessibility/readonly
- * modifier — exactly Angular's rule. Plain parameters are not properties
+ * modifier, exactly Angular's rule. Plain parameters are not properties
  * and are ignored.
  */
 function readConstructor(
@@ -239,7 +239,7 @@ function readServiceClass(node: ts.ClassDeclaration, sf: ts.SourceFile, fileName
  * Read a whole TypeScript file: every @Component class, every @Injectable
  * class and every import statement. Stage 3's registry (compile.ts) follows
  * relative imports across files using this per-file view. Emits no
- * diagnostics of its own — a file of only services is a valid file.
+ * diagnostics of its own, a file of only services is a valid file.
  */
 export function parseClassFile(tsSource: string, fileName = 'component.ts'): ClassFileInfo {
   const sf = ts.createSourceFile(fileName, tsSource, ts.ScriptTarget.Latest, /* setParentNodes */ true);
@@ -269,14 +269,14 @@ export function parseClassFile(tsSource: string, fileName = 'component.ts'): Cla
 
 /**
  * Extract @Component metadata from a TypeScript source file using the
- * official TypeScript compiler API — Rangular never parses TS by hand.
+ * official TypeScript compiler API, Rangular never parses TS by hand.
  */
 export function parseComponent(tsSource: string, fileName = 'component.ts'): ParseComponentResult {
   const diagnostics: Diagnostic[] = [];
   const { components } = parseClassFile(tsSource, fileName);
   const found = components[0];
   if (!found) {
-    diagnostics.push(error('CLS_NO_COMPONENT', 'No @Component-decorated class found in the source', undefined, undefined, "Decorate the class: @Component({ selector: 'app-x', templateUrl: './x.component.html' }) export class XComponent { ... } — only @Component classes are compiled; @NgModule/@Injectable classes are not entry points"));
+    diagnostics.push(error('CLS_NO_COMPONENT', 'No @Component-decorated class found in the source', undefined, undefined, "Decorate the class: @Component({ selector: 'app-x', templateUrl: './x.component.html' }) export class XComponent { ... }, only @Component classes are compiled; @NgModule/@Injectable classes are not entry points"));
   }
   return { component: found, diagnostics };
 }

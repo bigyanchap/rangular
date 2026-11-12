@@ -49,7 +49,7 @@ export function parseNgFor(expression: string, line?: number, column?: number): 
   if (!head) {
     diagnostics.push(warning(
       'TPL_NGFOR',
-      `Could not parse *ngFor microsyntax "${expression}" — expected "let item of items"`,
+      `Could not parse *ngFor microsyntax "${expression}", expected "let item of items"`,
       line, column,
       'Use the form *ngFor="let item of items; let i = index" (optionally "; trackBy: trackByFn")',
     ));
@@ -67,9 +67,9 @@ export function parseNgFor(expression: string, line?: number, column?: number): 
     if (trackMatch) { parts.trackBy = trackMatch[1].trim(); continue; }
     diagnostics.push(warning(
       'TPL_NGFOR_SEGMENT',
-      `Unsupported *ngFor segment "${seg}" — ignored`,
+      `Unsupported *ngFor segment "${seg}", ignored`,
       line, column,
-      'Supported segments: "let i = index" and "trackBy: fnName" — remove or rewrite this segment',
+      'Supported segments: "let i = index" and "trackBy: fnName", remove or rewrite this segment',
     ));
   }
   return { parts, diagnostics };

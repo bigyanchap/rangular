@@ -134,7 +134,7 @@ function main(): void {
       console.log(`Wrote ${out} (${result.code.split('\n').length} lines)`);
       return;
     }
-    // preview — through the full compiler so child components and services
+    // preview, through the full compiler so child components and services
     // resolved from imports render exactly as they compile (Stage 3).
     const compiled = compileComponent({ tsSource, fileName: absPath, resolveFile, resolveImport });
     const allDiags = compiled.diagnostics;

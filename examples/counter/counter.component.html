@@ -1,7 +1,7 @@
 <screen>
   <appbar title="Counter"></appbar>
   <h1>{{ count }}</h1>
-  <p *ngIf="count >= 5">Past five — keep going</p>
+  <p *ngIf="count >= 5">Past five. Keep going</p>
   <button (click)="increment()">Increment</button>
   <button (click)="decrement()" [disabled]="count === 0">Decrement</button>
   <button (click)="reset()">Reset</button>

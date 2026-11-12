@@ -79,7 +79,7 @@ export function compileComponent(options: CompileOptions): CompileResult {
     if (stack.includes(fileName)) {
       diagnostics.push(warning(
         'CMP_IMPORT_CYCLE',
-        `Import cycle detected: ${[...stack, fileName].join(' -> ')} — classes on the cycle were registered from their first visit`,
+        `Import cycle detected: ${[...stack, fileName].join(' -> ')}, classes on the cycle were registered from their first visit`,
         undefined, undefined,
         'Break the cycle by moving the shared class (component or service) into its own file that both sides import',
       ));
@@ -98,7 +98,7 @@ export function compileComponent(options: CompileOptions): CompileResult {
           'CMP_DUP_SELECTOR',
           `Selector '${info.selector}' is declared by both ${prev.info.className} and ${info.className}`,
           undefined, undefined,
-          'Give each component a unique selector — selectors are how templates find child components',
+          'Give each component a unique selector, selectors are how templates find child components',
         ));
       } else if (!prev) {
         componentsBySelector.set(info.selector, { info, fileName });
@@ -115,7 +115,7 @@ export function compileComponent(options: CompileOptions): CompileResult {
           'CMP_IMPORT_UNRESOLVED',
           `Could not resolve import '${imp.from}' from '${fileName}'`,
           undefined, undefined,
-          `Check the path is relative to the importing file and the file exists — e.g. import { MailService } from './mail.service';`,
+          `Check the path is relative to the importing file and the file exists, e.g. import { MailService } from './mail.service';`,
         ));
         continue;
       }
@@ -127,7 +127,7 @@ export function compileComponent(options: CompileOptions): CompileResult {
 
   const component = entryParsed?.components[0];
   if (!component) {
-    diagnostics.push(error('CLS_NO_COMPONENT', 'No @Component-decorated class found in the source', undefined, undefined, "Decorate the class: @Component({ selector: 'app-x', templateUrl: './x.component.html' }) export class XComponent { ... } — only @Component classes are compiled; @NgModule/@Injectable classes are not entry points"));
+    diagnostics.push(error('CLS_NO_COMPONENT', 'No @Component-decorated class found in the source', undefined, undefined, "Decorate the class: @Component({ selector: 'app-x', templateUrl: './x.component.html' }) export class XComponent { ... }, only @Component classes are compiled; @NgModule/@Injectable classes are not entry points"));
     return { code: '', diagnostics, children: [], services: [...servicesByName.values()] };
   }
 
@@ -139,9 +139,9 @@ export function compileComponent(options: CompileOptions): CompileResult {
     if (!templateSource) {
       diagnostics.push(error(
         'CMP_TEMPLATE',
-        `Could not resolve templateUrl '${component.templateUrl}' — pass templateSource or a resolveFile callback`,
+        `Could not resolve templateUrl '${component.templateUrl}', pass templateSource or a resolveFile callback`,
         undefined, undefined,
-        'Check the path is relative to the component file and the template file exists — e.g. templateUrl: \'./x.component.html\'',
+        'Check the path is relative to the component file and the template file exists, e.g. templateUrl: \'./x.component.html\'',
       ));
       return { code: '', diagnostics, component, children: [], services: [...servicesByName.values()] };
     }

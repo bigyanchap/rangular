@@ -10,17 +10,17 @@ import { Diagnostic, warning } from '../diagnostics';
  *  - 'react': `this.field` reads become the bare variable; assignments to
  *    state fields become setter calls (`this.count++` -> `setCount(count + 1)`).
  *  - 'state': `this.field` becomes `state.field` and `this.method()` becomes
- *    `methods.method()` — used by the interactive HTML preview runtime.
+ *    `methods.method()`, used by the interactive HTML preview runtime.
  *
  * Anything outside the supported subset yields a METHOD_UNSUPPORTED warning
- * plus a TODO comment at that spot — code is never silently dropped and
+ * plus a TODO comment at that spot, code is never silently dropped and
  * broken syntax is never emitted.
  */
 
 /**
- * 'react'  — component -> function component (this.field -> state/setter).
- * 'state'  — the interactive preview (this.field -> state.field).
- * 'service' — a service stays a real class, so `this.` survives verbatim;
+ * 'react' , component -> function component (this.field -> state/setter).
+ * 'state' , the interactive preview (this.field -> state.field).
+ * 'service', a service stays a real class, so `this.` survives verbatim;
  *             assignments to fields additionally emit `this.__notify()` so
  *             subscribed components re-render (Stage 3, M6).
  */
@@ -157,7 +157,7 @@ class Translator {
       // express it faithfully (state.field = data / this.field = data), and
       // the generic path below already produces exactly that.
       if (c.mode === 'react' && ASSIGN_OPS.has(node.operatorToken.kind) && isThisProperty(node.left)) {
-        return this.fail('assignment to a field inside an expression — use a block body with assignment statements');
+        return this.fail('assignment to a field inside an expression, use a block body with assignment statements');
       }
       return `${this.expr(node.left)} ${node.operatorToken.getText()} ${this.expr(node.right)}`;
     }
@@ -253,9 +253,9 @@ class Translator {
   private unsupportedLine(indent: string, what: string): string[] {
     this.ctx.diagnostics.push(warning(
       'METHOD_UNSUPPORTED',
-      `Method '${this.ctx.methodName}': ${what} is not in the Stage 2 translation subset — left as a TODO`,
+      `Method '${this.ctx.methodName}': ${what} is not in the Stage 2 translation subset, left as a TODO`,
       undefined, undefined,
-      'Rewrite with the supported subset: this.field assignments (+=, ++, =), this.method() calls, if/else, return, local const/let — or move the unsupported logic out of the method',
+      'Rewrite with the supported subset: this.field assignments (+=, ++, =), this.method() calls, if/else, return, local const/let, or move the unsupported logic out of the method',
     ));
     return [`${indent}/* TODO(Rangular): unsupported in method '${this.ctx.methodName}': ${what} */`];
   }
@@ -377,7 +377,7 @@ class Translator {
 
 export interface TranslatedMethod {
   name: string;
-  /** Parameter source texts (react mode) — e.g. `step: number = 1`. */
+  /** Parameter source texts (react mode), e.g. `step: number = 1`. */
   paramTexts: string[];
   /** Parameter bare names (state/preview mode). */
   paramNames: string[];

@@ -2,15 +2,15 @@
 
 **Write Angular code, compile React Native code.**
 
-Rangular is a standalone transpiler: you write Angular-style code — TypeScript
-classes with `@Component`, HTML-like templates, dependency injection — and
+Rangular is a standalone transpiler: you write Angular-style code, TypeScript
+classes with `@Component`, HTML-like templates, dependency injection, and
 Rangular compiles it to React Native `.tsx`. The transpiler's target is React
 Native JavaScript/JSX; **Hermes compiles that JavaScript to bytecode itself**,
 so Rangular never emits bytecode, never forks Angular, and never parses
 TypeScript by hand (it uses the official TypeScript compiler API).
 
 Polish is a system, not luck: simple blocks compile to pre-polished
-**Rangular Material** primitives driven by design tokens — see
+**Rangular Material** primitives driven by design tokens, see
 [docs/UI_POLISH.md](docs/UI_POLISH.md). The full architecture is in
 [docs/BLOCK_DIAGRAM.md](docs/BLOCK_DIAGRAM.md).
 
@@ -40,7 +40,7 @@ node dist/packages/cli/src/cli.js preview examples/hello/hello.component.ts --ou
 ```
 
 Open `examples/hello/preview.html` in a browser: it is a working preview
-of the compiled screen, and it is interactive — buttons run the
+of the compiled screen, and it is interactive: buttons run the
 component's real translated methods, `*ngIf` / `*ngFor` respond to state,
 child components render and emit, services are shared live. The committed
 `examples/hello/hello.component.tsx` and `examples/hello/preview.html`
@@ -51,21 +51,21 @@ them honest.
 
 ```mermaid
 flowchart TB
-    subgraph L1["1 · YOU WRITE — src/"]
+    subgraph L1["1 · YOU WRITE: src/"]
         A1["Components & classes<br/>.component.ts<br/>@Component · @Input · @Output"]
         A2["Templates<br/>.component.html<br/>{{ }} · [prop] · (event)<br/>*ngIf · *ngFor · pipes · #ref"]
         A3["Services & styles<br/>@Injectable · DI · HttpClient · .css subset"]
     end
-    subgraph L2["2 · YOU BUILD — @rangular/compiler + CLI (standalone, NOT an Angular fork)"]
+    subgraph L2["2 · YOU BUILD: @rangular/compiler + CLI (standalone, NOT an Angular fork)"]
         B1["1 · CLI & Loader"] --> B2["2 · Two parsers<br/>TS AST + Template AST"] --> B3["3 · Analyzer<br/>diagnostics with source line"] --> B4["4 · IR + Transformer"] --> B5["5 · Code Generator<br/>+ source maps"]
     end
-    subgraph L3["3 · YOU BUILD — @rangular/runtime"]
+    subgraph L3["3 · YOU BUILD: @rangular/runtime"]
         C1["Signal → State bridge"] --- C2["DI container"] --- C3["HttpClient backend"] --- C4["Lifecycle & events shim"]
     end
-    subgraph L4["4 · OUTPUT — generated React Native / Expo project"]
+    subgraph L4["4 · OUTPUT: generated React Native / Expo project"]
         D1["Function components .tsx"] --- D2["Views & lists"] --- D3["StyleSheet objects"]
     end
-    subgraph L5["5 · ALREADY EXISTS — do not build"]
+    subgraph L5["5 · ALREADY EXISTS: do not build"]
         E1["Metro + Expo"] --> E2["Hermes → .hbc bytecode"] --> E3["Fabric + Yoga + JSI → native views"]
     end
     L1 --> L2 --> L3 --> L4 --> L5
@@ -80,9 +80,10 @@ flowchart TB
 | M2 | Interpolation `{{ }}` + `[prop]` binding | ✅ Done (Stage 0+1) |
 | M3 | Events + state (counter) | ✅ Done (Stage 2) |
 | M4 | `*ngIf` / `*ngFor` | ✅ Done (Stage 2) |
-| — | **Stage 2.5: Vibe layer** — `AGENTS.md`, `llms.txt`, generated catalog, recipe cards, `--json` diagnostics with `fix:` lines, delta tables | ✅ Done |
+| - | **Stage 2.5: Vibe layer**, `AGENTS.md`, `llms.txt`, generated catalog, recipe cards, `--json` diagnostics with `fix:` lines, delta tables | ✅ Done |
 | M5 | Child components, `@Input` / `@Output` | ✅ Done (Stage 3) |
 | M6 | Injected service + lifecycle + HttpClient | ✅ Done (Stage 3) |
+| - | **Stage 4: Polish lock-in** - complete token set (light + dark), themed primitives, CSS snapping (`STYLE_OFF_SCALE`), preview Light/Dark toggle, showcase example | ✅ Done |
 | M7 | CLI, source maps, error messages, Awaken Me dogfood | 🔶 CLI exists (`build` / `ast` / `preview`); source maps + dogfood pending |
 
 ## Packages
@@ -102,33 +103,33 @@ flowchart TB
 
 ## Docs
 
-- [docs/PINPOINT_MAP.md](docs/PINPOINT_MAP.md) — the design map: the goal
+- [docs/PINPOINT_MAP.md](docs/PINPOINT_MAP.md), the design map: the goal
   stated precisely, the finished thing in blocks, and where the work is.
-- [docs/LEARNING_LIST.md](docs/LEARNING_LIST.md) — the exact 77 things to
-  learn to build Rangular (groups A–H), and nothing more.
-- [docs/BLOCK_DIAGRAM.md](docs/BLOCK_DIAGRAM.md) — the architecture in
+- [docs/LEARNING_LIST.md](docs/LEARNING_LIST.md), the exact 77 things to
+  learn to build Rangular (groups A-H), and nothing more.
+- [docs/BLOCK_DIAGRAM.md](docs/BLOCK_DIAGRAM.md), the architecture in
   five layers, with the Mermaid diagram (also inline above).
-- [docs/UI_POLISH.md](docs/UI_POLISH.md) — how generated UI stays
+- [docs/UI_POLISH.md](docs/UI_POLISH.md), how generated UI stays
   polished: tokens only, pre-polished primitives, compiler defaults,
   visual proof.
-- [docs/VIBE_CODING.md](docs/VIBE_CODING.md) — the AI-facing layer plus
+- [docs/VIBE_CODING.md](docs/VIBE_CODING.md), the AI-facing layer plus
   the full delta tables (Rangular vs Angular, Rangular vs React).
 
 All documentation is Markdown on purpose: GitHub renders the Mermaid
 diagrams natively, diffs and search work, and AI tools read it directly.
-Markdown is the canonical format — there are no PDF copies to drift.
+Markdown is the canonical format. There are no PDF copies to drift.
 
 ## Vibe-coding ready
 
 Rangular is built to be written by AI assistants (and humans working
-through them) **without guessing** — see [docs/VIBE_CODING.md](docs/VIBE_CODING.md):
+through them) **without guessing**, see [docs/VIBE_CODING.md](docs/VIBE_CODING.md):
 
-- **[AGENTS.md](AGENTS.md)** — the rules of this repo: never edit generated
+- **[AGENTS.md](AGENTS.md)**, the rules of this repo: never edit generated
   files; every capability ships with compiler support + tests + a tiny
   example + a recipe card + a regenerated catalog.
-- **[llms.txt](llms.txt)** — one AI-readable index of every doc, example
+- **[llms.txt](llms.txt)**, one AI-readable index of every doc, example
   and package, including the 6-step "how to build a screen" loop.
-- **[catalog.md](catalog.md) / `catalog.json`** — every tag, event,
+- **[catalog.md](catalog.md) / `catalog.json`**, every tag, event,
   primitive prop, token scale and diagnostic code, **generated from the
   code** by `rangular catalog` (a test fails if the committed catalog is stale):
 
@@ -136,33 +137,33 @@ through them) **without guessing** — see [docs/VIBE_CODING.md](docs/VIBE_CODIN
   node dist/packages/cli/src/cli.js catalog --out .
   ```
 
-- **Recipe cards** — `examples/hello/README.md`,
+- **Recipe cards**, `examples/hello/README.md`,
   `examples/counter/README.md`, `examples/inbox/README.md`,
   `examples/profile/README.md`, `examples/favourite/README.md`,
-  `examples/shared-inbox/README.md`: Intent /
+  `examples/shared-inbox/README.md`, `examples/showcase/README.md`: Intent /
   Source / What it compiles to / Rules used / Common mistakes.
-- **Proof test (Stage 2.5)** — `examples/profile/` was written by a fresh
+- **Proof test (Stage 2.5)**, `examples/profile/` was written by a fresh
   AI agent given only AGENTS.md, llms.txt, the catalog and the recipe
   cards (no compiler source): it compiled with zero diagnostics on the
   first attempt, and every gap it reported was fixed in the docs
   (supported-expression list, avatar/row semantics, composition rules).
-- **Machine-readable errors** — `rangular build --json` prints a single
+- **Machine-readable errors**, `rangular build --json` prints a single
   JSON object (`{ ok, outFile?, diagnostics[] }`) on stdout; every
   diagnostic carries a concrete `fix:` suggestion.
-- **Delta tables** — [docs/VIBE_CODING.md](docs/VIBE_CODING.md) states
+- **Delta tables**, [docs/VIBE_CODING.md](docs/VIBE_CODING.md) states
   exactly how Rangular source differs from Angular (what is the same,
   what is not supported yet, with stages) and from React (no JSX, no
-  hooks in source — classes + HTML templates).
+  hooks in source; classes + HTML templates).
 
 ## Stage 2: events, state, `*ngIf` / `*ngFor`
 
-Two more examples live beside `hello` — same CLI commands, same golden rule:
+Two more examples live beside `hello`, same CLI commands, same golden rule:
 
-- `examples/counter/` — **M3.** A field assigned inside any method becomes
+- `examples/counter/`, **M3.** A field assigned inside any method becomes
   React state (`count` → `const [count, setCount] = useState(0)`); fields
   never assigned stay plain `const`. Methods become const arrow functions,
   and `(click)` bindings become `onPress` props.
-- `examples/inbox/` — **M4.** A `*ngFor` row over a literal `mails` array
+- `examples/inbox/`, **M4.** A `*ngFor` row over a literal `mails` array
   becomes a keyed `.map(...)`, and the `*ngIf` empty state becomes
   `{cond && (...)}`.
 
@@ -172,7 +173,7 @@ the TypeScript AST: `this.field` reads, assignments (`=`, `+=`, `-=`, `*=`,
 expression statements, `return`, `if` / `else`, blocks, and local
 `const`/`let` declarations. Anything else (loops, `try`, `switch`, …)
 produces a `METHOD_UNSUPPORTED` warning and a `TODO` comment in the
-generated code — it is never silently dropped and never emits broken
+generated code, it is never silently dropped and never emits broken
 syntax. Field initializers composed of literals (including nested arrays
 and objects) hoist to `const`/`useState`; other initializers keep the
 warning + TODO behaviour.
@@ -190,26 +191,26 @@ translated into functions that mutate it, and a small in-page runtime
 re-renders on every `(click)`. `*ngIf` and `*ngFor` behave in the preview
 as they will in React Native. The preview uses the compiler's own AST
 expression evaluator (`packages/compiler/src/template/evaluate.ts`, with
-built-in pipes `uppercase`, `lowercase`, `titlecase`, `json`) — no
+built-in pipes `uppercase`, `lowercase`, `titlecase`, `json`), no
 `eval`/`Function` on source text anywhere.
 
 ## Stage 3: child components, services, lifecycle, HttpClient
 
-Two more examples — same CLI commands, same golden rule:
+Two more examples, same CLI commands, same golden rule:
 
-- `examples/favourite/` — **M5.** A parent screen renders three
+- `examples/favourite/`, **M5.** A parent screen renders three
   `<quote-card>` children with `*ngFor`; each child takes `@Input() quote`
   / `@Input() author` and has `@Output() favourited`. Tapping a child's
   Save button emits, and the parent's "Saved: N" appbar count goes up.
-- `examples/shared-inbox/` — **M6.** A `MailService` holds the inbox;
+- `examples/shared-inbox/`, **M6.** A `MailService` holds the inbox;
   the parent screen (list + "Mark all read") and a child `<unread-badge>`
   inject the *same* instance, so one tap updates the list and the badge.
   The badge's `loaded` flag is set by `ngOnInit`.
 
 **Child components (M5).** Resolution follows the entry component's
 relative imports, transitively: an imported `@Component` class is a known
-child, keyed by its `selector`. `@Input` fields become props — the
-literal initializer is the default when the parent omits the binding —
+child, keyed by its `selector`. `@Input` fields become props, the
+literal initializer is the default when the parent omits the binding,
 and plain attributes pass strings. An `@Output` field initialised with
 `new EventEmitter<T>()` becomes a callback prop named `on` + Capitalised
 name; `this.saved.emit(x)` in the child compiles to `onSaved?.(x)`, and
@@ -222,14 +223,14 @@ compile to real classes extending the runtime's `ReactiveService`, in the
 same generated file as the components. A module-level `__container`
 holds one singleton per service (registrations dependency-ordered;
 services may inject services); components resolve constructor parameter
-properties from it — `constructor(private mail: MailService)` becomes
+properties from it, `constructor(private mail: MailService)` becomes
 `const mail = __container.get<MailService>(MailService)` plus a
 `useSyncExternalStore` subscription, so when a service method assigns a
 field (the codegen appends `this.__notify()` after each assignment) every
 subscribed component re-renders. An unknown token is a
 `DI_UNKNOWN_TOKEN` error with a fix; a service dependency cycle is
 `DI_CYCLE`. Mutating items in place without assigning a field does not
-notify — reassign the field.
+notify, reassign the field.
 
 **Lifecycle.** `ngOnInit()` is called from `useEffect(..., [])` (once,
 after first render) and `ngOnDestroy()` from that effect's cleanup. The
@@ -241,14 +242,53 @@ returns an Observable-lite (`{ subscribe(next?, error?) }`) over `fetch`
 (the fetch implementation is injectable, so tests never touch the
 network). It is registered in the generated container and injected like
 any service. The supported component-side shape is exactly
-`this.http.get(url).subscribe((data) => { this.field = data; });` —
+`this.http.get(url).subscribe((data) => { this.field = data; });`,
 block-bodied arrow, assignments inside. An expression-bodied assignment
 degrades to `METHOD_UNSUPPORTED` instead of emitting wrong code. In
 previews, `HttpClient` is a stub whose `get()` never emits.
 
 **One file out.** Services, child components and the entry component all
-compile into the entry's single generated `.tsx` — that is what makes
+compile into the entry's single generated `.tsx`, that is what makes
 the container a true singleton, and it keeps generated output trivially
 deterministic. A template whose root is a structural directive (or has
 several roots) is wrapped in a `<>...</>` fragment so the output stays
 valid JSX.
+
+## Stage 4: tokens, theming, and snapping
+
+One more example:
+
+- `examples/showcase/`, the token system on one screen: every text
+  variant, a card, primary and disabled buttons, an avatar list, a
+  badge, a FAB, and styles written entirely on the token scales. Its
+  preview is the eye-check for this stage: flip the Light/Dark toggle
+  in the preview chrome and the same screen renders from the dark
+  token set.
+
+**The token set is complete.** Colour roles (primary, onPrimary,
+primaryContainer, onPrimaryContainer, secondary, surface,
+surfaceVariant, onSurface, onSurfaceVariant, background, error,
+onError, outline, scrim, and the rest) exist in light AND dark with
+the same names; the spacing scale (4 to 32), radius scale (8 to 20
+plus full), type scale (caption 12 to display 32, each step with a
+fixed line height and weight) and three elevation presets sit beside
+them. The original role names keep working as aliases: `text` is
+`onSurface`, `textMuted` is `onSurfaceVariant`, `danger` is `error`.
+`themes.light` and `themes.dark` export both modes as objects.
+
+**Theming.** Primitives take every colour from the active theme, and
+not one hex value is hard-coded in `primitives.tsx` (a test greps for
+hex and fails the build). The theme travels through a React context
+(`RgThemeProvider` / `useRgTheme` in `@rangular/ui`, default light).
+Writing `<screen theme="dark">` compiles to `<RgScreen theme="dark">`
+and themes that whole subtree. In previews, colours resolve through
+CSS variables, the declared theme is the starting palette, and the
+chrome toggle swaps the palette without changing a single node.
+
+**Snapping.** Component `styles` resolve to the scales at compile
+time: spacing properties (margin, padding, gap, top/left/right/
+bottom), `border-radius` and `font-size` snap to the nearest scale
+value. An off-scale value compiles with the snapped value and earns a
+`STYLE_OFF_SCALE` warning whose fix names it (`margin-bottom: 13px`
+becomes 12). On-scale values and 0 pass silently. Colours are never
+snapped.

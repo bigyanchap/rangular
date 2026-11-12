@@ -380,7 +380,7 @@ function buttonsWith(app: ShimElement, text: string): ShimElement[] {
   return findAll(app, (e) => e.tagName === 'BUTTON' && e.textContent.includes(text));
 }
 
-test('preview behaviour: favourite — a child Save click runs the parent handler and re-renders', () => {
+test('preview behaviour: favourite, a child Save click runs the parent handler and re-renders', () => {
   const { result } = compileExample('favourite');
   const html = renderPreview(result.component!, result.ast!, {
     children: result.children,
@@ -396,7 +396,7 @@ test('preview behaviour: favourite — a child Save click runs the parent handle
   assert.match(app.textContent, /Saved: 2/);
 });
 
-test('preview behaviour: shared-inbox — ngOnInit shows the badge; Mark all read updates badge AND list', () => {
+test('preview behaviour: shared-inbox, ngOnInit shows the badge; Mark all read updates badge AND list', () => {
   const { result } = compileExample('shared-inbox');
   const html = renderPreview(result.component!, result.ast!, {
     children: result.children,

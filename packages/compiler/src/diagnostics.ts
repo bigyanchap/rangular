@@ -46,6 +46,7 @@ export const DIAGNOSTIC_CODES: Record<string, string> = {
   CSS_SELECTOR: 'A CSS selector is not an element or .class selector; the rule was skipped.',
   CSS_DECL: 'A CSS declaration is malformed (expected "property: value").',
   CSS_UNSUPPORTED: 'A CSS property is outside the supported subset; the declaration was dropped.',
+  STYLE_OFF_SCALE: 'A spacing, radius or font-size value is off its design-token scale; the generated style uses the nearest on-scale value.',
   GEN_UNKNOWN_TAG: 'A template tag is not a known Rangular block; it was emitted as <View>.',
   GEN_FIELD: 'A field has a non-literal initializer and was not hoisted into the generated component.',
   GEN_FIELD_STATE: 'A field is assigned in a method but has a non-literal initializer, so it cannot become useState yet.',

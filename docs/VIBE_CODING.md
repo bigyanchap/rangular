@@ -1,4 +1,4 @@
-# Rangular — Vibe-Coding Layer
+# Rangular: Vibe-Coding Layer
 
 Bigyan's directive, 2026-11-12: *"We want our whole system to be vibe coding conducive."*
 
@@ -21,12 +21,12 @@ lookup table. This layer removes each failure mode.
    commands, and the golden rules (edit source, never generated output;
    run `npm test` before done).
 2. **`llms.txt`** at repo root: one AI-readable page linking and summarising
-   every doc, example and package — the front door for any AI.
-3. **Recipe cards:** a `README.md` beside every example with a fixed shape —
+   every doc, example and package, the front door for any AI.
+3. **Recipe cards:** a `README.md` beside every example with a fixed shape,
    *Intent* · *Source* · *What it compiles to* · *Rules used* ·
    *Common mistakes*.
 4. **Generated catalog (`rangular catalog`):** emits `catalog.json` +
-   `catalog.md` **from the actual code** — the tag mapping from codegen's
+   `catalog.md` **from the actual code**, the tag mapping from codegen's
    exported `TAG_MAP`, primitive props parsed from
    `packages/ui/src/primitives.tsx` with the TypeScript compiler API
    (the primitives are shipped source typed `any`, so their destructured
@@ -34,13 +34,13 @@ lookup table. This layer removes each failure mode.
    imported from `@rangular/ui` tokens, and the `DIAGNOSTIC_CODES` list.
    A test regenerates the catalog and fails if the committed files are stale.
 5. **JSON diagnostics:** `rangular build --json` (and `preview --json`)
-   prints a single JSON object — `{ ok, file, outFile?, diagnostics:
-   [{ severity, code, message, line, column, fix }] }` — to stdout and
+   prints a single JSON object, `{ ok, file, outFile?, diagnostics:
+   [{ severity, code, message, line, column, fix }] }`, to stdout and
    nothing else, so an AI loop can read an error and fix its own source.
 6. **Error messages that teach:** every diagnostic carries a `fix:` line
    with the concrete corrected pattern, in human output and in JSON.
 
-## The delta — what an AI must know
+## The delta: what an AI must know
 
 AIs already know Angular and React from training. Rangular source *looks*
 like Angular, so the main job of these docs is enumerating the **delta**:
@@ -49,36 +49,36 @@ the repo's actual behaviour today (Stage 3), not aspirations.
 
 ### Rangular source vs Angular
 
-**The same** — write it exactly as you would in Angular:
+**The same**: write it exactly as you would in Angular:
 
 | Angular feature | In Rangular source |
 |---|---|
 | `@Component` decorator (selector, templateUrl, inline template, styles, styleUrls) | Same; read by the TypeScript compiler API |
 | `@Input()` / `@Output()` field decorators | Wired (Stage 3): `@Input` fields become props, the literal initializer is the default when unbound; an `@Output` field holding `new EventEmitter<T>()` becomes an `onX` callback prop and `this.x.emit(v)` compiles to `onX?.(v)` |
-| Child components (a tag matching another component's selector) | Same, with import-based resolution: the compiler follows the entry file's relative imports and any imported `@Component` class is a usable child — no module/declarations list |
+| Child components (a tag matching another component's selector) | Same, with import-based resolution: the compiler follows the entry file's relative imports and any imported `@Component` class is a usable child, no module/declarations list |
 | Templates in separate `.html` files | Same |
 | `{{ interpolation }}`, `[prop]` binding, `(event)` binding, `*ngIf`, `*ngFor` syntax | Same syntax, same meaning |
 | Pipes in expressions (`expr \| uppercase`) | Parsed; built-ins `uppercase`, `lowercase`, `titlecase`, `json` evaluate in preview/runtime |
-| Class fields as state, methods as actions | Same — this is the core model |
+| Class fields as state, methods as actions | Same. This is the core model |
 | `@Injectable({ providedIn: 'root' })` services + constructor injection | Wired (Stage 3): services are reactive singletons in a generated container; constructor *parameter properties* (`constructor(private mail: MailService)`) are the injection form; services may inject services |
-| Lifecycle hooks (`ngOnInit`, `ngOnDestroy`) | Wired (Stage 3): `ngOnInit` runs once after first render, `ngOnDestroy` on unmount — `useEffect(..., [])` and its cleanup in generated code |
+| Lifecycle hooks (`ngOnInit`, `ngOnDestroy`) | Wired (Stage 3): `ngOnInit` runs once after first render, `ngOnDestroy` on unmount, `useEffect(..., [])` and its cleanup in generated code |
 | `HttpClient.get(url)` returning an Observable you `subscribe` to | Wired with a subset (Stage 3): an Observable-lite with `subscribe(next?, error?)` only; the supported component shape is `this.http.get(url).subscribe((data) => { this.field = data; });` |
 
-**Not supported yet** — do not use these in Rangular source today:
+**Not supported yet**: do not use these in Rangular source today:
 
 | Angular feature | Status today | Planned |
 |---|---|---|
-| `[(ngModel)]` / forms | Not supported. `[(x)]` syntax is *parsed* but degrades to a one-way `[x]` prop binding — no write-back, no forms model | Later stage (post-v1 scope) |
+| `[(ngModel)]` / forms | Not supported. `[(x)]` syntax is *parsed* but degrades to a one-way `[x]` prop binding, no write-back, no forms model | Later stage (post-v1 scope) |
 | Two-way binding `[(...)]` generally | Same as above: one-way prop binding only, no change event is generated | Later stage |
-| Routing (`@angular/router`, `<router-outlet>`) | Not supported — no router exists; a dashed/unknown tag is passed through or warns | Later (map to React Navigation) |
-| NgModules (`@NgModule`, `providers` arrays, module-scoped DI) | Not supported — resolution is import-based instead: `@Component` classes are entry points, and `@Injectable({ providedIn: 'root' })` classes are the injectable services (Stage 3). An `@NgModule` file errors with `CLS_NO_COMPONENT`; an `@Injectable` without `providedIn: 'root'` is not registered, so injecting it is a `DI_UNKNOWN_TOKEN` error | Not planned as modules |
-| Component constructor *bodies* | Not translated — only constructor parameter properties are read (they are the DI declarations). Do one-time setup in `ngOnInit` instead | Not planned |
+| Routing (`@angular/router`, `<router-outlet>`) | Not supported, no router exists; a dashed/unknown tag is passed through or warns | Later (map to React Navigation) |
+| NgModules (`@NgModule`, `providers` arrays, module-scoped DI) | Not supported, resolution is import-based instead: `@Component` classes are entry points, and `@Injectable({ providedIn: 'root' })` classes are the injectable services (Stage 3). An `@NgModule` file errors with `CLS_NO_COMPONENT`; an `@Injectable` without `providedIn: 'root'` is not registered, so injecting it is a `DI_UNKNOWN_TOKEN` error | Not planned as modules |
+| Component constructor *bodies* | Not translated, only constructor parameter properties are read (they are the DI declarations). Do one-time setup in `ngOnInit` instead | Not planned |
 | Animations (`@angular/animations`, `:enter`/`:leave`) | Not supported anywhere in the compiler | Post-v1 |
-| SSR / hydration | Not supported — output is a React Native app, there is no server rendering | Not planned |
+| SSR / hydration | Not supported, output is a React Native app, there is no server rendering | Not planned |
 | Full RxJS surface (operators, Subjects, Observables from other sources) | Not supported. Only HttpClient's Observable-lite exists (`subscribe(next?, error?)`, no operators, no unsubscribe-driven teardown beyond a cancellation flag); the runtime `async` pipe is still a pass-through stub | Later stage |
 | Custom pipes (`@Pipe` classes) | Not read. Only the built-in pipes above exist | Later stage |
 | `*ngIf` with `else` / `then` | Detected, warns `GEN_NGIF_ELSE_TODO`, element emitted unconditionally. Workaround: two elements, `*ngIf="cond"` and `*ngIf="!(cond)"` | Later stage |
-| Full CSS (cascade, inheritance, descendant/id/pseudo selectors, unsupported properties) | Subset only: element and `.class` selectors, a fixed property list; anything else warns (`CSS_SELECTOR` / `CSS_UNSUPPORTED`) and is dropped. Styles apply per element — no cascade | Subset may grow per stage |
+| Full CSS (cascade, inheritance, descendant/id/pseudo selectors, unsupported properties) | Subset only: element and `.class` selectors, a fixed property list; anything else warns (`CSS_SELECTOR` / `CSS_UNSUPPORTED`) and is dropped. Styles apply per element, no cascade | Subset may grow per stage |
 
 ### Rangular source vs React
 
@@ -88,28 +88,28 @@ Rangular source is **not React**. Do not write React in it:
 |---|---|
 | Components | TypeScript **classes** with `@Component`, never function components |
 | Markup | A separate `.html` **template file** (or inline template string). **No JSX anywhere in source** |
-| State | Plain **class fields** (`count = 0`). **No hooks, no `useState`, no `useEffect` in source** — the compiler *generates* a function component with hooks underneath |
+| State | Plain **class fields** (`count = 0`). **No hooks, no `useState`, no `useEffect` in source**, the compiler *generates* a function component with hooks underneath |
 | Updating state | Mutate the field inside a method: `this.count++`. A field assigned inside any method becomes `useState` in the output; a field never assigned stays a plain constant |
-| Events | Angular syntax: `(click)="increment()"` — never `onPress`/`onClick` props in source. The compiler maps `click → onPress`, `change → onChange`, `submit → onSubmit`, `input` on `<input> → onChangeText` |
-| Conditionals / lists | `*ngIf` / `*ngFor` in templates — never `&&`, ternaries or `.map()` in source (those appear only in generated output) |
+| Events | Angular syntax: `(click)="increment()"`, never `onPress`/`onClick` props in source. The compiler maps `click → onPress`, `change → onChange`, `submit → onSubmit`, `input` on `<input> → onChangeText` |
+| Conditionals / lists | `*ngIf` / `*ngFor` in templates, never `&&`, ternaries or `.map()` in source (those appear only in generated output) |
 | Generated `.tsx` | **Output, never source.** Never edit it; change the `.ts`/`.html` and regenerate. Golden `.tsx`/`preview.html` files in `examples/` are regenerated by the CLI, not hand-edited |
-| Styling | Component `styles` in the CSS subset, or design tokens — never `StyleSheet` in source; `StyleSheet.create` exists only in generated output |
+| Styling | Component `styles` in the CSS subset, or design tokens. Never `StyleSheet` in source; `StyleSheet.create` exists only in generated output. Spacing, radius and font-size values snap to the token scales (Stage 4, `STYLE_OFF_SCALE`) |
 
 ## Supported template expressions
 
 The expression language inside `{{ }}`, `[prop]="..."`, `*ngIf="..."` and
-method bodies is a defined subset — do not assume all of TypeScript:
+method bodies is a defined subset: do not assume all of TypeScript:
 
 - Identifiers and member access: `title`, `m.from`, `mails.length`
 - Literals: strings (`'Follow'`), numbers, `true` / `false`, arrays/objects in
   field initializers
 - Arithmetic `+ - * / %`, comparison `== === != !== < > <= >=`, logic `&& ||`
-- Unary `!` and `-` — including on the right-hand side of an assignment:
+- Unary `!` and `-`, including on the right-hand side of an assignment:
   `this.following = !this.following` is supported and is the toggle pattern
-- Ternary: `following ? 'Following' : 'Follow'` — supported in interpolation
+- Ternary: `following ? 'Following' : 'Follow'`, supported in interpolation
   and bindings; you do not need two `*ngIf` elements for a two-state label
 - Method calls: `increment()`, `save($event)`; calls on members of fields
-- Pipes: `uppercase`, `lowercase`, `titlecase`, `json` — an unknown pipe is
+- Pipes: `uppercase`, `lowercase`, `titlecase`, `json`, an unknown pipe is
   an error, not a silent pass-through
 
 ## Block semantics and composition
@@ -118,7 +118,7 @@ method bodies is a defined subset — do not assume all of TypeScript:
   `<row>` inside a `<card>`, headings and paragraphs anywhere a screen or
   card can hold children. There is no separate permission table per parent.
 - A block stores **one** structural directive: never put `*ngIf` and
-  `*ngFor` on the same element — nest one inside the other instead.
+  `*ngFor` on the same element, nest one inside the other instead.
 - `<row avatar>`: the bare `avatar` attribute turns on a circle at the row's
   left. The circle shows the **first character of the row's `title`**, on the
   theme's primary colour. Today the avatar exists only as part of `<row>`;
@@ -131,7 +131,7 @@ method bodies is a defined subset — do not assume all of TypeScript:
   inbox is three: sender / subject / snippet. A post with title + snippet
   is two: `title` + `subtitle`.)
 - Long prose (a bio, a description paragraph) belongs in a `<p>`, not in a
-  row's `subtitle` — row lines are single-line list text and may truncate;
+  row's `subtitle`, row lines are single-line list text and may truncate;
   `<p>` wraps.
 
 ## Child components (Stage 3, M5)
@@ -150,7 +150,7 @@ method bodies is a defined subset — do not assume all of TypeScript:
   relative import is a `CMP_IMPORT_UNRESOLVED` error.
 - **Inputs:** `[name]="expr"` passes the evaluated expression, a plain
   attribute passes a string, a bare attribute passes `true`. If the
-  parent omits an input, the child's literal initializer is the default —
+  parent omits an input, the child's literal initializer is the default,
   visible in the generated signature (`{ quote = '' }`). There is no
   content projection: children written inside a child tag are ignored.
 - **Outputs:** the field must be initialised with `new EventEmitter<T>()`.
@@ -159,7 +159,7 @@ method bodies is a defined subset — do not assume all of TypeScript:
   no-ops). In the parent, `(saved)="handler($event)"` receives the
   emitted value as `$event`; a bare `(saved)="handler"` passes the
   method itself.
-- **Preview:** children render recursively — inputs evaluated in the
+- **Preview:** children render recursively, inputs evaluated in the
   parent scope, instances persist across re-renders (keyed by template
   position), emits run the parent handler and re-render.
 
@@ -173,7 +173,7 @@ method bodies is a defined subset — do not assume all of TypeScript:
 - **Reactivity contract:** after every assignment to a service field
   inside a service method, the generated code calls `this.__notify()`.
   Mutating an item in place (`this.mails.forEach(m => m.unread = false)`)
-  assigns no field, emits no notify, and re-renders nothing — reassign
+  assigns no field, emits no notify, and re-renders nothing, reassign
   the field (`this.mails = this.mails.map(...)`).
 - **The singleton:** one module-level container in the generated file
   registers every root service, dependency-ordered (dependencies first;
@@ -181,7 +181,7 @@ method bodies is a defined subset — do not assume all of TypeScript:
   gets the same instance and subscribes to it with
   `useSyncExternalStore` over its version counter, so a notify
   re-renders all of them.
-- **Injection form:** constructor *parameter properties* only —
+- **Injection form:** constructor *parameter properties* only,
   `constructor(private mail: MailService)`. The token is the declared
   type name; it must be a root service in the compilation or
   `HttpClient`, otherwise `DI_UNKNOWN_TOKEN` (error, with fix). Services
@@ -200,10 +200,10 @@ method bodies is a defined subset — do not assume all of TypeScript:
   in the generated container under its class token.
 - The runtime client wraps `fetch` and parses responses as JSON.
   `get(url)` returns an **Observable-lite**: `{ subscribe(next?, error?) }`
-  returning `{ unsubscribe() }`. No operators, no `pipe`, no retry —
+  returning `{ unsubscribe() }`. No operators, no `pipe`, no retry,
   anything richer is not supported yet.
 - **The one supported component-side shape** is:
-  `this.http.get(url).subscribe((data) => { this.field = data; });` —
+  `this.http.get(url).subscribe((data) => { this.field = data; });`,
   a block-bodied arrow whose statements assign component fields (which
   become state as usual). An expression-bodied assignment
   (`subscribe((data) => this.field = data)`) cannot become a setter call
@@ -211,11 +211,43 @@ method bodies is a defined subset — do not assume all of TypeScript:
 - In the preview, `HttpClient` is a stub: `get()` returns an Observable
   that never emits. Previews never touch the network.
 
+## Theming, tokens and snapping (Stage 4)
+
+- **One token file, both modes.** `@rangular/ui` tokens are the only
+  source of visual values: spacing 4/8/12/16/20/24/32, radius
+  8/12/16/20/full, a type scale (caption 12, body 14, bodyLarge 16,
+  label 14 w600, title 20, heading 24, display 32, each with a fixed
+  line height), three elevation presets, and the full colour role set.
+  Every colour role exists in light AND dark (`themes.light` /
+  `themes.dark`); the old names are aliases (`text` = `onSurface`,
+  `textMuted` = `onSurfaceVariant`, `danger` = `error`).
+- **Choosing a theme is one attribute.** `<screen theme="dark">`
+  compiles to `<RgScreen theme="dark">` and themes the whole subtree:
+  primitives read colours from a React context (`RgThemeProvider`,
+  `useRgTheme`), never from hard-coded hex (a test greps
+  `primitives.tsx` for hex values and fails). No attribute means
+  light. Only `<screen>` takes the attribute in this version.
+- **Previews carry both palettes.** A preview starts in the theme the
+  screen declares and offers a Light/Dark toggle in its chrome; the
+  colours resolve through CSS variables, so the toggle swaps the
+  palette with no re-render.
+- **CSS values snap to the scales.** In component `styles`, spacing
+  properties (margin, padding, gap, top/left/right/bottom),
+  `border-radius` and `font-size` resolve to the nearest scale value
+  at compile time. Off-scale input still compiles, with the snapped
+  value, plus a `STYLE_OFF_SCALE` warning whose fix names the snapped
+  value: `margin-bottom: 13px` becomes 12. On-scale values and 0 pass
+  silently; ties go to the lower value; colours are never snapped.
+- **Text by meaning, not by number.** `h1`/`h2`/`h3`/`p` map to the
+  display/heading/title/body steps, and `<label>` (new in Stage 4)
+  maps to the label step. See `examples/showcase/` and its recipe
+  card for the whole system on one screen.
+
 ## The proof test
 
 Vibe-conduciveness is proven by doing, not claiming: a fresh AI session is
-given **only** `llms.txt`, the catalog, and the recipe cards — no compiler
-source — plus one sentence ("Build a profile card screen: avatar, name, a
+given **only** `llms.txt`, the catalog, and the recipe cards, no compiler
+source, plus one sentence ("Build a profile card screen: avatar, name, a
 follow button that toggles to Following, and a list of three posts"). Its
 source must compile with zero errors and its preview must render and toggle.
 Anything it had to guess is a docs bug, and the gap is fixed in the docs.
@@ -224,4 +256,4 @@ Anything it had to guess is a docs bug, and the gap is fixed in the docs.
 
 Every new capability ships with, in the same commit: the tiny example, its
 recipe card, the catalog regeneration, and its tests. A capability without
-its recipe card is not done — the same way a fix without tests is not done.
+its recipe card is not done, the same way a fix without tests is not done.

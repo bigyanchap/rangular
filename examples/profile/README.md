@@ -1,6 +1,6 @@
-# Recipe: Profile — composition, a toggle, and a list of posts
+# Recipe: Profile, composition, a toggle, and a list of posts
 
-**Intent** — A profile card screen: avatar, name and bio, a follow button that toggles between Follow and Following, and a list of three posts. This example is also the Stage 2.5 proof test: it was written by a fresh AI agent using only the vibe-layer docs (AGENTS.md, llms.txt, catalog, recipe cards) — no compiler source — and compiled with zero diagnostics on the first attempt.
+**Intent**: A profile card screen: avatar, name and bio, a follow button that toggles between Follow and Following, and a list of three posts. This example is also the Stage 2.5 proof test: it was written by a fresh AI agent using only the vibe-layer docs (AGENTS.md, llms.txt, catalog, recipe cards), no compiler source, and compiled with zero diagnostics on the first attempt.
 
 **Source**
 
@@ -62,7 +62,7 @@ const toggleFollow = () => {
 
 **Rules used**
 
-- **Toggle pattern:** a boolean field flipped with `this.following = !this.following` inside a method becomes state; the button label is a ternary interpolation — both forms are in the supported expression subset (see "Supported template expressions" in `docs/VIBE_CODING.md`).
+- **Toggle pattern:** a boolean field flipped with `this.following = !this.following` inside a method becomes state; the button label is a ternary interpolation, both forms are in the supported expression subset (see "Supported template expressions" in `docs/VIBE_CODING.md`).
 - **Composition is free, like HTML:** a `<row>` and a `<button>` inside a `<card>` need no special permission.
 - **Avatar today is a row feature:** `<row avatar>` draws a circle showing the first character of `[title]`. Using it as the profile header is the current pattern; there is no standalone avatar block yet.
 - **Row lines by count:** a post has two text lines, so they map to `[title]` + `[subtitle]`. The inbox's three-line item (sender / subject / snippet) is the one that also uses `[detail]`.
@@ -72,5 +72,5 @@ const toggleFollow = () => {
 **Common mistakes**
 
 - **Putting the bio in the header row's `[subtitle]`.** Row subtitles are single-line list text; a bio belongs in a `<p>` under the row.
-- **Two buttons with `*ngIf` to fake a toggle label.** The ternary `{{ following ? 'Following' : 'Follow' }}` is supported — one button, one handler, one state field.
-- **Flipping state in the template.** `following` changes only inside `toggleFollow()`; a template expression like `[disabled]="!following"` reads state but never writes it — writes belong in methods.
+- **Two buttons with `*ngIf` to fake a toggle label.** The ternary `{{ following ? 'Following' : 'Follow' }}` is supported, one button, one handler, one state field.
+- **Flipping state in the template.** `following` changes only inside `toggleFollow()`; a template expression like `[disabled]="!following"` reads state but never writes it, writes belong in methods.

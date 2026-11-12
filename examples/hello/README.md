@@ -1,6 +1,6 @@
-# Recipe: Hello — a static screen with binding and styles
+# Recipe: Hello, a static screen with binding and styles
 
-**Intent** — The smallest useful Rangular component: a polished welcome screen built only from simple blocks, with `{{ interpolation }}`, one `[prop]` binding and component styles.
+**Intent**: The smallest useful Rangular component: a polished welcome screen built only from simple blocks, with `{{ interpolation }}`, one `[prop]` binding and component styles.
 
 **Source**
 
@@ -45,7 +45,7 @@ Key lines of the generated `hello.component.tsx` (full file beside this card; re
 
 ```tsx
 export default function Hello() {
-  const title = 'Welcome to Rangular';            // fields stay const — nothing mutates them
+  const title = 'Welcome to Rangular';            // fields stay const, nothing mutates them
   const subtitle = 'You wrote Angular. This screen is React Native.';
   const actionDisabled = false;
   return (
@@ -68,13 +68,13 @@ const styles = StyleSheet.create({
 **Rules used**
 
 - Every template tag resolves through the one tag→component mapping (`catalog.md`): `screen → RgScreen`, `card → RgCard`, `h1 → Text variant="display"`, `p → Text variant="body"`.
-- Fields with literal initializers are hoisted as `const` — they only become `useState` if a method assigns them (see the counter recipe).
+- Fields with literal initializers are hoisted as `const`, they only become `useState` if a method assigns them (see the counter recipe).
 - `{{ expr }}` inside text becomes `{expr}`; `[prop]="expr"` becomes `prop={expr}`.
 - Component `styles` are parsed by the CSS subset: element selectors (`h1`) and single `.class` selectors only, kebab-case properties camelCased, `8px` → `8`.
 - Static attributes (`title="Rangular"`) pass through as string props.
 
 **Common mistakes**
 
-- **Putting bare text inside a layout block.** Text must live in a text block (`p`, `span`, `h1`–`h3`). Text placed directly inside `<div>`/`<section>` is emitted verbatim inside a `View`, which React Native cannot render — put it in `<p>` instead.
+- **Putting bare text inside a layout block.** Text must live in a text block (`p`, `span`, `h1`-`h3`). Text placed directly inside `<div>`/`<section>` is emitted verbatim inside a `View`, which React Native cannot render, put it in `<p>` instead.
 - **Expecting CSS to cascade or inherit.** It doesn't: a rule matches only elements with that tag or class, and parent styles never flow to children. Style each text block itself (or use a `.class` on it, like `.card-note` here).
 - **Hand-editing `hello.component.tsx` or `preview.html`.** They are generated golden files. Change the `.ts`/`.html` and regenerate with the CLI `build` / `preview` commands, or the golden test will fail.

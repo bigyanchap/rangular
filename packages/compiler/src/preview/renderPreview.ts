@@ -1,4 +1,4 @@
-import { theme } from '../../../ui/src/tokens';
+import { colours, theme } from '../../../ui/src/tokens';
 import { ComponentField, ComponentInfo, ServiceInfo } from '../class/parseComponent';
 import { ChildUnitInput, outputPropName } from '../codegen/generate';
 import { translateMethods } from '../codegen/methods';
@@ -12,7 +12,7 @@ import { parseNgFor, parseNgIf } from '../template/structural';
  * resolved through the entry component's imports. Child components render
  * recursively (inputs evaluated in the parent scope, outputs wired to the
  * parent handler), and every component that injects a service sees the
- * same singleton service object — in the server paint and in the page.
+ * same singleton service object, in the server paint and in the page.
  */
 export interface PreviewData {
   children?: ChildUnitInput[];
@@ -36,7 +36,7 @@ export interface PreviewData {
  * The initial HTML is also server-rendered with the compiler's own
  * expression evaluator, so the page is correct before the script runs.
  * Arbitrary expressions are never executed at compile time beyond the
- * safe AST evaluator — no eval/Function anywhere.
+ * safe AST evaluator, no eval/Function anywhere.
  */
 
 /** Evaluate a literal initializer (now including nested arrays/objects). */
@@ -58,7 +58,7 @@ export function componentState(component: ComponentInfo): Record<string, unknown
 
 /**
  * State for a child component or a service: like componentState, but
- * @Input literal initializers are included — they are the input defaults.
+ * @Input literal initializers are included, they are the input defaults.
  */
 function stateWithInputs(host: { fields: ComponentField[] }): Record<string, unknown> {
   const state: Record<string, unknown> = {};
@@ -79,7 +79,7 @@ const HTTP_STUB = {
  * Singleton service objects for the server-side paint. Fields hold their
  * literal values (the SAME object is shared by every component that
  * injects the service, so a *ngFor over mail.mails works); methods are
- * inert — the interactive page replaces them with the real translated
+ * inert, the interactive page replaces them with the real translated
  * methods. Service state mutation is a page-runtime behaviour.
  */
 function buildServiceScopes(services: ServiceInfo[]): Map<string, Record<string, unknown>> {
@@ -118,9 +118,35 @@ function evalSafe(source: string, scope: Scope): unknown {
   }
 }
 
+/** The theme a component declares on its root <screen theme="..."> (default light). */
+export function declaredThemeOf(ast: TemplateRoot): 'light' | 'dark' {
+  const screenEl = ast.children.find(
+    (n): n is ElementNode => n.type === 'element' && n.tag === 'screen',
+  );
+  return screenEl?.attrs['theme'] === 'dark' ? 'dark' : 'light';
+}
+
+/** The preview's colour roles as CSS custom properties for one theme mode. */
+function cssVars(mode: 'light' | 'dark'): string {
+  const cc = colours[mode];
+  return [
+    `--screen-bg: ${cc.background}`,
+    `--surface-variant: ${cc.surfaceVariant}`,
+    `--text: ${cc.text}`,
+    `--text-muted: ${cc.textMuted}`,
+    `--primary: ${cc.primary}`,
+    `--on-primary: ${cc.onPrimary}`,
+    `--primary-container: ${cc.primaryContainer}`,
+    `--on-primary-container: ${cc.onPrimaryContainer}`,
+    `--border: ${cc.border}`,
+    `--avatar: ${cc.avatar}`,
+    `--on-avatar: ${cc.onAvatar}`,
+  ].join('; ') + ';';
+}
+
 export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data: PreviewData = {}): string {
   const t = theme('light');
-  const c = t.colors;
+  const declaredTheme = declaredThemeOf(ast);
   const state = componentState(component);
   const baseScope: Scope = { ...state };
 
@@ -192,7 +218,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
    * Render a child component element (Stage 3, M5): inputs are evaluated
    * in the parent scope (prop bindings), static attributes arrive as
    * strings, and the child's own template renders in the child's scope.
-   * Outputs do nothing in the static paint — the page runtime wires them.
+   * Outputs do nothing in the static paint, the page runtime wires them.
    * ngOnInit is not run for the static paint: it shows pre-init state.
    */
   const renderChild = (el: ElementNode, def: ChildUnitInput, parentScope: Scope): string => {
@@ -231,7 +257,11 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
       case 'h2': return `<h2 class="heading">${inner}</h2>`;
       case 'h3': return `<h3 class="title">${inner}</h3>`;
       case 'p': return `<p class="body">${inner}</p>`;
-      case 'span': return `<span>${inner}</span>`;
+      case 'label': return `<span class="label">${inner}</span>`;
+      case 'span': {
+        const cls = el.attrs['class'];
+        return cls ? `<span class="${escapeHtml(cls)}">${inner}</span>` : `<span>${inner}</span>`;
+      }
       case 'card': return `<section class="card">${inner}</section>`;
       case 'button': {
         const dis = el.propBindings.find((b) => b.name === 'disabled');
@@ -251,7 +281,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
           (sub ? `<span class="row-sub">${escapeHtml(sub)}</span>` : '') +
           (detail ? `<span class="row-detail">${escapeHtml(detail)}</span>` : '') +
           // Row children render inside the main cell, like RgRow and the
-          // page runtime do (e.g. an unread dot <span *ngIf="m.unread">) —
+          // page runtime do (e.g. an unread dot <span *ngIf="m.unread">),
           // unless the children already served as the title fallback.
           (titleBound !== undefined ? inner : '') +
           `</span>${time ? `<span class="row-time">${escapeHtml(time)}</span>` : ''}</div>`;
@@ -267,39 +297,51 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   const script = previewScript(component, ast, state, data);
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="${declaredTheme}">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Rangular preview — ${escapeHtml(component.selector ?? component.className)}</title>
+<title>Rangular preview: ${escapeHtml(component.selector ?? component.className)}</title>
 <style>
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: Roboto, system-ui, sans-serif; background: #e8eaed; display: flex; justify-content: center; padding: 24px 12px; }
-  .screen { width: 360px; max-width: 100%; min-height: 640px; background: ${c.background}; color: ${c.text}; border-radius: 28px; overflow: hidden; box-shadow: 0 10px 28px rgba(0,0,0,.18); padding-bottom: ${t.spacing.xxl}px; }
-  .appbar { display: flex; align-items: center; gap: ${t.spacing.md}px; margin: ${t.spacing.md}px; background: ${c.surfaceVariant}; border-radius: ${t.radius.full}px; padding: 10px ${t.spacing.lg}px; }
-  .search { flex: 1; color: ${c.textMuted}; font-size: 14px; }
+  /* Stage 4: every colour below resolves through these variables. The
+     declared theme is the default; the Light/Dark toggle in the preview
+     chrome flips data-theme on <html> and the other palette takes over,
+     the same token swap a generated app does with RgScreen theme. */
+  :root { ${cssVars(declaredTheme)} }
+  html[data-theme="light"] { ${cssVars('light')} }
+  html[data-theme="dark"] { ${cssVars('dark')} }
+  body { margin: 0; font-family: Roboto, system-ui, sans-serif; background: #e8eaed; display: flex; flex-direction: column; align-items: center; padding: 24px 12px; }
+  .preview-chrome { width: 360px; max-width: 100%; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 13px; color: #444746; }
+  .preview-chrome button { background: #ffffff; color: #0b57d0; border: 1px solid #dadce0; border-radius: 9999px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .screen { width: 360px; max-width: 100%; min-height: 640px; background: var(--screen-bg); color: var(--text); border-radius: 28px; overflow: hidden; box-shadow: 0 10px 28px rgba(0,0,0,.18); padding-bottom: ${t.spacing.xxl}px; }
+  .appbar { display: flex; align-items: center; gap: ${t.spacing.md}px; margin: ${t.spacing.md}px; background: var(--surface-variant); border-radius: ${t.radius.full}px; padding: 10px ${t.spacing.lg}px; }
+  .search { flex: 1; color: var(--text-muted); font-size: 14px; }
   .appbar-title { flex: 1; font-size: ${t.typography.title.fontSize}px; font-weight: 600; }
-  .avatar { width: 28px; height: 28px; border-radius: 50%; background: #7b1fa2; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
-  .avatar-lg { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; background: ${c.primary}; color: ${c.onPrimary}; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--avatar); color: var(--on-avatar); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+  .avatar-lg { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; }
   .display { font-size: ${t.typography.display.fontSize}px; line-height: ${t.typography.display.lineHeight}px; font-weight: 700; margin: ${t.spacing.lg}px ${t.spacing.lg}px ${t.spacing.sm}px; }
   .heading { font-size: ${t.typography.heading.fontSize}px; line-height: ${t.typography.heading.lineHeight}px; font-weight: 700; margin: 0 0 ${t.spacing.sm}px; }
   .title { font-size: ${t.typography.title.fontSize}px; line-height: ${t.typography.title.lineHeight}px; font-weight: 600; margin: 0 0 ${t.spacing.sm}px; }
-  .body { font-size: ${t.typography.bodyLarge.fontSize}px; line-height: ${t.typography.bodyLarge.lineHeight}px; color: ${c.textMuted}; margin: 0 ${t.spacing.lg}px ${t.spacing.lg}px; }
-  .card { background: ${c.surfaceVariant}; border: 1px solid ${c.border}; border-radius: ${t.radius.lg}px; padding: ${t.spacing.lg}px; margin: 0 ${t.spacing.lg}px ${t.spacing.lg}px; }
+  .body { font-size: ${t.typography.bodyLarge.fontSize}px; line-height: ${t.typography.bodyLarge.lineHeight}px; color: var(--text-muted); margin: 0 ${t.spacing.lg}px ${t.spacing.lg}px; }
+  .label { display: block; font-size: ${t.typography.label.fontSize}px; line-height: ${t.typography.label.lineHeight}px; font-weight: 600; letter-spacing: .4px; margin: 0 ${t.spacing.lg}px ${t.spacing.sm}px; }
+  .badge { display: inline-block; background: var(--primary-container); color: var(--on-primary-container); border-radius: ${t.radius.full}px; padding: 4px 12px; font-size: ${t.typography.caption.fontSize}px; font-weight: 700; }
+  .card { background: var(--surface-variant); border: 1px solid var(--border); border-radius: ${t.radius.lg}px; padding: ${t.spacing.lg}px; margin: 0 ${t.spacing.lg}px ${t.spacing.lg}px; }
   .card .body { margin: 0; font-size: ${t.typography.body.fontSize}px; }
-  .btn { display: block; margin: ${t.spacing.sm}px ${t.spacing.lg}px 0; background: ${c.primary}; color: ${c.onPrimary}; border: none; border-radius: ${t.radius.full}px; padding: 0 ${t.spacing.xxl}px; min-height: 48px; font-size: ${t.typography.label.fontSize}px; font-weight: 600; cursor: pointer; }
+  .btn { display: block; margin: ${t.spacing.sm}px ${t.spacing.lg}px 0; background: var(--primary); color: var(--on-primary); border: none; border-radius: ${t.radius.full}px; padding: 0 ${t.spacing.xxl}px; min-height: 48px; font-size: ${t.typography.label.fontSize}px; font-weight: 600; cursor: pointer; }
   .btn[disabled] { opacity: .38; cursor: default; }
-  .list { border-top: 1px solid ${c.border}; }
-  .row { display: flex; gap: ${t.spacing.md}px; align-items: flex-start; padding: 11px ${t.spacing.lg}px; border-bottom: 1px solid ${c.border}; }
+  .list { border-top: 1px solid var(--border); }
+  .row { display: flex; gap: ${t.spacing.md}px; align-items: flex-start; padding: 11px ${t.spacing.lg}px; border-bottom: 1px solid var(--border); }
   .row-main { flex: 1; display: flex; flex-direction: column; }
   .row-title { font-weight: 600; font-size: 14px; }
   .row-sub { font-size: 13px; }
-  .row-detail { font-size: 12.5px; color: ${c.textMuted}; }
-  .row-time { font-size: 11px; color: ${c.textMuted}; }
-  .fab { display: inline-block; float: right; margin: ${t.spacing.sm}px ${t.spacing.lg}px 0 0; background: #c2e7ff; color: #001d35; border-radius: ${t.radius.lg}px; padding: 13px 18px; font-size: 14px; font-weight: 600; box-shadow: 0 3px 8px rgba(0,0,0,.25); }
+  .row-detail { font-size: 12.5px; color: var(--text-muted); }
+  .row-time { font-size: 11px; color: var(--text-muted); }
+  .fab { display: inline-block; float: right; margin: ${t.spacing.sm}px ${t.spacing.lg}px 0 0; background: var(--primary-container); color: var(--on-primary-container); border-radius: ${t.radius.lg}px; padding: 13px 18px; font-size: 14px; font-weight: 600; box-shadow: 0 3px 8px rgba(0,0,0,.25); }
 </style>
 </head>
 <body>
+<div class="preview-chrome"><span>Rangular preview</span><button id="theme-toggle" type="button">${declaredTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}</button></div>
 <div id="app">
 ${initialHtml}
 </div>
@@ -379,6 +421,7 @@ export function previewScript(
   const rootDeps = depsOf(component.constructorDeps);
   const rootOnInit = component.methods.includes('ngOnInit') ? '"ngOnInit"' : 'null';
   const needsWiring = Object.keys(rootDeps).length > 0 || rootOnInit !== 'null';
+  const declaredTheme = declaredThemeOf(ast);
 
   return `// Rangular interactive preview runtime (Stage 2).
 // State and methods are live: (click) handlers mutate state and re-render.
@@ -395,7 +438,37 @@ ${componentEntries.join(',\n')}
 };
 const ROOT_DEPS = ${JSON.stringify(rootDeps)};
 const ROOT_ONINIT = ${rootOnInit};
-${PAGE_RUNTIME}${needsWiring ? `\n${ROOT_WIRING}` : ''}`;
+${PAGE_RUNTIME}${needsWiring ? `\n${ROOT_WIRING}` : ''}
+${themeWiring(declaredTheme)}`;
+}
+
+/**
+ * Preview Light/Dark toggle wiring (Stage 4). A chrome affordance only,
+ * the compiled app chooses its theme via <screen theme="..."> instead.
+ * Colours live in CSS variables, so flipping data-theme on <html> swaps
+ * the whole palette without re-rendering a single node.
+ */
+function themeWiring(declared: 'light' | 'dark'): string {
+  return [
+    '// Preview theme toggle (Stage 4): flips data-theme on <html>; the CSS',
+    '// variables in <style> do the rest. Guarded so non-DOM harnesses and',
+    '// older pages without the chrome button simply skip it.',
+    `var __previewTheme = '${declared}';`,
+    "var __themeBtn = document.getElementById('theme-toggle');",
+    'function __syncThemeBtn() {',
+    "  if (__themeBtn) __themeBtn.textContent = __previewTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';",
+    '}',
+    'if (__themeBtn) {',
+    "  __themeBtn.addEventListener('click', function () {",
+    "    __previewTheme = __previewTheme === 'dark' ? 'light' : 'dark';",
+    '    if (document.documentElement && document.documentElement.setAttribute) {',
+    "      document.documentElement.setAttribute('data-theme', __previewTheme);",
+    '    }',
+    '    __syncThemeBtn();',
+    '  });',
+    '  __syncThemeBtn();',
+    '}',
+  ].join('\n');
 }
 
 /**
@@ -762,7 +835,12 @@ function __buildCore(el, scope, path) {
     case 'h2': return wrap('h2', 'heading');
     case 'h3': return wrap('h3', 'title');
     case 'p': return wrap('p', 'body');
-    case 'span': return wrap('span', '');
+    case 'label': return wrap('span', 'label');
+    case 'span': {
+      var sp = wrap('span', '');
+      if (el.attrs['class']) sp[0].className = el.attrs['class'];
+      return sp;
+    }
     case 'card': return wrap('section', 'card');
     case 'button': {
       var b = document.createElement('button');

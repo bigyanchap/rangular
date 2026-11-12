@@ -1,8 +1,8 @@
 /**
- * @rangular/runtime — small pure-TypeScript helpers for generated apps.
+ * @rangular/runtime, small pure-TypeScript helpers for generated apps.
  * EventEmitter (for @Output), a tiny signal implementation, a DI Container,
  * the ReactiveService base class generated services extend (Stage 3), and
- * HttpClient — an Observable-lite wrapper over fetch (Stage 3). No react or
+ * HttpClient, an Observable-lite wrapper over fetch (Stage 3). No react or
  * react-native imports live in this file: generated components bridge
  * services to React themselves (useSyncExternalStore over __subscribe /
  * __getVersion), so this package stays environment-free and unit-testable.
@@ -90,7 +90,7 @@ export function pipe<T>(name: string, value: T, ...args: unknown[]): unknown {
  * A service's state is plain class fields. Whenever a translated service
  * method assigns a field, the codegen appends `this.__notify()`; subscribed
  * components re-render. Generated components subscribe with React's
- * useSyncExternalStore over __subscribe/__getVersion — the version counter
+ * useSyncExternalStore over __subscribe/__getVersion, the version counter
  * is the snapshot, so every notification produces a new snapshot value.
  */
 export class ReactiveService {
@@ -121,13 +121,13 @@ export interface Subscription {
 
 /**
  * The smallest useful Observable shape: subscribe with a next and/or error
- * callback, get back a Subscription. No operators — pipelines are Stage 4+.
+ * callback, get back a Subscription. No operators, pipelines are Stage 4+.
  */
 export interface ObservableLite<T> {
   subscribe(next?: (value: T) => void, error?: (err: unknown) => void): Subscription;
 }
 
-/** The slice of fetch HttpClient needs — injectable so tests never touch the network. */
+/** The slice of fetch HttpClient needs, injectable so tests never touch the network. */
 export type FetchLike = (url: string) => Promise<{ json(): Promise<unknown> }>;
 
 /**

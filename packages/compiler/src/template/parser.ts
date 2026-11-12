@@ -13,7 +13,7 @@ const VOID_TAGS = new Set(['img', 'br', 'hr', 'input', 'meta', 'link']);
  * Handles nested + self-closing elements, static attributes, [prop] bindings,
  * (event) bindings, *structural directives, #ref variables, comments
  * (dropped) and {{ interpolation }} inside text. Malformed markup yields
- * diagnostics with line/column — the parser recovers instead of throwing.
+ * diagnostics with line/column, the parser recovers instead of throwing.
  */
 export function parseTemplate(source: string): ParseResult {
   const diagnostics: Diagnostic[] = [];
@@ -52,7 +52,7 @@ export function parseTemplate(source: string): ParseResult {
       if (open === -1) break;
       const close = rest.indexOf('}}', open + 2);
       if (close === -1) {
-        diagnostics.push(error('TPL_INTERPOLATION', 'Unclosed {{ interpolation }}', at.line, at.column, 'Close the interpolation with }} — e.g. {{ title }}'));
+        diagnostics.push(error('TPL_INTERPOLATION', 'Unclosed {{ interpolation }}', at.line, at.column, 'Close the interpolation with }}, e.g. {{ title }}'));
         break;
       }
       if (open > 0) parts.push({ type: 'static', value: rest.slice(0, open) });
@@ -86,7 +86,7 @@ export function parseTemplate(source: string): ParseResult {
     advance(1); // '<'
     const tag = readWhile((c) => /[A-Za-z0-9_-]/.test(c));
     if (!tag) {
-      diagnostics.push(error('TPL_TAG', 'Expected a tag name after <', at.line, at.column, 'Write a real element — e.g. <p>text</p>; a literal < in text is not supported'));
+      diagnostics.push(error('TPL_TAG', 'Expected a tag name after <', at.line, at.column, 'Write a real element, e.g. <p>text</p>; a literal < in text is not supported'));
       return undefined;
     }
     const el: ElementNode = {
@@ -174,7 +174,7 @@ export function parseTemplate(source: string): ParseResult {
             'TPL_MISMATCH',
             `Expected </${untilTag}> but found </${closing}>`,
             at.line, at.column,
-            `Close <${untilTag}> with </${untilTag}> — check for a missing or mis-nested closing tag above`,
+            `Close <${untilTag}> with </${untilTag}>, check for a missing or mis-nested closing tag above`,
           ));
         }
         return nodes;
