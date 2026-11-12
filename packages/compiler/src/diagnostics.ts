@@ -52,4 +52,9 @@ export const DIAGNOSTIC_CODES: Record<string, string> = {
   GEN_NGIF_ELSE_TODO: '*ngIf with else/then microsyntax is not generated yet; the element was emitted unconditionally.',
   GEN_STRUCTURAL_TODO: 'A structural directive other than *ngIf/*ngFor is not supported yet; the element was emitted unconditionally.',
   METHOD_UNSUPPORTED: 'A statement in a component method is outside the supported translation subset; it was left as a TODO.',
+  CMP_IMPORT_UNRESOLVED: 'A relative import in a compiled file could not be resolved to a source file.',
+  CMP_IMPORT_CYCLE: 'Two or more source files import each other in a cycle; the cycle was broken at the repeated file, whose classes were already registered.',
+  CMP_DUP_SELECTOR: 'Two different component classes declare the same selector in one compilation.',
+  DI_UNKNOWN_TOKEN: 'A constructor dependency names a type that is not a known @Injectable({ providedIn: \'root\' }) service or HttpClient in this compilation.',
+  DI_CYCLE: 'Injectable services depend on each other in a cycle; container registrations could not be ordered.',
 };

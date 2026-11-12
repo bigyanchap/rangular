@@ -1,10 +1,23 @@
 import { theme } from '../../../ui/src/tokens';
-import { ComponentInfo } from '../class/parseComponent';
+import { ComponentField, ComponentInfo, ServiceInfo } from '../class/parseComponent';
+import { ChildUnitInput, outputPropName } from '../codegen/generate';
 import { translateMethods } from '../codegen/methods';
 import { ElementNode, TemplateNode, TemplateRoot } from '../template/ast';
 import { evaluateExpression, Scope } from '../template/evaluate';
 import { literalValue } from '../template/literal';
 import { parseNgFor, parseNgIf } from '../template/structural';
+
+/**
+ * Stage 3 preview data: the child components and services the compiler
+ * resolved through the entry component's imports. Child components render
+ * recursively (inputs evaluated in the parent scope, outputs wired to the
+ * parent handler), and every component that injects a service sees the
+ * same singleton service object — in the server paint and in the page.
+ */
+export interface PreviewData {
+  children?: ChildUnitInput[];
+  services?: ServiceInfo[];
+}
 
 /**
  * Dev preview renderer (Stage 2: interactive).
@@ -43,6 +56,52 @@ export function componentState(component: ComponentInfo): Record<string, unknown
   return state;
 }
 
+/**
+ * State for a child component or a service: like componentState, but
+ * @Input literal initializers are included — they are the input defaults.
+ */
+function stateWithInputs(host: { fields: ComponentField[] }): Record<string, unknown> {
+  const state: Record<string, unknown> = {};
+  for (const f of host.fields) {
+    if (f.isOutput || !f.initializer) continue;
+    const v = evaluateLiteral(f.initializer);
+    if (v !== undefined) state[f.name] = v;
+  }
+  return state;
+}
+
+/** Preview stand-in for HttpClient: get() returns an Observable that never emits. */
+const HTTP_STUB = {
+  get: () => ({ subscribe: () => ({ unsubscribe: () => undefined }) }),
+};
+
+/**
+ * Singleton service objects for the server-side paint. Fields hold their
+ * literal values (the SAME object is shared by every component that
+ * injects the service, so a *ngFor over mail.mails works); methods are
+ * inert — the interactive page replaces them with the real translated
+ * methods. Service state mutation is a page-runtime behaviour.
+ */
+function buildServiceScopes(services: ServiceInfo[]): Map<string, Record<string, unknown>> {
+  const map = new Map<string, Record<string, unknown>>();
+  const byName = new Map(services.map((s) => [s.className, s]));
+  const build = (svc: ServiceInfo): Record<string, unknown> => {
+    const existing = map.get(svc.className);
+    if (existing) return existing;
+    const obj: Record<string, unknown> = { ...stateWithInputs(svc) };
+    map.set(svc.className, obj);
+    for (const m of svc.methods) obj[m] = () => undefined;
+    for (const dep of svc.constructorDeps) {
+      const depSvc = byName.get(dep.typeName);
+      if (depSvc && depSvc.providedInRoot) obj[dep.propertyName] = build(depSvc);
+      else if (dep.typeName === 'HttpClient') obj[dep.propertyName] = HTTP_STUB;
+    }
+    return obj;
+  };
+  for (const svc of services) if (svc.providedInRoot) build(svc);
+  return map;
+}
+
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -59,11 +118,26 @@ function evalSafe(source: string, scope: Scope): unknown {
   }
 }
 
-export function renderPreview(component: ComponentInfo, ast: TemplateRoot): string {
+export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data: PreviewData = {}): string {
   const t = theme('light');
   const c = t.colors;
   const state = componentState(component);
   const baseScope: Scope = { ...state };
+
+  // --- Stage 3: child components + injected services -----------------------
+  const childDefs = new Map<string, ChildUnitInput>();
+  for (const child of data.children ?? []) {
+    if (child.info.selector) childDefs.set(child.info.selector, child);
+  }
+  const serviceScopes = buildServiceScopes(data.services ?? []);
+  const assignDeps = (scope: Scope, info: ComponentInfo): void => {
+    for (const dep of info.constructorDeps ?? []) {
+      const svc = serviceScopes.get(dep.typeName);
+      if (svc) scope[dep.propertyName] = svc;
+      else if (dep.typeName === 'HttpClient') scope[dep.propertyName] = HTTP_STUB;
+    }
+  };
+  assignDeps(baseScope, component);
 
   const renderNodes = (nodes: TemplateNode[], scope: Scope): string =>
     nodes.map((n) => renderNode(n, scope)).join('\n');
@@ -114,7 +188,32 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot): stri
     return renderCore(el, scope);
   };
 
+  /**
+   * Render a child component element (Stage 3, M5): inputs are evaluated
+   * in the parent scope (prop bindings), static attributes arrive as
+   * strings, and the child's own template renders in the child's scope.
+   * Outputs do nothing in the static paint — the page runtime wires them.
+   * ngOnInit is not run for the static paint: it shows pre-init state.
+   */
+  const renderChild = (el: ElementNode, def: ChildUnitInput, parentScope: Scope): string => {
+    const scope: Scope = { ...stateWithInputs(def.info) };
+    const inputNames = new Set(def.info.fields.filter((f) => f.isInput).map((f) => f.name));
+    for (const b of el.propBindings) {
+      if (!inputNames.has(b.name)) continue;
+      const v = evalSafe(b.expression, parentScope);
+      if (v !== UNSET) scope[b.name] = v;
+    }
+    for (const [name, value] of Object.entries(el.attrs)) {
+      if (inputNames.has(name)) scope[name] = value;
+    }
+    for (const a of el.booleanAttrs) if (inputNames.has(a)) scope[a] = true;
+    assignDeps(scope, def.info);
+    return renderNodes(def.ast.children, scope);
+  };
+
   const renderCore = (el: ElementNode, scope: Scope): string => {
+    const childDef = childDefs.get(el.tag);
+    if (childDef) return renderChild(el, childDef, scope);
     const inner = renderNodes(el.children, scope);
     const title = bound(el, 'title', scope) ?? '';
     switch (el.tag) {
@@ -141,7 +240,8 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot): stri
       }
       case 'list': return `<div class="list">${inner}</div>`;
       case 'row': {
-        const rowTitle = bound(el, 'title', scope) ?? inner;
+        const titleBound = bound(el, 'title', scope);
+        const rowTitle = titleBound ?? inner;
         const sub = bound(el, 'subtitle', scope) ?? '';
         const detail = bound(el, 'detail', scope) ?? '';
         const time = bound(el, 'time', scope) ?? '';
@@ -150,6 +250,10 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot): stri
           `<span class="row-main"><span class="row-title">${escapeHtml(rowTitle)}</span>` +
           (sub ? `<span class="row-sub">${escapeHtml(sub)}</span>` : '') +
           (detail ? `<span class="row-detail">${escapeHtml(detail)}</span>` : '') +
+          // Row children render inside the main cell, like RgRow and the
+          // page runtime do (e.g. an unread dot <span *ngIf="m.unread">) —
+          // unless the children already served as the title fallback.
+          (titleBound !== undefined ? inner : '') +
           `</span>${time ? `<span class="row-time">${escapeHtml(time)}</span>` : ''}</div>`;
       }
       case 'fab': return `<div class="fab">${inner || escapeHtml(bound(el, 'label', scope) ?? 'Compose')}</div>`;
@@ -160,7 +264,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot): stri
   };
 
   const initialHtml = renderNodes(ast.children, baseScope);
-  const script = previewScript(component, ast, state);
+  const script = previewScript(component, ast, state, data);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -216,12 +320,66 @@ export function previewScript(
   component: ComponentInfo,
   ast: TemplateRoot,
   state: Record<string, unknown>,
+  data: PreviewData = {},
 ): string {
   const { methods } = translateMethods(component, 'state', new Set());
   const methodEntries = methods.map((m) => {
     const body = m.lines.join('\n');
     return `  ${m.name}: function (${m.paramNames.join(', ')}) {\n${body}\n  }`;
   });
+
+  // Stage 3 definitions. Child/service methods are serialized as functions
+  // of (state, methods, props, ...args): the page runtime binds them per
+  // component instance / per service singleton, so `state.x`, `methods.y()`
+  // and `props.onSaved?.(v)` in a translated body always mean THIS instance.
+  const defMethods = (
+    host: { fields: ComponentField[]; methods: string[]; methodDetails: ComponentInfo['methodDetails'] },
+    outputCallbacks?: Map<string, string>,
+  ): string => {
+    const { methods: translated } = translateMethods(host, 'state', new Set(), { outputCallbacks });
+    return translated
+      .map((m) => {
+        const params = ['state', 'methods', 'props', ...m.paramNames].join(', ');
+        const body = m.lines.map((l) => (l ? `      ${l}` : l)).join('\n');
+        return `      ${m.name}: function (${params}) {\n${body}\n      }`;
+      })
+      .join(',\n');
+  };
+  const depsOf = (deps: { propertyName: string; typeName: string }[] | undefined): Record<string, string> =>
+    Object.fromEntries((deps ?? []).map((d) => [d.propertyName, d.typeName]));
+
+  const serviceEntries: string[] = [];
+  for (const svc of data.services ?? []) {
+    if (!svc.providedInRoot) continue;
+    serviceEntries.push(
+      `  ${JSON.stringify(svc.className)}: {\n` +
+      `    "state": ${JSON.stringify(stateWithInputs(svc))},\n` +
+      `    "deps": ${JSON.stringify(depsOf(svc.constructorDeps))},\n` +
+      `    "methods": {\n${defMethods(svc)}\n    }\n  }`,
+    );
+  }
+  const componentEntries: string[] = [];
+  for (const child of data.children ?? []) {
+    if (!child.info.selector) continue;
+    const outputCallbacks = new Map<string, string>();
+    for (const f of child.info.fields) {
+      if (f.isOutput) outputCallbacks.set(f.name, `props.${outputPropName(f.name)}`);
+    }
+    componentEntries.push(
+      `  ${JSON.stringify(child.info.selector)}: {\n` +
+      `    "template": ${JSON.stringify(child.ast)},\n` +
+      `    "state": ${JSON.stringify(stateWithInputs(child.info))},\n` +
+      `    "deps": ${JSON.stringify(depsOf(child.info.constructorDeps))},\n` +
+      `    "inputs": ${JSON.stringify(child.info.fields.filter((f) => f.isInput).map((f) => f.name))},\n` +
+      `    "outputs": ${JSON.stringify(child.info.fields.filter((f) => f.isOutput).map((f) => f.name))},\n` +
+      `    "onInit": ${child.info.methods.includes('ngOnInit') ? '"ngOnInit"' : 'null'},\n` +
+      `    "methods": {\n${defMethods(child.info, outputCallbacks)}\n    }\n  }`,
+    );
+  }
+  const rootDeps = depsOf(component.constructorDeps);
+  const rootOnInit = component.methods.includes('ngOnInit') ? '"ngOnInit"' : 'null';
+  const needsWiring = Object.keys(rootDeps).length > 0 || rootOnInit !== 'null';
+
   return `// Rangular interactive preview runtime (Stage 2).
 // State and methods are live: (click) handlers mutate state and re-render.
 const TEMPLATE = ${JSON.stringify(ast)};
@@ -229,8 +387,32 @@ const state = ${JSON.stringify(state)};
 const methods = {
 ${methodEntries.join(',\n')}
 };
-${PAGE_RUNTIME}`;
+const SERVICES = {
+${serviceEntries.join(',\n')}
+};
+const COMPONENTS = {
+${componentEntries.join(',\n')}
+};
+const ROOT_DEPS = ${JSON.stringify(rootDeps)};
+const ROOT_ONINIT = ${rootOnInit};
+${PAGE_RUNTIME}${needsWiring ? `\n${ROOT_WIRING}` : ''}`;
 }
+
+/**
+ * Appended after the page runtime when the root component injects services
+ * or has ngOnInit: the static first render happens without deps, then the
+ * wiring epilogue assigns the singletons and runs ngOnInit once (the
+ * preview analogue of the generated useEffect(..., [])).
+ */
+const ROOT_WIRING = String.raw`
+// Root wiring (Stage 3): injected services, then ngOnInit once after mount.
+Object.keys(ROOT_DEPS).forEach(function (k) { state[k] = __resolveDep(ROOT_DEPS[k]); });
+__render();
+if (ROOT_ONINIT && typeof methods[ROOT_ONINIT] === 'function') {
+  methods[ROOT_ONINIT]();
+  __render();
+}
+`;
 
 /**
  * In-page runtime. Deliberately written without template literals or `${`
@@ -472,14 +654,14 @@ function __parseNgFor(expr) {
   }
   return parts;
 }
-function __buildNodes(nodes, scope) {
+function __buildNodes(nodes, scope, path) {
   var out = [];
-  nodes.forEach(function (n) {
-    __buildNode(n, scope).forEach(function (d) { out.push(d); });
+  nodes.forEach(function (n, i) {
+    __buildNode(n, scope, path + '/' + i).forEach(function (d) { out.push(d); });
   });
   return out;
 }
-function __buildNode(node, scope) {
+function __buildNode(node, scope, path) {
   if (node.type === 'text') {
     var txt = '';
     node.parts.forEach(function (p) {
@@ -493,19 +675,19 @@ function __buildNode(node, scope) {
     });
     return [document.createTextNode(txt)];
   }
-  return __buildElement(node, scope);
+  return __buildElement(node, scope, path);
 }
-function __buildElement(el, scope) {
+function __buildElement(el, scope, path) {
   if (el.structural && el.structural.name === 'ngIf') {
     var cond;
     try { cond = __evalSrc(el.structural.expression.split(';')[0].trim(), scope); }
     catch (err) { console.warn(err); cond = false; }
     if (!cond) return [];
-    return __buildCore(el, scope);
+    return __buildCore(el, scope, path);
   }
   if (el.structural && el.structural.name === 'ngFor') {
     var parts = __parseNgFor(el.structural.expression);
-    if (!parts) { console.warn('preview: unparseable *ngFor'); return __buildCore(el, scope); }
+    if (!parts) { console.warn('preview: unparseable *ngFor'); return __buildCore(el, scope, path); }
     var items;
     try { items = __evalSrc(parts.source, scope); }
     catch (err) { console.warn(err); items = []; }
@@ -515,11 +697,11 @@ function __buildElement(el, scope) {
       var extra = {};
       extra[parts.item] = items[idx];
       if (parts.index) extra[parts.index] = idx;
-      __buildCore(el, __extend(scope, extra)).forEach(function (d) { out.push(d); });
+      __buildCore(el, __extend(scope, extra), path + '/for' + idx).forEach(function (d) { out.push(d); });
     }
     return out;
   }
-  return __buildCore(el, scope);
+  return __buildCore(el, scope, path);
 }
 function __attachEvents(dom, el, scope) {
   el.eventBindings.forEach(function (ev) {
@@ -547,8 +729,9 @@ function __runHandler(src, scope, event) {
     __eval(e, s);
   } catch (err) { console.warn(err); }
 }
-function __buildCore(el, scope) {
-  var kids = __buildNodes(el.children, scope);
+function __buildCore(el, scope, path) {
+  if (COMPONENTS[el.tag]) return __buildChild(el, scope, path);
+  var kids = __buildNodes(el.children, scope, path);
   function wrap(tag, cls) {
     var d = document.createElement(tag);
     if (cls) d.className = cls;
@@ -645,10 +828,91 @@ function __buildCore(el, scope) {
     default: return wrap('div', '');
   }
 }
+var __svcCache = {};
+var __instances = {};
+function __httpStub() {
+  return { get: function () { return { subscribe: function () { return { unsubscribe: function () {} }; } }; } };
+}
+function __resolveDep(token) {
+  return token === 'HttpClient' ? __httpStub() : __service(token);
+}
+function __bind(def, inst) {
+  var fns = {};
+  Object.keys(def.methods).forEach(function (name) {
+    fns[name] = function () {
+      var args = [inst.state, fns, inst.props];
+      for (var i = 0; i < arguments.length; i++) args.push(arguments[i]);
+      return def.methods[name].apply(null, args);
+    };
+  });
+  return fns;
+}
+function __service(name) {
+  if (__svcCache[name]) return __svcCache[name];
+  var def = SERVICES[name];
+  if (!def) { console.warn('preview: no service named ' + name); return {}; }
+  var st = {};
+  Object.keys(def.state).forEach(function (k) { st[k] = def.state[k]; });
+  var inst = { state: st, props: {}, methods: {} };
+  __svcCache[name] = st;
+  Object.keys(def.deps).forEach(function (k) { st[k] = __resolveDep(def.deps[k]); });
+  inst.methods = __bind(def, inst);
+  Object.keys(inst.methods).forEach(function (m) { st[m] = inst.methods[m]; });
+  return st;
+}
+function __childInstance(path, def, props) {
+  var inst = __instances[path];
+  if (!inst) {
+    var st = {};
+    Object.keys(def.state).forEach(function (k) { st[k] = def.state[k]; });
+    inst = { state: st, props: {}, methods: {}, fresh: true };
+    Object.keys(def.deps).forEach(function (k) { st[k] = __resolveDep(def.deps[k]); });
+    inst.methods = __bind(def, inst);
+    __instances[path] = inst;
+  }
+  inst.props = props;
+  def.inputs.forEach(function (n) { if (n in props) inst.state[n] = props[n]; });
+  return inst;
+}
+function __childScope(inst) {
+  var s = {}, k;
+  for (k in inst.state) s[k] = inst.state[k];
+  for (k in inst.methods) s[k] = inst.methods[k];
+  return s;
+}
+function __buildChild(el, scope, path) {
+  var def = COMPONENTS[el.tag];
+  var props = {};
+  el.propBindings.forEach(function (b) {
+    var v = __binding(el, b.name, scope);
+    if (v !== undefined) props[b.name] = v;
+  });
+  Object.keys(el.attrs).forEach(function (k) { props[k] = el.attrs[k]; });
+  el.booleanAttrs.forEach(function (a) { props[a] = true; });
+  el.eventBindings.forEach(function (ev) {
+    if (def.outputs.indexOf(ev.name) >= 0) {
+      var cap = 'on' + ev.name.charAt(0).toUpperCase() + ev.name.slice(1);
+      props[cap] = (function (expr, sc) {
+        return function (value) { __runHandler(expr, sc, value); __render(); };
+      })(ev.expression, scope);
+    }
+  });
+  var inst = __childInstance(path, def, props);
+  if (inst.fresh) {
+    inst.fresh = false;
+    if (def.onInit && inst.methods[def.onInit]) inst.methods[def.onInit]();
+  }
+  var nodes = __buildNodes(def.template.children, __childScope(inst), path);
+  var domEvents = el.eventBindings.filter(function (ev) { return def.outputs.indexOf(ev.name) < 0; });
+  if (domEvents.length && nodes[0] && nodes[0].addEventListener) {
+    __attachEvents(nodes[0], { eventBindings: domEvents }, scope);
+  }
+  return nodes;
+}
 function __render() {
   var app = document.getElementById('app');
   app.innerHTML = '';
-  __buildNodes(TEMPLATE.children, __scope()).forEach(function (n) { app.appendChild(n); });
+  __buildNodes(TEMPLATE.children, __scope(), 'root').forEach(function (n) { app.appendChild(n); });
 }
 __render();
 `;

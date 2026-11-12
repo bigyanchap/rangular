@@ -45,7 +45,7 @@ lookup table. This layer removes each failure mode.
 AIs already know Angular and React from training. Rangular source *looks*
 like Angular, so the main job of these docs is enumerating the **delta**:
 where Rangular is the same, and where it is not (yet). Both tables state
-the repo's actual behaviour today (Stage 2.5), not aspirations.
+the repo's actual behaviour today (Stage 3), not aspirations.
 
 ### Rangular source vs Angular
 
@@ -54,12 +54,15 @@ the repo's actual behaviour today (Stage 2.5), not aspirations.
 | Angular feature | In Rangular source |
 |---|---|
 | `@Component` decorator (selector, templateUrl, inline template, styles, styleUrls) | Same; read by the TypeScript compiler API |
-| `@Input()` / `@Output()` field decorators | Extracted; `@Input` fields become generated-component props |
+| `@Input()` / `@Output()` field decorators | Wired (Stage 3): `@Input` fields become props, the literal initializer is the default when unbound; an `@Output` field holding `new EventEmitter<T>()` becomes an `onX` callback prop and `this.x.emit(v)` compiles to `onX?.(v)` |
+| Child components (a tag matching another component's selector) | Same, with import-based resolution: the compiler follows the entry file's relative imports and any imported `@Component` class is a usable child — no module/declarations list |
 | Templates in separate `.html` files | Same |
 | `{{ interpolation }}`, `[prop]` binding, `(event)` binding, `*ngIf`, `*ngFor` syntax | Same syntax, same meaning |
 | Pipes in expressions (`expr \| uppercase`) | Parsed; built-ins `uppercase`, `lowercase`, `titlecase`, `json` evaluate in preview/runtime |
 | Class fields as state, methods as actions | Same — this is the core model |
-| Lifecycle *names* (`ngOnInit`, …) | You may write them — see "not wired" below before relying on them |
+| `@Injectable({ providedIn: 'root' })` services + constructor injection | Wired (Stage 3): services are reactive singletons in a generated container; constructor *parameter properties* (`constructor(private mail: MailService)`) are the injection form; services may inject services |
+| Lifecycle hooks (`ngOnInit`, `ngOnDestroy`) | Wired (Stage 3): `ngOnInit` runs once after first render, `ngOnDestroy` on unmount — `useEffect(..., [])` and its cleanup in generated code |
+| `HttpClient.get(url)` returning an Observable you `subscribe` to | Wired with a subset (Stage 3): an Observable-lite with `subscribe(next?, error?)` only; the supported component shape is `this.http.get(url).subscribe((data) => { this.field = data; });` |
 
 **Not supported yet** — do not use these in Rangular source today:
 
@@ -68,12 +71,11 @@ the repo's actual behaviour today (Stage 2.5), not aspirations.
 | `[(ngModel)]` / forms | Not supported. `[(x)]` syntax is *parsed* but degrades to a one-way `[x]` prop binding — no write-back, no forms model | Later stage (post-v1 scope) |
 | Two-way binding `[(...)]` generally | Same as above: one-way prop binding only, no change event is generated | Later stage |
 | Routing (`@angular/router`, `<router-outlet>`) | Not supported — no router exists; a dashed/unknown tag is passed through or warns | Later (map to React Navigation) |
-| NgModules (`@NgModule`) | Not supported. Only `@Component` classes are entry points; an `@NgModule`/`@Injectable` file errors with `CLS_NO_COMPONENT` | Not planned as modules; DI bridging is Stage 3 |
-| Dependency injection (constructor injection, `providers`, `@Injectable` services) | Not wired. Constructors are not read; the runtime `Container` class exists but generated code does not use it yet | Stage 3 (M6) |
-| Lifecycle hooks (`ngOnInit` / `ngOnDestroy` actually being *called*) | Not wired. A hook is translated as an ordinary method and is never invoked by the generated component | Stage 3 (M6) |
+| NgModules (`@NgModule`, `providers` arrays, module-scoped DI) | Not supported — resolution is import-based instead: `@Component` classes are entry points, and `@Injectable({ providedIn: 'root' })` classes are the injectable services (Stage 3). An `@NgModule` file errors with `CLS_NO_COMPONENT`; an `@Injectable` without `providedIn: 'root'` is not registered, so injecting it is a `DI_UNKNOWN_TOKEN` error | Not planned as modules |
+| Component constructor *bodies* | Not translated — only constructor parameter properties are read (they are the DI declarations). Do one-time setup in `ngOnInit` instead | Not planned |
 | Animations (`@angular/animations`, `:enter`/`:leave`) | Not supported anywhere in the compiler | Post-v1 |
 | SSR / hydration | Not supported — output is a React Native app, there is no server rendering | Not planned |
-| Full RxJS surface (Observables, `subscribe`, operators) | Not supported in source. The runtime `async` pipe is currently a pass-through stub; generated code does not bridge Observables to state | Stage 3 will bridge Observables for HttpClient |
+| Full RxJS surface (operators, Subjects, Observables from other sources) | Not supported. Only HttpClient's Observable-lite exists (`subscribe(next?, error?)`, no operators, no unsubscribe-driven teardown beyond a cancellation flag); the runtime `async` pipe is still a pass-through stub | Later stage |
 | Custom pipes (`@Pipe` classes) | Not read. Only the built-in pipes above exist | Later stage |
 | `*ngIf` with `else` / `then` | Detected, warns `GEN_NGIF_ELSE_TODO`, element emitted unconditionally. Workaround: two elements, `*ngIf="cond"` and `*ngIf="!(cond)"` | Later stage |
 | Full CSS (cascade, inheritance, descendant/id/pseudo selectors, unsupported properties) | Subset only: element and `.class` selectors, a fixed property list; anything else warns (`CSS_SELECTOR` / `CSS_UNSUPPORTED`) and is dropped. Styles apply per element — no cascade | Subset may grow per stage |
@@ -131,6 +133,83 @@ method bodies is a defined subset — do not assume all of TypeScript:
 - Long prose (a bio, a description paragraph) belongs in a `<p>`, not in a
   row's `subtitle` — row lines are single-line list text and may truncate;
   `<p>` wraps.
+
+## Child components (Stage 3, M5)
+
+- **Resolution is by import.** The compiler follows the entry component's
+  relative imports, transitively. Every imported `@Component` class is a
+  known child component, keyed by its `selector`; a template tag matching
+  a selector compiles to that component's generated function. All
+  components of a compilation are emitted into ONE generated `.tsx`
+  (children as exported functions above the entry's default export).
+  Unknown dashed tags keep the old behaviour (passed through untouched).
+- **Import cycles** are legal input: classes register before recursing,
+  so everything on the cycle still resolves, and the compiler reports
+  `CMP_IMPORT_CYCLE` (warning). A duplicated selector across two
+  different classes is a `CMP_DUP_SELECTOR` error; an unresolvable
+  relative import is a `CMP_IMPORT_UNRESOLVED` error.
+- **Inputs:** `[name]="expr"` passes the evaluated expression, a plain
+  attribute passes a string, a bare attribute passes `true`. If the
+  parent omits an input, the child's literal initializer is the default —
+  visible in the generated signature (`{ quote = '' }`). There is no
+  content projection: children written inside a child tag are ignored.
+- **Outputs:** the field must be initialised with `new EventEmitter<T>()`.
+  `this.saved.emit(x)` inside the child → `onSaved?.(x)` in generated
+  code (prop name = `on` + Capitalised field name; unbound outputs are
+  no-ops). In the parent, `(saved)="handler($event)"` receives the
+  emitted value as `$event`; a bare `(saved)="handler"` passes the
+  method itself.
+- **Preview:** children render recursively — inputs evaluated in the
+  parent scope, instances persist across re-renders (keyed by template
+  position), emits run the parent handler and re-render.
+
+## Services, dependency injection and lifecycle (Stage 3, M6)
+
+- **Services are real classes.** `@Injectable({ providedIn: 'root' })`
+  compiles to a class extending the runtime's `ReactiveService`, emitted
+  into the same generated file. Literal fields stay fields; methods are
+  translated with the Stage 2 subset, except `this.` survives (a service
+  is a class, not a function component).
+- **Reactivity contract:** after every assignment to a service field
+  inside a service method, the generated code calls `this.__notify()`.
+  Mutating an item in place (`this.mails.forEach(m => m.unread = false)`)
+  assigns no field, emits no notify, and re-renders nothing — reassign
+  the field (`this.mails = this.mails.map(...)`).
+- **The singleton:** one module-level container in the generated file
+  registers every root service, dependency-ordered (dependencies first;
+  a cycle is a `DI_CYCLE` error). Every component that injects a service
+  gets the same instance and subscribes to it with
+  `useSyncExternalStore` over its version counter, so a notify
+  re-renders all of them.
+- **Injection form:** constructor *parameter properties* only —
+  `constructor(private mail: MailService)`. The token is the declared
+  type name; it must be a root service in the compilation or
+  `HttpClient`, otherwise `DI_UNKNOWN_TOKEN` (error, with fix). Services
+  may inject services the same way. Component constructor bodies are not
+  translated.
+- **Lifecycle:** `ngOnInit()` → called inside `useEffect(..., [])`;
+  `ngOnDestroy()` → that effect's cleanup. A hook that assigns fields
+  makes those fields state, as for any method. In the preview, ngOnInit
+  runs once when a component instance is created; the static first paint
+  shows pre-init state.
+
+## HttpClient (Stage 3, M6)
+
+- Inject it like a service: `constructor(private http: HttpClient)`
+  (import from `@angular/common/http`, as in Angular). It is registered
+  in the generated container under its class token.
+- The runtime client wraps `fetch` and parses responses as JSON.
+  `get(url)` returns an **Observable-lite**: `{ subscribe(next?, error?) }`
+  returning `{ unsubscribe() }`. No operators, no `pipe`, no retry —
+  anything richer is not supported yet.
+- **The one supported component-side shape** is:
+  `this.http.get(url).subscribe((data) => { this.field = data; });` —
+  a block-bodied arrow whose statements assign component fields (which
+  become state as usual). An expression-bodied assignment
+  (`subscribe((data) => this.field = data)`) cannot become a setter call
+  and degrades to a `METHOD_UNSUPPORTED` warning instead of wrong code.
+- In the preview, `HttpClient` is a stub: `get()` returns an Observable
+  that never emits. Previews never touch the network.
 
 ## The proof test
 

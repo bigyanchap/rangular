@@ -14,6 +14,39 @@ Polish is a system, not luck: simple blocks compile to pre-polished
 [docs/UI_POLISH.md](docs/UI_POLISH.md). The full architecture is in
 [docs/BLOCK_DIAGRAM.md](docs/BLOCK_DIAGRAM.md).
 
+## Install and run
+
+Prerequisites: **Node.js 20+ and npm** (the compiler itself has exactly
+two dependencies: `typescript` and `@types/node`).
+
+```sh
+git clone https://github.com/bigyanchap/rangular.git
+cd rangular
+npm install
+npm test          # builds with tsc, then runs the whole test suite
+```
+
+`npm test` also builds the compiler into `dist/`. Then try the examples:
+
+```sh
+# Compile the hello example (Angular -> React Native TSX)
+node dist/packages/cli/src/cli.js build examples/hello/hello.component.ts --out examples/hello/hello.component.tsx
+
+# Print a template AST (M0)
+node dist/packages/cli/src/cli.js ast examples/hello/hello.component.html
+
+# Render the dev preview used for visual eye-checks
+node dist/packages/cli/src/cli.js preview examples/hello/hello.component.ts --out examples/hello/preview.html
+```
+
+Open `examples/hello/preview.html` in a browser: it is a working preview
+of the compiled screen, and it is interactive — buttons run the
+component's real translated methods, `*ngIf` / `*ngFor` respond to state,
+child components render and emit, services are shared live. The committed
+`examples/hello/hello.component.tsx` and `examples/hello/preview.html`
+are the golden outputs of the commands above; the golden-file tests keep
+them honest.
+
 ## Block diagram
 
 ```mermaid
@@ -48,8 +81,8 @@ flowchart TB
 | M3 | Events + state (counter) | ✅ Done (Stage 2) |
 | M4 | `*ngIf` / `*ngFor` | ✅ Done (Stage 2) |
 | — | **Stage 2.5: Vibe layer** — `AGENTS.md`, `llms.txt`, generated catalog, recipe cards, `--json` diagnostics with `fix:` lines, delta tables | ✅ Done |
-| M5 | Child components, `@Input` / `@Output` | ⏳ `@Input`/`@Output` are extracted; wiring is Stage 3 |
-| M6 | Injected service + lifecycle | ⏳ Runtime `Container` exists; bridging is Stage 3 |
+| M5 | Child components, `@Input` / `@Output` | ✅ Done (Stage 3) |
+| M6 | Injected service + lifecycle + HttpClient | ✅ Done (Stage 3) |
 | M7 | CLI, source maps, error messages, Awaken Me dogfood | 🔶 CLI exists (`build` / `ast` / `preview`); source maps + dogfood pending |
 
 ## Packages
@@ -57,7 +90,7 @@ flowchart TB
 | Package | What it is |
 |---|---|
 | `@rangular/compiler` | Template parser + expression (Pratt) parser, `@Component` extractor (TypeScript compiler API), CSS-subset parser, RN code generator, HTML preview renderer |
-| `@rangular/runtime` | Pure-TypeScript helpers for generated apps: `EventEmitter`, `signal()`, DI `Container`, `pipe()` |
+| `@rangular/runtime` | Pure-TypeScript helpers for generated apps: `EventEmitter`, `signal()`, DI `Container`, `ReactiveService` (service reactivity base), `HttpClient` (Observable-lite over fetch), `pipe()` |
 | `@rangular/ui` | Rangular Material: `tokens.ts` (pure TS) + shipped-source RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`) |
 | `@rangular/cli` | `rangular build`, `rangular ast`, `rangular preview`, `rangular catalog` (build/preview accept `--json`) |
 
@@ -67,25 +100,23 @@ flowchart TB
 > The compiler, CLI, runtime helpers, UI tokens and all tests *are* built and
 > tested by the root build.
 
-## Build, test, run the example
+## Docs
 
-```sh
-npm install
-npm test          # builds with tsc, then runs node --test over dist/tests
+- [docs/PINPOINT_MAP.md](docs/PINPOINT_MAP.md) — the design map: the goal
+  stated precisely, the finished thing in blocks, and where the work is.
+- [docs/LEARNING_LIST.md](docs/LEARNING_LIST.md) — the exact 77 things to
+  learn to build Rangular (groups A–H), and nothing more.
+- [docs/BLOCK_DIAGRAM.md](docs/BLOCK_DIAGRAM.md) — the architecture in
+  five layers, with the Mermaid diagram (also inline above).
+- [docs/UI_POLISH.md](docs/UI_POLISH.md) — how generated UI stays
+  polished: tokens only, pre-polished primitives, compiler defaults,
+  visual proof.
+- [docs/VIBE_CODING.md](docs/VIBE_CODING.md) — the AI-facing layer plus
+  the full delta tables (Rangular vs Angular, Rangular vs React).
 
-# Compile the hello example (Angular -> React Native TSX)
-node dist/packages/cli/src/cli.js build examples/hello/hello.component.ts --out examples/hello/hello.component.tsx
-
-# Print a template AST (M0)
-node dist/packages/cli/src/cli.js ast examples/hello/hello.component.html
-
-# Render the dev preview used for visual eye-checks
-node dist/packages/cli/src/cli.js preview examples/hello/hello.component.ts --out examples/hello/preview.html
-```
-
-The committed `examples/hello/hello.component.tsx` and
-`examples/hello/preview.html` are the golden outputs of the two commands
-above; the golden-file test keeps them honest.
+All documentation is Markdown on purpose: GitHub renders the Mermaid
+diagrams natively, diffs and search work, and AI tools read it directly.
+Markdown is the canonical format — there are no PDF copies to drift.
 
 ## Vibe-coding ready
 
@@ -107,7 +138,8 @@ through them) **without guessing** — see [docs/VIBE_CODING.md](docs/VIBE_CODIN
 
 - **Recipe cards** — `examples/hello/README.md`,
   `examples/counter/README.md`, `examples/inbox/README.md`,
-  `examples/profile/README.md`: Intent /
+  `examples/profile/README.md`, `examples/favourite/README.md`,
+  `examples/shared-inbox/README.md`: Intent /
   Source / What it compiles to / Rules used / Common mistakes.
 - **Proof test (Stage 2.5)** — `examples/profile/` was written by a fresh
   AI agent given only AGENTS.md, llms.txt, the catalog and the recipe
@@ -160,3 +192,63 @@ as they will in React Native. The preview uses the compiler's own AST
 expression evaluator (`packages/compiler/src/template/evaluate.ts`, with
 built-in pipes `uppercase`, `lowercase`, `titlecase`, `json`) — no
 `eval`/`Function` on source text anywhere.
+
+## Stage 3: child components, services, lifecycle, HttpClient
+
+Two more examples — same CLI commands, same golden rule:
+
+- `examples/favourite/` — **M5.** A parent screen renders three
+  `<quote-card>` children with `*ngFor`; each child takes `@Input() quote`
+  / `@Input() author` and has `@Output() favourited`. Tapping a child's
+  Save button emits, and the parent's "Saved: N" appbar count goes up.
+- `examples/shared-inbox/` — **M6.** A `MailService` holds the inbox;
+  the parent screen (list + "Mark all read") and a child `<unread-badge>`
+  inject the *same* instance, so one tap updates the list and the badge.
+  The badge's `loaded` flag is set by `ngOnInit`.
+
+**Child components (M5).** Resolution follows the entry component's
+relative imports, transitively: an imported `@Component` class is a known
+child, keyed by its `selector`. `@Input` fields become props — the
+literal initializer is the default when the parent omits the binding —
+and plain attributes pass strings. An `@Output` field initialised with
+`new EventEmitter<T>()` becomes a callback prop named `on` + Capitalised
+name; `this.saved.emit(x)` in the child compiles to `onSaved?.(x)`, and
+the parent's `(saved)="handler($event)"` receives the emitted value as
+`$event`. Import cycles are a `CMP_IMPORT_CYCLE` warning (classes on the
+cycle still resolve); a duplicated selector is `CMP_DUP_SELECTOR`.
+
+**Services and DI (M6).** `@Injectable({ providedIn: 'root' })` classes
+compile to real classes extending the runtime's `ReactiveService`, in the
+same generated file as the components. A module-level `__container`
+holds one singleton per service (registrations dependency-ordered;
+services may inject services); components resolve constructor parameter
+properties from it — `constructor(private mail: MailService)` becomes
+`const mail = __container.get<MailService>(MailService)` plus a
+`useSyncExternalStore` subscription, so when a service method assigns a
+field (the codegen appends `this.__notify()` after each assignment) every
+subscribed component re-renders. An unknown token is a
+`DI_UNKNOWN_TOKEN` error with a fix; a service dependency cycle is
+`DI_CYCLE`. Mutating items in place without assigning a field does not
+notify — reassign the field.
+
+**Lifecycle.** `ngOnInit()` is called from `useEffect(..., [])` (once,
+after first render) and `ngOnDestroy()` from that effect's cleanup. The
+preview runs a component's `ngOnInit` once when its instance is created;
+the static first paint shows pre-init state on purpose.
+
+**HttpClient.** The runtime ships an `HttpClient` whose `get(url)`
+returns an Observable-lite (`{ subscribe(next?, error?) }`) over `fetch`
+(the fetch implementation is injectable, so tests never touch the
+network). It is registered in the generated container and injected like
+any service. The supported component-side shape is exactly
+`this.http.get(url).subscribe((data) => { this.field = data; });` —
+block-bodied arrow, assignments inside. An expression-bodied assignment
+degrades to `METHOD_UNSUPPORTED` instead of emitting wrong code. In
+previews, `HttpClient` is a stub whose `get()` never emits.
+
+**One file out.** Services, child components and the entry component all
+compile into the entry's single generated `.tsx` — that is what makes
+the container a true singleton, and it keeps generated output trivially
+deterministic. A template whose root is a structural directive (or has
+several roots) is wrapped in a `<>...</>` fragment so the output stays
+valid JSX.

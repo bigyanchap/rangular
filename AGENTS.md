@@ -17,12 +17,12 @@ everything you may use is [catalog.md](catalog.md) / `catalog.json`.
 |---|---|
 | `packages/compiler/src/` | The compiler: template parser (`template/`), `@Component` extractor (`class/`), CSS subset (`style/`), RN code generator (`codegen/`), HTML preview renderer (`preview/`), catalog generator (`catalog.ts`), pipeline (`compile.ts`) |
 | `packages/cli/src/cli.ts` | The `rangular` CLI: `build`, `ast`, `preview`, `catalog` |
-| `packages/runtime/src/index.ts` | Pure-TS helpers for generated apps: `EventEmitter`, `signal()`, `Container`, `pipe()` |
+| `packages/runtime/src/index.ts` | Pure-TS helpers for generated apps: `EventEmitter`, `signal()`, `Container`, `ReactiveService` (base class generated services extend), `HttpClient` (Observable-lite over fetch), `pipe()` |
 | `packages/ui/src/tokens.ts` | Rangular Material design tokens (pure TS, part of the build) |
 | `packages/ui/src/primitives.tsx` | RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`) — shipped source for generated apps, deliberately excluded from this repo's `tsc` build |
-| `examples/hello/`, `examples/counter/`, `examples/inbox/`, `examples/profile/` | Tiny single-capability examples, each with a recipe-card `README.md`, golden generated `.tsx` and `preview.html` (profile is the Stage 2.5 proof-test example: written from these docs alone) |
-| `tests/` | `node:test` suites — parser, expressions, codegen, methods, runtime, tokens, catalog/vibe layer |
-| `docs/` | `BLOCK_DIAGRAM.md` (architecture), `UI_POLISH.md` (polish system), `VIBE_CODING.md` (AI-facing layer + delta tables) |
+| `examples/hello/`, `examples/counter/`, `examples/inbox/`, `examples/profile/`, `examples/favourite/`, `examples/shared-inbox/` | Tiny single-capability examples, each with a recipe-card `README.md`, golden generated `.tsx` and `preview.html` (profile is the Stage 2.5 proof-test example: written from these docs alone; favourite = child components, shared-inbox = services/DI/lifecycle) |
+| `tests/` | `node:test` suites — parser, expressions, codegen, methods, runtime, tokens, catalog/vibe layer, Stage 3 (children, services, HttpClient, preview behaviour via a DOM shim) |
+| `docs/` | `PINPOINT_MAP.md` (design map), `LEARNING_LIST.md` (the 77 things), `BLOCK_DIAGRAM.md` (architecture), `UI_POLISH.md` (polish system), `VIBE_CODING.md` (AI-facing layer + delta tables) |
 | `catalog.json`, `catalog.md` | GENERATED from the code by `rangular catalog` — never hand-edit |
 | `llms.txt` | AI-readable index of the whole repo |
 

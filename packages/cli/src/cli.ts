@@ -20,7 +20,6 @@ import {
   Diagnostic,
   formatDiagnostic,
   hasErrors,
-  parseComponent,
   parseTemplate,
   printAst,
   renderCatalogMarkdown,
@@ -46,7 +45,21 @@ function readComponent(componentFile: string) {
     const p = path.resolve(dir, rel);
     return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : undefined;
   };
-  return { tsSource, resolveFile };
+  /**
+   * Stage 3 import resolution: a relative specifier resolves against the
+   * importing file's directory, trying the specifier as-is (templates),
+   * with a '.ts' extension, and as a directory index.
+   */
+  const resolveImport = (spec: string, importer: string) => {
+    const base = path.resolve(path.dirname(importer), spec);
+    for (const candidate of [base, `${base}.ts`, path.join(base, 'index.ts')]) {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+        return { source: fs.readFileSync(candidate, 'utf8'), fileName: candidate };
+      }
+    }
+    return undefined;
+  };
+  return { tsSource, resolveFile, resolveImport, absPath: abs };
 }
 
 function toJsonDiagnostic(d: Diagnostic): Record<string, unknown> {
@@ -97,9 +110,9 @@ function main(): void {
   if (command === 'build' || command === 'preview') {
     const out = option(rest, '--out');
     if (!out) fail(`--out <file> is required for '${command}'`);
-    const { tsSource, resolveFile } = readComponent(target);
+    const { tsSource, resolveFile, resolveImport, absPath } = readComponent(target);
     if (command === 'build') {
-      const result = compileComponent({ tsSource, fileName: path.basename(target), resolveFile });
+      const result = compileComponent({ tsSource, fileName: absPath, resolveFile, resolveImport });
       if (json) {
         const ok = !hasErrors(result.diagnostics);
         if (ok) {
@@ -121,53 +134,35 @@ function main(): void {
       console.log(`Wrote ${out} (${result.code.split('\n').length} lines)`);
       return;
     }
-    // preview
-    const { component, diagnostics: cDiags } = parseComponent(tsSource, path.basename(target));
-    if (!component) {
+    // preview — through the full compiler so child components and services
+    // resolved from imports render exactly as they compile (Stage 3).
+    const compiled = compileComponent({ tsSource, fileName: absPath, resolveFile, resolveImport });
+    const allDiags = compiled.diagnostics;
+    if (!compiled.component || !compiled.ast || hasErrors(allDiags)) {
       if (json) {
-        printJson({ ok: false, file: path.basename(target), diagnostics: cDiags.map(toJsonDiagnostic) });
+        printJson({ ok: false, file: path.basename(target), diagnostics: allDiags.map(toJsonDiagnostic) });
         process.exit(1);
       }
-      for (const d of cDiags) console.error(formatDiagnostic(d));
+      for (const d of allDiags) console.error(formatDiagnostic(d));
       process.exit(1);
     }
-    let templateSource = component.template;
-    if (!templateSource && component.templateUrl) templateSource = resolveFile(component.templateUrl);
-    if (!templateSource) {
-      if (json) {
-        printJson({
-          ok: false,
-          file: path.basename(target),
-          diagnostics: [{
-            severity: 'error', code: 'CMP_TEMPLATE',
-            message: 'no template could be resolved for preview',
-            fix: "Add templateUrl: './x.component.html' (or an inline template) to the @Component decorator",
-          }],
-        });
-        process.exit(1);
-      }
-      fail('no template could be resolved for preview');
-    }
-    const { root, diagnostics: tDiags } = parseTemplate(templateSource);
-    const allDiags = [...cDiags, ...tDiags];
+    const component = compiled.component;
+    const html = renderPreview(component, compiled.ast, {
+      children: compiled.children,
+      services: compiled.services,
+    });
     if (json) {
-      const ok = !hasErrors(allDiags);
-      if (ok) {
-        const html = renderPreview(component, root);
-        fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
-        fs.writeFileSync(out, html);
-      }
+      fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
+      fs.writeFileSync(out, html);
       printJson({
-        ok,
+        ok: true,
         file: path.basename(target),
-        ...(ok ? { outFile: out } : {}),
+        outFile: out,
         diagnostics: allDiags.map(toJsonDiagnostic),
       });
-      process.exit(ok ? 0 : 1);
+      process.exit(0);
     }
-    for (const d of tDiags) console.error(formatDiagnostic(d));
-    if (hasErrors(tDiags)) process.exit(1);
-    const html = renderPreview(component, root);
+    for (const d of allDiags) console.error(formatDiagnostic(d));
     fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
     fs.writeFileSync(out, html);
     console.log(`Wrote ${out} (preview for ${component.selector ?? component.className})`);

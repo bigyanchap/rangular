@@ -1,9 +1,11 @@
 /**
  * @rangular/runtime — small pure-TypeScript helpers for generated apps.
- * Stage 0+1 scope: EventEmitter (for @Output), a tiny signal implementation
- * (the reactivity primitive the codegen will bridge to React state in a later
- * stage), and a DI Container (providers -> registry, later bridged to React
- * Context). No react-native imports live in this file.
+ * EventEmitter (for @Output), a tiny signal implementation, a DI Container,
+ * the ReactiveService base class generated services extend (Stage 3), and
+ * HttpClient — an Observable-lite wrapper over fetch (Stage 3). No react or
+ * react-native imports live in this file: generated components bridge
+ * services to React themselves (useSyncExternalStore over __subscribe /
+ * __getVersion), so this package stays environment-free and unit-testable.
  */
 
 export type Listener<T> = (value: T) => void;
@@ -79,6 +81,76 @@ export function pipe<T>(name: string, value: T, ...args: unknown[]): unknown {
     case 'json': return JSON.stringify(value);
     case 'async': return value; // Stage 3 will bridge Observables to state.
     default: void args; return value;
+  }
+}
+
+/**
+ * Base class for generated services (Stage 3, M6).
+ *
+ * A service's state is plain class fields. Whenever a translated service
+ * method assigns a field, the codegen appends `this.__notify()`; subscribed
+ * components re-render. Generated components subscribe with React's
+ * useSyncExternalStore over __subscribe/__getVersion — the version counter
+ * is the snapshot, so every notification produces a new snapshot value.
+ */
+export class ReactiveService {
+  private __listeners = new Set<() => void>();
+  private __version = 0;
+
+  /** Bump the version and notify every subscribed component. */
+  protected __notify(): void {
+    this.__version++;
+    for (const listener of [...this.__listeners]) listener();
+  }
+
+  /** Subscribe to changes; returns an unsubscribe function. */
+  __subscribe(listener: () => void): () => void {
+    this.__listeners.add(listener);
+    return () => { this.__listeners.delete(listener); };
+  }
+
+  /** Monotonic snapshot for useSyncExternalStore. */
+  __getVersion(): number {
+    return this.__version;
+  }
+}
+
+export interface Subscription {
+  unsubscribe(): void;
+}
+
+/**
+ * The smallest useful Observable shape: subscribe with a next and/or error
+ * callback, get back a Subscription. No operators — pipelines are Stage 4+.
+ */
+export interface ObservableLite<T> {
+  subscribe(next?: (value: T) => void, error?: (err: unknown) => void): Subscription;
+}
+
+/** The slice of fetch HttpClient needs — injectable so tests never touch the network. */
+export type FetchLike = (url: string) => Promise<{ json(): Promise<unknown> }>;
+
+/**
+ * Angular-shaped HttpClient over fetch (Stage 3, M6). Registered in the
+ * generated app's container under its own class token, so components inject
+ * it exactly like a service: `constructor(private http: HttpClient)`.
+ * Responses are parsed as JSON (Angular's default responseType).
+ */
+export class HttpClient {
+  constructor(private fetchImpl: FetchLike = (url: string) => fetch(url)) {}
+
+  get<T = unknown>(url: string): ObservableLite<T> {
+    const fetchImpl = this.fetchImpl;
+    return {
+      subscribe(next?: (value: T) => void, error?: (err: unknown) => void): Subscription {
+        let cancelled = false;
+        fetchImpl(url)
+          .then((res) => res.json())
+          .then((data) => { if (!cancelled) next?.(data as T); })
+          .catch((err) => { if (!cancelled) error?.(err); });
+        return { unsubscribe: () => { cancelled = true; } };
+      },
+    };
   }
 }
 

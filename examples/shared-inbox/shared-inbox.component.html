@@ -1,0 +1,9 @@
+<screen>
+  <appbar title="Mail" search="Search in mail"></appbar>
+  <h1>Inbox</h1>
+  <unread-badge></unread-badge>
+  <list>
+    <row avatar *ngFor="let m of mail.mails; let i = index" [title]="m.from" [subtitle]="m.subject" [detail]="m.snippet" [time]="m.time"><span *ngIf="m.unread">●</span></row>
+  </list>
+  <button (click)="markAllRead()">Mark all read</button>
+</screen>

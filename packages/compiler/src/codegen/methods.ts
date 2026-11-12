@@ -1,5 +1,5 @@
 import * as ts from 'typescript';
-import { ComponentInfo, ComponentMethod } from '../class/parseComponent';
+import { ComponentField, ComponentMethod } from '../class/parseComponent';
 import { Diagnostic, warning } from '../diagnostics';
 
 /**
@@ -17,7 +17,14 @@ import { Diagnostic, warning } from '../diagnostics';
  * broken syntax is never emitted.
  */
 
-export type TranslateMode = 'react' | 'state';
+/**
+ * 'react'  — component -> function component (this.field -> state/setter).
+ * 'state'  — the interactive preview (this.field -> state.field).
+ * 'service' — a service stays a real class, so `this.` survives verbatim;
+ *             assignments to fields additionally emit `this.__notify()` so
+ *             subscribed components re-render (Stage 3, M6).
+ */
+export type TranslateMode = 'react' | 'state' | 'service';
 
 export function setterName(field: string): string {
   return 'set' + field.charAt(0).toUpperCase() + field.slice(1);
@@ -63,7 +70,7 @@ function isThisProperty(node: ts.Node): { name: string } | undefined {
  * First pass: which fields are assigned anywhere inside any method?
  * Those fields become React state (useState) in codegen.
  */
-export function analyzeMutatedFields(component: ComponentInfo): Set<string> {
+export function analyzeMutatedFields(component: MethodHost): Set<string> {
   const fieldNames = new Set(component.fields.map((f) => f.name));
   const mutated = new Set<string>();
   for (const method of component.methodDetails) {
@@ -93,6 +100,11 @@ interface Ctx {
   stateFields: Set<string>;
   methodName: string;
   diagnostics: Diagnostic[];
+  /**
+   * @Output EventEmitter fields -> the callback expression an `.emit(x)`
+   * call becomes (react: `onSaved`, preview state mode: `props.onSaved`).
+   */
+  outputCallbacks?: Map<string, string>;
   /** Set when the current statement uses an unsupported construct. */
   unsupported?: string;
 }
@@ -124,11 +136,29 @@ class Translator {
       return `${this.expr(node.expression)}[${this.expr(node.argumentExpression)}]`;
     }
     if (ts.isCallExpression(node)) {
+      // @Output: this.saved.emit(x) -> onSaved?.(x) / props.onSaved?.(x).
+      if (ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === 'emit') {
+        const self = isThisProperty(node.expression.expression);
+        const callback = self ? c.outputCallbacks?.get(self.name) : undefined;
+        if (self && callback) {
+          const args = node.arguments.map((a) => this.expr(a)).join(', ');
+          return `${callback}?.(${args})`;
+        }
+      }
       const callee = this.expr(node.expression);
       const args = node.arguments.map((a) => this.expr(a)).join(', ');
       return `${callee}(${args})`;
     }
     if (ts.isBinaryExpression(node)) {
+      // An assignment buried inside an expression (e.g. an expression-bodied
+      // arrow `data => this.field = data`) cannot become a React setter call;
+      // refuse it so the statement degrades to METHOD_UNSUPPORTED instead of
+      // emitting `field = data` against a const. State/service modes can
+      // express it faithfully (state.field = data / this.field = data), and
+      // the generic path below already produces exactly that.
+      if (c.mode === 'react' && ASSIGN_OPS.has(node.operatorToken.kind) && isThisProperty(node.left)) {
+        return this.fail('assignment to a field inside an expression — use a block body with assignment statements');
+      }
       return `${this.expr(node.left)} ${node.operatorToken.getText()} ${this.expr(node.right)}`;
     }
     if (ts.isPrefixUnaryExpression(node)) {
@@ -137,6 +167,7 @@ class Translator {
         if (target) {
           const opText = node.operator === ts.SyntaxKind.PlusPlusToken ? '++' : '--';
           if (c.mode === 'state') return `${opText}state.${target.name}`;
+          if (c.mode === 'service') return `${opText}this.${target.name}`;
           return this.fail(`'${opText}this.${target.name}' inside an expression`);
         }
         return `${node.operator === ts.SyntaxKind.PlusPlusToken ? '++' : '--'}${this.expr(node.operand)}`;
@@ -153,6 +184,7 @@ class Translator {
       const opText = node.operator === ts.SyntaxKind.PlusPlusToken ? '++' : '--';
       if (target) {
         if (c.mode === 'state') return `state.${target.name}${opText}`;
+        if (c.mode === 'service') return `this.${target.name}${opText}`;
         return this.fail(`'this.${target.name}${opText}' inside an expression`);
       }
       return `${this.expr(node.operand)}${opText}`;
@@ -185,7 +217,11 @@ class Translator {
     if (ts.isAsExpression(node) || ts.isTypeAssertionExpression(node)) return this.expr(node.expression);
     if (ts.isNonNullExpression(node)) return this.expr(node.expression);
     if (ts.isArrowFunction(node)) {
-      const params = node.parameters.map((p) => p.getText()).join(', ');
+      // Preview (state mode) bodies run as plain JavaScript in the page, so
+      // type annotations must be stripped there; generated .tsx keeps them.
+      const params = node.parameters
+        .map((p) => (c.mode === 'state' ? p.name.getText() : p.getText()))
+        .join(', ');
       if (ts.isBlock(node.body)) {
         const saved = c.unsupported;
         const lines = this.statements([...node.body.statements], '  ');
@@ -200,6 +236,9 @@ class Translator {
 
   private thisMember(name: string): string {
     const c = this.ctx;
+    const callback = c.outputCallbacks?.get(name);
+    if (callback) return callback;
+    if (c.mode === 'service') return `this.${name}`;
     if (c.methodNames.has(name)) return c.mode === 'state' ? `methods.${name}` : name;
     return c.mode === 'state' ? `state.${name}` : name;
   }
@@ -243,6 +282,12 @@ class Translator {
           if (c.unsupported) return this.unsupportedLine(indent, c.unsupported);
           const op = e.operatorToken.getText();
           if (c.mode === 'state') return [`${indent}state.${target.name} ${op} ${rhs};`];
+          if (c.mode === 'service') {
+            return [
+              `${indent}this.${target.name} ${op} ${rhs};`,
+              `${indent}this.__notify();`,
+            ];
+          }
           const set = setterName(target.name);
           if (op === '=') return [`${indent}${set}(${rhs});`];
           const binOp = op.slice(0, -1);
@@ -264,6 +309,15 @@ class Translator {
             return [ts.isPostfixUnaryExpression(e)
               ? `${indent}state.${target.name}${delta.startsWith('+') ? '++' : '--'};`
               : `${indent}${delta.startsWith('+') ? '++' : '--'}state.${target.name};`];
+          }
+          if (c.mode === 'service') {
+            const sym = delta.startsWith('+') ? '++' : '--';
+            return [
+              ts.isPostfixUnaryExpression(e)
+                ? `${indent}this.${target.name}${sym};`
+                : `${indent}${sym}this.${target.name};`,
+              `${indent}this.__notify();`,
+            ];
           }
           return [`${indent}${setterName(target.name)}(${target.name} ${delta});`];
         }
@@ -331,14 +385,27 @@ export interface TranslatedMethod {
   lines: string[];
 }
 
+/** Anything with fields and methods to translate: a component or a service. */
+export interface MethodHost {
+  fields: ComponentField[];
+  methods: string[];
+  methodDetails: ComponentMethod[];
+}
+
+export interface TranslateOptions {
+  /** @Output field name -> callback expression for `.emit(...)` calls. */
+  outputCallbacks?: Map<string, string>;
+}
+
 /**
- * Translate all methods of a component in the given mode.
+ * Translate all methods of a component (or service) in the given mode.
  * Returns the translated methods plus accumulated diagnostics.
  */
 export function translateMethods(
-  component: ComponentInfo,
+  component: MethodHost,
   mode: TranslateMode,
   stateFields: Set<string>,
+  options: TranslateOptions = {},
 ): { methods: TranslatedMethod[]; diagnostics: Diagnostic[] } {
   const diagnostics: Diagnostic[] = [];
   const methods: TranslatedMethod[] = [];
@@ -350,6 +417,7 @@ export function translateMethods(
     const ctx: Ctx = {
       mode, fieldNames, methodNames, stateFields,
       methodName: method.name, diagnostics,
+      outputCallbacks: options.outputCallbacks,
     };
     const translator = new Translator(ctx);
     const lines = translator.statements(statements, '');

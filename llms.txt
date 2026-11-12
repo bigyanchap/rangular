@@ -1,6 +1,6 @@
 # Rangular
 
-> Rangular is a standalone transpiler: you write Angular-style code — TypeScript classes with @Component decorators and HTML-like templates — and it compiles to React Native .tsx (Hermes makes the bytecode; Rangular never emits it, never forks Angular). Simple template blocks compile to pre-polished Rangular Material primitives driven by design tokens, state is plain class fields (mutated fields become useState in the generated output), and every compiler error is a coded diagnostic with a concrete fix suggestion. Current state: Stages 0+1, 2 and 2.5 done — static components, {{ interpolation }}, [prop] bindings, (event) bindings, *ngIf, *ngFor, interactive previews, plus the vibe-coding layer (this file, AGENTS.md, generated catalog, recipe cards, --json diagnostics). DI/lifecycle wiring is Stage 3; see the delta summary below for what is NOT supported yet.
+> Rangular is a standalone transpiler: you write Angular-style code — TypeScript classes with @Component decorators and HTML-like templates — and it compiles to React Native .tsx (Hermes makes the bytecode; Rangular never emits it, never forks Angular). Simple template blocks compile to pre-polished Rangular Material primitives driven by design tokens, state is plain class fields (mutated fields become useState in the generated output), and every compiler error is a coded diagnostic with a concrete fix suggestion. Current state: Stages 0+1, 2, 2.5 and 3 done — static components, {{ interpolation }}, [prop] bindings, (event) bindings, *ngIf, *ngFor, interactive previews, the vibe-coding layer (this file, AGENTS.md, generated catalog, recipe cards, --json diagnostics), child components with @Input/@Output, @Injectable services with constructor DI, lifecycle hooks, and HttpClient on fetch. See the delta summary below for what is NOT supported yet.
 
 ## Start here
 
@@ -11,14 +11,16 @@
 
 ## Docs
 
+- [Pinpoint map](docs/PINPOINT_MAP.md): The design map — the goal stated precisely, the finished thing in blocks, where the work actually is
+- [Learning list](docs/LEARNING_LIST.md): The exact 77 things to learn to build Rangular (groups A–H)
 - [Block diagram](docs/BLOCK_DIAGRAM.md): The architecture in layers — source, compiler, runtime, generated RN project, existing RN toolchain
 - [UI polish system](docs/UI_POLISH.md): How generated UI stays polished — tokens only, pre-polished primitives, compiler defaults, screenshot proof
 - [Vibe-coding layer](docs/VIBE_CODING.md): What makes this repo AI-buildable, plus the full delta tables (Rangular vs Angular, Rangular vs React)
 
 ## The delta in 30 seconds
 
-Same as Angular: @Component/@Input/@Output, separate .html templates, {{ }} / [ ] / ( ) / *ngIf / *ngFor syntax, class fields as state, methods as actions, built-in pipes (uppercase, lowercase, titlecase, json).
-NOT supported yet (do not use): [(ngModel)] and forms, real two-way binding ([(x)] degrades to a one-way prop binding), routing, NgModules, constructor DI / @Injectable wiring (Stage 3), lifecycle hooks actually being called (Stage 3), animations, SSR, RxJS Observables in source, custom @Pipe classes, *ngIf else/then (use two elements with opposite conditions), CSS beyond the element/.class subset.
+Same as Angular: @Component/@Input/@Output, separate .html templates, {{ }} / [ ] / ( ) / *ngIf / *ngFor syntax, class fields as state, methods as actions, built-in pipes (uppercase, lowercase, titlecase, json). Child components resolve by import (a template tag matching an imported component's selector compiles to it); @Output EventEmitter.emit becomes a callback prop (onSaved). @Injectable({ providedIn: 'root' }) services + constructor parameter-property DI work, services are reactive singletons, ngOnInit/ngOnDestroy are wired to useEffect, and HttpClient.get(url).subscribe(data => { ... }) works with the block-bodied-arrow shape.
+NOT supported yet (do not use): [(ngModel)] and forms, real two-way binding ([(x)] degrades to a one-way prop binding), routing, NgModules, animations, SSR, full RxJS (HttpClient returns an Observable-lite with subscribe only — no operators), custom @Pipe classes, *ngIf else/then (use two elements with opposite conditions), CSS beyond the element/.class subset.
 Not React: no JSX, no hooks, no useState in source — source is classes + HTML templates; events are (click), never onPress; the generated .tsx is output, never edited. Full tables: [docs/VIBE_CODING.md](docs/VIBE_CODING.md).
 
 ## Examples (each has a recipe card)
@@ -27,20 +29,22 @@ Not React: no JSX, no hooks, no useState in source — source is classes + HTML 
 - [Counter — recipe card](examples/counter/README.md): Events + state — (click) handlers, methods mutating fields become useState, *ngIf message
 - [Inbox — recipe card](examples/inbox/README.md): Lists — *ngFor over a literal array with keyed rows, *ngIf empty state
 - [Profile — recipe card](examples/profile/README.md): Composition — card + avatar row + toggle button with ternary label + posts list; the Stage 2.5 proof-test example, written from these docs alone
+- [Favourite — recipe card](examples/favourite/README.md): Child components — @Input props with defaults, @Output EventEmitter -> callback prop, parent handler with $event, children under *ngFor
+- [Shared inbox — recipe card](examples/shared-inbox/README.md): Services + DI + lifecycle — one MailService singleton injected into a screen and a child badge, reactive via ReactiveService/__notify, ngOnInit -> useEffect
 
 ## Packages
 
 - [@rangular/compiler](packages/compiler/src/index.ts): Compiler entry point — template/expression parsers, @Component extractor, CSS subset, codegen, preview renderer, catalog generator
 - [@rangular/cli](packages/cli/src/cli.ts): The rangular CLI — build, ast, preview, catalog; build/preview accept --json
-- [@rangular/runtime](packages/runtime/src/index.ts): Pure-TS helpers for generated apps — EventEmitter, signal(), DI Container, pipe()
+- [@rangular/runtime](packages/runtime/src/index.ts): Pure-TS helpers for generated apps — EventEmitter, signal(), DI Container, ReactiveService (service reactivity base class), HttpClient (Observable-lite over fetch), pipe()
 - [@rangular/ui tokens](packages/ui/src/tokens.ts): Rangular Material design tokens — spacing, radius, type scale, light/dark colour roles
 - [@rangular/ui primitives](packages/ui/src/primitives.tsx): Pre-polished RN primitives (RgScreen, RgAppbar, RgCard, RgButton, RgText, RgList, RgRow, RgFab) shipped as source into generated apps
 - [@rangular/ui README](packages/ui/README.md): What ships from the UI package and why primitives are excluded from the repo build
 
 ## How to build a screen
 
-1. Write the component class: `x.component.ts` with `@Component({ selector: 'app-x', templateUrl: './x.component.html' })`, state as literal-initialised class fields, actions as methods that assign `this.field`.
-2. Write the template: `x.component.html` using only catalog tags — text in `p`/`span`/`h1`–`h3`, interaction via `(click)="method()"`, visibility via `*ngIf`, lists via `*ngFor="let item of items; let i = index"`.
+1. Write the component class: `x.component.ts` with `@Component({ selector: 'app-x', templateUrl: './x.component.html' })`, state as literal-initialised class fields, actions as methods that assign `this.field`. Shared state goes in an `@Injectable({ providedIn: 'root' })` service class, injected as a constructor parameter property (`constructor(private mail: MailService)`) — import the service (and any child component classes) in the component file; the compiler follows relative imports.
+2. Write the template: `x.component.html` using only catalog tags — text in `p`/`span`/`h1`–`h3`, interaction via `(click)="method()"`, visibility via `*ngIf`, lists via `*ngFor="let item of items; let i = index"`. A tag matching an imported child component's selector is a child component: `[input]="expr"` passes props, `(output)="handler($event)"` receives its EventEmitter emits.
 3. Compile: `node dist/packages/cli/src/cli.js build x.component.ts --out x.component.tsx --json`
 4. Read the diagnostics from the JSON: each has a `code`, source `line`/`column`, and a `fix` — apply the fix to the source (never to the generated .tsx).
 5. Render the preview: `node dist/packages/cli/src/cli.js preview x.component.ts --out preview.html`

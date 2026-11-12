@@ -1,0 +1,5 @@
+<screen>
+  <appbar [title]="'Saved: ' + savedCount"></appbar>
+  <h1>Favourite quotes</h1>
+  <quote-card *ngFor="let q of quotes; let i = index" [quote]="q.text" [author]="q.author" (favourited)="recordFavourite($event)"></quote-card>
+</screen>
