@@ -744,6 +744,10 @@
       "meaning": "A relative import in a compiled file could not be resolved to a source file."
     },
     {
+      "code": "CMP_PATH_ESCAPE",
+      "meaning": "A templateUrl, styleUrl or relative import resolved to a file outside the project root; the file was not read."
+    },
+    {
       "code": "CMP_IMPORT_CYCLE",
       "meaning": "Two or more source files import each other in a cycle; the cycle was broken at the repeated file, whose classes were already registered."
     },
@@ -758,6 +762,30 @@
     {
       "code": "DI_CYCLE",
       "meaning": "Injectable services depend on each other in a cycle; container registrations could not be ordered."
+    },
+    {
+      "code": "DOC_HEX_COLOR",
+      "meaning": "Doctor: a hex colour literal appears in the component styles instead of a colour role token."
+    },
+    {
+      "code": "DOC_OFF_SCALE",
+      "meaning": "Doctor: a spacing, radius or font-size value in the styles is off its design-token scale (the compiler would snap it)."
+    },
+    {
+      "code": "DOC_RAW_TEXT",
+      "meaning": "Doctor: loose text sits directly inside a container element instead of a text element."
+    },
+    {
+      "code": "DOC_TAP_TARGET",
+      "meaning": "Doctor: an element with a (click) binding is sized below the 44 by 44 minimum tap target."
+    },
+    {
+      "code": "DOC_IMG_SIZE",
+      "meaning": "Doctor: an image element has no declared width and height."
+    },
+    {
+      "code": "CLI_INIT_NOT_EMPTY",
+      "meaning": "The rangular init command was pointed at a directory that is not empty."
     }
   ]
 }

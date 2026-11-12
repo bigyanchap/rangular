@@ -354,6 +354,22 @@ ${script}
 }
 
 /**
+ * Serialize a value as JSON that is safe to embed in an inline <script>
+ * block (security audit, 2026-11-12). Plain JSON.stringify leaves a
+ * string like "</script>" untouched, which would end the script block
+ * and let a field value inject markup and script into the preview page.
+ * Escaping "<" (plus the two JS line terminators) keeps the JSON valid
+ * and identical in meaning: the page parses the same values. Values
+ * without "<" serialize exactly as before.
+ */
+export function jsonForScript(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
+/**
  * The interactive part of the page: serialized template + state + translated
  * methods + a compact in-page runtime (expression parser/evaluator and DOM
  * renderer supporting the same subset as the compiler).
@@ -394,9 +410,9 @@ export function previewScript(
   for (const svc of data.services ?? []) {
     if (!svc.providedInRoot) continue;
     serviceEntries.push(
-      `  ${JSON.stringify(svc.className)}: {\n` +
-      `    "state": ${JSON.stringify(stateWithInputs(svc))},\n` +
-      `    "deps": ${JSON.stringify(depsOf(svc.constructorDeps))},\n` +
+      `  ${jsonForScript(svc.className)}: {\n` +
+      `    "state": ${jsonForScript(stateWithInputs(svc))},\n` +
+      `    "deps": ${jsonForScript(depsOf(svc.constructorDeps))},\n` +
       `    "methods": {\n${defMethods(svc)}\n    }\n  }`,
     );
   }
@@ -408,12 +424,12 @@ export function previewScript(
       if (f.isOutput) outputCallbacks.set(f.name, `props.${outputPropName(f.name)}`);
     }
     componentEntries.push(
-      `  ${JSON.stringify(child.info.selector)}: {\n` +
-      `    "template": ${JSON.stringify(child.ast)},\n` +
-      `    "state": ${JSON.stringify(stateWithInputs(child.info))},\n` +
-      `    "deps": ${JSON.stringify(depsOf(child.info.constructorDeps))},\n` +
-      `    "inputs": ${JSON.stringify(child.info.fields.filter((f) => f.isInput).map((f) => f.name))},\n` +
-      `    "outputs": ${JSON.stringify(child.info.fields.filter((f) => f.isOutput).map((f) => f.name))},\n` +
+      `  ${jsonForScript(child.info.selector)}: {\n` +
+      `    "template": ${jsonForScript(child.ast)},\n` +
+      `    "state": ${jsonForScript(stateWithInputs(child.info))},\n` +
+      `    "deps": ${jsonForScript(depsOf(child.info.constructorDeps))},\n` +
+      `    "inputs": ${jsonForScript(child.info.fields.filter((f) => f.isInput).map((f) => f.name))},\n` +
+      `    "outputs": ${jsonForScript(child.info.fields.filter((f) => f.isOutput).map((f) => f.name))},\n` +
       `    "onInit": ${child.info.methods.includes('ngOnInit') ? '"ngOnInit"' : 'null'},\n` +
       `    "methods": {\n${defMethods(child.info, outputCallbacks)}\n    }\n  }`,
     );
@@ -425,8 +441,8 @@ export function previewScript(
 
   return `// Rangular interactive preview runtime (Stage 2).
 // State and methods are live: (click) handlers mutate state and re-render.
-const TEMPLATE = ${JSON.stringify(ast)};
-const state = ${JSON.stringify(state)};
+const TEMPLATE = ${jsonForScript(ast)};
+const state = ${jsonForScript(state)};
 const methods = {
 ${methodEntries.join(',\n')}
 };
@@ -436,7 +452,7 @@ ${serviceEntries.join(',\n')}
 const COMPONENTS = {
 ${componentEntries.join(',\n')}
 };
-const ROOT_DEPS = ${JSON.stringify(rootDeps)};
+const ROOT_DEPS = ${jsonForScript(rootDeps)};
 const ROOT_ONINIT = ${rootOnInit};
 ${PAGE_RUNTIME}${needsWiring ? `\n${ROOT_WIRING}` : ''}
 ${themeWiring(declaredTheme)}`;

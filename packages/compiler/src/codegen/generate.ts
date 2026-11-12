@@ -6,10 +6,13 @@ import { exprToCode, parseExpression } from '../template/expr';
 import { isLiteralSource } from '../template/literal';
 import { parseNgFor, parseNgIf } from '../template/structural';
 import { analyzeMutatedFields, setterName, translateMethods } from './methods';
+import { makeSourceMap, SourceMapV3, SourceSegment } from './sourceMap';
 
 export interface GenerateResult {
   code: string;
   diagnostics: Diagnostic[];
+  /** Present only when the caller asked for a source map (Stage 5). */
+  sourceMap?: SourceMapV3;
 }
 
 /** A child component taking part in this compilation (Stage 3, M5). */
@@ -17,6 +20,9 @@ export interface ChildUnitInput {
   info: ComponentInfo;
   ast: TemplateRoot;
   css: ParsedCss;
+  /** Source file keys for this child (Stage 5, source maps and diagnostics). */
+  fileName?: string;
+  templateFile?: string;
 }
 
 export interface GenerateContext {
@@ -24,6 +30,16 @@ export interface GenerateContext {
   children?: ChildUnitInput[];
   /** Every @Injectable class resolved through imports (Stage 3, M6). */
   services?: ServiceInfo[];
+  /**
+   * Source map request (Stage 5): when present, codegen records block
+   * level segments (component function starts and template element
+   * starts) and the result carries a source map v3 object.
+   */
+  sourceMap?: {
+    entryTsFile: string;
+    entryTemplateFile: string;
+    contents: Map<string, string>;
+  };
 }
 
 export interface TagMapping {
@@ -77,6 +93,39 @@ export function outputPropName(fieldName: string): string {
   return 'on' + fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
 }
 
+/**
+ * Security (audit, 2026-11-12): plain text and static strings in a
+ * template are data, never code. The helpers below keep them inside
+ * their literal context in the generated .tsx:
+ * - a static text part containing JSX-special characters ({, }, <, >)
+ *   is emitted as a {'...'} string expression instead of raw JSX text,
+ *   where a { would otherwise open an expression container;
+ * - a static attribute value is entity-escaped so a quote inside it
+ *   cannot end the JSX attribute string and inject extra props;
+ * - author-controlled strings placed inside generated comments are
+ *   flattened so a newline cannot end a // comment and a star-slash
+ *   cannot end a block comment.
+ * Text and values without special characters are emitted exactly as
+ * before, so existing examples are unchanged.
+ */
+function escapeJsxAttrValue(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+
+const JSX_TEXT_SPECIALS = /[{}<>]/;
+
+function jsxTextPart(value: string): string {
+  return JSX_TEXT_SPECIALS.test(value) ? `{${JSON.stringify(value)}}` : value;
+}
+
+function forLineComment(s: string): string {
+  return s.replace(/[\r\n]+/g, ' ');
+}
+
+function forBlockComment(s: string): string {
+  return forLineComment(s).replace(/\*\//g, '* /');
+}
+
 /** Template (event) name -> React Native prop name, for known events. */
 export const EVENT_PROPS: Record<string, string> = {
   click: 'onPress',
@@ -113,8 +162,17 @@ interface StyleEntry {
  *
  * With no children and no services the output is exactly the Stage 2 shape.
  */
+interface UnitSourceInfo {
+  fnName: string;
+  exportKw: string;
+  tsFile?: string;
+  templateFile?: string;
+  classLine?: number;
+}
+
 class Generator {
   diagnostics: Diagnostic[] = [];
+  sourceMapOut?: SourceMapV3;
   private usedRn = new Set<string>();
   private usedUi = new Set<string>();
   private usedRuntime = new Set<string>();
@@ -123,8 +181,13 @@ class Generator {
   private rootServices = new Map<string, ServiceInfo>();
   private allServices: ServiceInfo[] = [];
   private styles: StyleEntry[] = [];
+  /** Source map bookkeeping (Stage 5): element records keyed by marker id. */
+  private smConfig?: GenerateContext['sourceMap'];
+  private smRecords: { templateFile: string; el: ElementNode }[] = [];
+  private smUnits: UnitSourceInfo[] = [];
 
   constructor(context: GenerateContext) {
+    this.smConfig = context.sourceMap;
     for (const child of context.children ?? []) {
       if (child.info.selector) this.childBySelector.set(child.info.selector, child.info);
     }
@@ -144,13 +207,35 @@ class Generator {
 
     const childBlocks: string[][] = [];
     children.forEach((child, i) => {
+      this.smUnits.push({
+        fnName: componentFunctionName(child.info.className),
+        exportKw: 'export function',
+        tsFile: child.fileName,
+        templateFile: child.templateFile,
+        classLine: child.info.sourceLine,
+      });
       childBlocks.push(this.generateUnit(child.info, child.ast, child.css, {
         entry: false,
         stylePrefix: stylePrefixOf(child.info),
         order: i,
+        tsFile: child.fileName,
+        templateFile: child.templateFile,
       }));
     });
-    const entryBlock = this.generateUnit(entry, ast, css, { entry: true, stylePrefix: '', order: -1 });
+    this.smUnits.push({
+      fnName: componentFunctionName(entry.className),
+      exportKw: 'export default function',
+      tsFile: this.smConfig?.entryTsFile,
+      templateFile: this.smConfig?.entryTemplateFile,
+      classLine: entry.sourceLine,
+    });
+    const entryBlock = this.generateUnit(entry, ast, css, {
+      entry: true,
+      stylePrefix: '',
+      order: -1,
+      tsFile: this.smConfig?.entryTsFile,
+      templateFile: this.smConfig?.entryTemplateFile,
+    });
 
     const importLines: string[] = [];
     if (this.reactImports.size) {
@@ -176,7 +261,7 @@ class Generator {
     }
 
     const lines: string[] = [
-      `// Generated by Rangular from ${entry.className} (${entry.selector ?? 'no selector'}). Do not edit by hand.`,
+      `// Generated by Rangular from ${entry.className} (${forLineComment(entry.selector ?? 'no selector')}). Do not edit by hand.`,
       ...importLines,
       '',
     ];
@@ -184,7 +269,80 @@ class Generator {
     if (registrations.length) lines.push(...registrations, '');
     for (const block of childBlocks) lines.push(...block, '');
     lines.push(...entryBlock, ...styleBlock, '');
+    if (this.smConfig) this.finishSourceMap(lines);
     return lines.join('\n');
+  }
+
+  /**
+   * Source map finalisation (Stage 5): the renderers left marker comment
+   * lines (a JSX comment holding "@sm:N") in front of every element's
+   * generated lines.
+   * Each marker maps the NEXT kept line (the element's JSX start, or its
+   * *ngIf wrapper line) back to the element's template position. Marker
+   * lines are removed, so the emitted code is unchanged apart from the
+   * map itself. Component function starts are found by their signature
+   * lines and mapped to the class declarations.
+   */
+  private finishSourceMap(lines: string[]): void {
+    const segments: SourceSegment[] = [];
+    const sources: string[] = [];
+    const indexOf = new Map<string, number>();
+    const idxFor = (file: string): number => {
+      let i = indexOf.get(file);
+      if (i === undefined) {
+        i = sources.length;
+        sources.push(file);
+        indexOf.set(file, i);
+      }
+      return i;
+    };
+    const cleaned: string[] = [];
+    let pending: { templateFile: string; el: ElementNode }[] = [];
+    for (const line of lines) {
+      const marker = line.match(/@sm:(\d+)@/);
+      if (marker) {
+        const rec = this.smRecords[Number(marker[1])];
+        if (rec) pending.push(rec);
+        continue;
+      }
+      const genLine = cleaned.length;
+      for (const rec of pending) {
+        const lt = line.indexOf('<');
+        segments.push({
+          generatedLine: genLine,
+          generatedColumn: lt >= 0 ? lt : line.length - line.trimStart().length,
+          sourceIndex: idxFor(rec.templateFile),
+          sourceLine: rec.el.pos.line - 1,
+          sourceColumn: rec.el.pos.column - 1,
+        });
+      }
+      pending = [];
+      cleaned.push(line);
+    }
+    let searchFrom = 0;
+    for (const unit of this.smUnits) {
+      if (!unit.tsFile) continue;
+      const sig = `${unit.exportKw} ${unit.fnName}(`;
+      let found = -1;
+      for (let i = searchFrom; i < cleaned.length; i++) {
+        if (cleaned[i].startsWith(sig)) { found = i; break; }
+      }
+      if (found >= 0) {
+        segments.push({
+          generatedLine: found,
+          generatedColumn: 0,
+          sourceIndex: idxFor(unit.tsFile),
+          sourceLine: (unit.classLine ?? 1) - 1,
+          sourceColumn: 0,
+        });
+        searchFrom = found + 1;
+      }
+    }
+    lines.length = 0;
+    lines.push(...cleaned);
+    this.sourceMapOut = makeSourceMap(sources, segments, {
+      sourcesContent: sources.map((s) => this.smConfig!.contents.get(s) ?? null),
+    });
   }
 
   // --- Services (M6) --------------------------------------------------------
@@ -210,7 +368,7 @@ class Generator {
         lines.push(`  ${field.name}${field.type ? `: ${field.type}` : ''} = ${field.initializer};`);
       } else if (field.initializer) {
         this.diagnostics.push(warning('GEN_FIELD', `Service '${svc.className}': field '${field.name}' has a non-literal initializer; not hoisted`, undefined, undefined, `Initialise '${field.name}' with a literal (including arrays/objects of literals) or assign it in the constructor`));
-        lines.push(`  // TODO: field '${field.name}' has a non-literal initializer (${field.initializer}), not hoisted; wire it up manually for now.`);
+        lines.push(`  // TODO: field '${forLineComment(field.name)}' has a non-literal initializer (${forLineComment(field.initializer)}), not hoisted; wire it up manually for now.`);
       } else if (field.type) {
         lines.push(`  ${field.name}: ${field.type};`);
       }
@@ -308,7 +466,7 @@ class Generator {
     component: ComponentInfo,
     ast: TemplateRoot,
     css: ParsedCss,
-    opts: { entry: boolean; stylePrefix: string; order: number },
+    opts: { entry: boolean; stylePrefix: string; order: number; tsFile?: string; templateFile?: string },
   ): string[] {
     const diagnostics = this.diagnostics;
     diagnostics.push(...css.diagnostics);
@@ -354,7 +512,7 @@ class Generator {
 
     const renderText = (node: TemplateNode & { type: 'text' }, indent: string): string => {
       const parts = node.parts.map((p) => {
-        if (p.type === 'static') return p.value;
+        if (p.type === 'static') return jsxTextPart(p.value);
         return `{${codeExpr(p.expression)}}`;
       });
       return indent + parts.join('');
@@ -390,7 +548,7 @@ class Generator {
       if (mapping?.variant) props.push(`variant="${mapping.variant}"`);
       for (const [name, value] of Object.entries(el.attrs)) {
         if (name === 'class') continue;
-        props.push(`${name}="${value}"`);
+        props.push(`${name}="${escapeJsxAttrValue(value)}"`);
       }
       for (const b of el.booleanAttrs) props.push(b);
       for (const p of el.propBindings) {
@@ -443,7 +601,7 @@ class Generator {
     };
 
     /** Render an element, applying *ngIf / *ngFor wrapping when present (M4). */
-    const renderElement = (el: ElementNode, depth: number): string[] => {
+    const renderElementInner = (el: ElementNode, depth: number): string[] => {
       const indent = '  '.repeat(depth + 2);
       if (!el.structural) return renderCore(el, depth, []);
       const stripped: ElementNode = { ...el, structural: undefined };
@@ -458,7 +616,7 @@ class Generator {
             'Split it into two elements: one with *ngIf="cond" and a second with *ngIf="!(cond)"',
           ));
           return [
-            `${indent}{/* TODO(M5+): *ngIf else/then, "${el.structural.expression}" */}`,
+            `${indent}{/* TODO(M5+): *ngIf else/then, "${forBlockComment(el.structural.expression)}" */}`,
             ...renderCore(stripped, depth, []),
           ];
         }
@@ -475,7 +633,7 @@ class Generator {
         diagnostics.push(...forDiags);
         if (!parts) {
           return [
-            `${indent}{/* TODO: unparseable *ngFor="${el.structural.expression}", element emitted once */}`,
+            `${indent}{/* TODO: unparseable *ngFor="${forBlockComment(el.structural.expression)}", element emitted once */}`,
             ...renderCore(stripped, depth, []),
           ];
         }
@@ -498,9 +656,24 @@ class Generator {
         'Only *ngIf and *ngFor are supported, rewrite the element with one of those',
       ));
       return [
-        `${indent}{/* TODO: *${el.structural.name}="${el.structural.expression}" */}`,
+        `${indent}{/* TODO: *${el.structural.name}="${forBlockComment(el.structural.expression)}" */}`,
         ...renderCore(stripped, depth, []),
       ];
+    };
+
+    /**
+     * Source map wrapper (Stage 5): with a map requested, every element's
+     * lines are preceded by a marker comment that finishSourceMap turns
+     * into a segment and removes. Without a map this is a pass-through,
+     * so default output is byte identical to before.
+     */
+    const renderElement = (el: ElementNode, depth: number): string[] => {
+      const lines = renderElementInner(el, depth);
+      if (!this.smConfig || !opts.templateFile) return lines;
+      const id = this.smRecords.length;
+      this.smRecords.push({ templateFile: opts.templateFile, el });
+      const indent = '  '.repeat(depth + 2);
+      return [`${indent}{/*@sm:${id}@*/}`, ...lines];
     };
 
     const bodyLines: string[] = [];
@@ -546,7 +719,7 @@ class Generator {
         depLines.push(`  useSyncExternalStore((cb) => ${dep.propertyName}.__subscribe(cb), () => ${dep.propertyName}.__getVersion());`);
       } else {
         this.validateDeps(`Component ${component.className}`, [dep]);
-        depLines.push(`  // TODO(Rangular DI): no provider for '${dep.typeName}', '${dep.propertyName}' is unavailable.`);
+        depLines.push(`  // TODO(Rangular DI): no provider for '${forLineComment(dep.typeName)}', '${forLineComment(dep.propertyName)}' is unavailable.`);
       }
     }
 
@@ -561,7 +734,7 @@ class Generator {
           fieldLines.push(`  const ${field.name} = ${field.initializer};`);
         }
       } else if (field.initializer) {
-        fieldLines.push(`  // TODO: field '${field.name}' has a non-literal initializer (${field.initializer}), not hoisted; wire it up manually for now.`);
+        fieldLines.push(`  // TODO: field '${forLineComment(field.name)}' has a non-literal initializer (${forLineComment(field.initializer)}), not hoisted; wire it up manually for now.`);
         diagnostics.push(warning('GEN_FIELD', `Field '${field.name}' has a non-literal initializer; not hoisted`, undefined, undefined, `Initialise '${field.name}' with a literal (including arrays/objects of literals) or wire the value up manually in the generated component`));
       }
     }
@@ -651,5 +824,5 @@ export function generateComponent(
   const generator = new Generator(context);
   const children = context.children ?? [];
   const code = generator.generate(component, ast, css, children);
-  return { code, diagnostics: generator.diagnostics };
+  return { code, diagnostics: generator.diagnostics, sourceMap: generator.sourceMapOut };
 }

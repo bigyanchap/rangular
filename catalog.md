@@ -133,9 +133,16 @@ Full token values (both colour modes, the light and dark theme objects, elevatio
 | GEN_STRUCTURAL_TODO | A structural directive other than *ngIf/*ngFor is not supported yet; the element was emitted unconditionally. |
 | METHOD_UNSUPPORTED | A statement in a component method is outside the supported translation subset; it was left as a TODO. |
 | CMP_IMPORT_UNRESOLVED | A relative import in a compiled file could not be resolved to a source file. |
+| CMP_PATH_ESCAPE | A templateUrl, styleUrl or relative import resolved to a file outside the project root; the file was not read. |
 | CMP_IMPORT_CYCLE | Two or more source files import each other in a cycle; the cycle was broken at the repeated file, whose classes were already registered. |
 | CMP_DUP_SELECTOR | Two different component classes declare the same selector in one compilation. |
 | DI_UNKNOWN_TOKEN | A constructor dependency names a type that is not a known @Injectable({ providedIn: 'root' }) service or HttpClient in this compilation. |
 | DI_CYCLE | Injectable services depend on each other in a cycle; container registrations could not be ordered. |
+| DOC_HEX_COLOR | Doctor: a hex colour literal appears in the component styles instead of a colour role token. |
+| DOC_OFF_SCALE | Doctor: a spacing, radius or font-size value in the styles is off its design-token scale (the compiler would snap it). |
+| DOC_RAW_TEXT | Doctor: loose text sits directly inside a container element instead of a text element. |
+| DOC_TAP_TARGET | Doctor: an element with a (click) binding is sized below the 44 by 44 minimum tap target. |
+| DOC_IMG_SIZE | Doctor: an image element has no declared width and height. |
+| CLI_INIT_NOT_EMPTY | The rangular init command was pointed at a directory that is not empty. |
 
 Diagnostics also carry a `fix:` suggestion in human output and in `rangular build --json`.

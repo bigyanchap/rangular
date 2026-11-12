@@ -1,0 +1,205 @@
+{
+  "example": "showcase",
+  "themes": {
+    "light": {
+      "roles": {
+        "appbar": {
+          "background": "#f0f4f9",
+          "borderRadius": 9999,
+          "gap": 12
+        },
+        "avatar": {
+          "background": "#7b1fa2",
+          "color": "#ffffff"
+        },
+        "badge": {
+          "background": "#d3e3fd",
+          "color": "#041e49",
+          "borderRadius": 9999,
+          "fontSize": 12,
+          "fontWeight": 700
+        },
+        "button": {
+          "background": "#0b57d0",
+          "color": "#ffffff",
+          "borderRadius": 9999,
+          "minHeight": 48
+        },
+        "card": {
+          "background": "#f0f4f9",
+          "borderColor": "#dadce0",
+          "borderRadius": 16,
+          "padding": 16
+        },
+        "fab": {
+          "background": "#d3e3fd",
+          "color": "#041e49",
+          "borderRadius": 16
+        },
+        "list": {
+          "borderColor": "#dadce0"
+        },
+        "row": {
+          "borderColor": "#dadce0",
+          "gap": 12,
+          "paddingLeft": 16,
+          "paddingRight": 16
+        },
+        "rowAvatar": {
+          "background": "#0b57d0",
+          "color": "#ffffff"
+        },
+        "screen": {
+          "background": "#ffffff",
+          "color": "#1f1f1f"
+        },
+        "textBody": {
+          "fontSize": 16,
+          "lineHeight": 24,
+          "color": "#5f6368"
+        },
+        "textDisplay": {
+          "fontSize": 32,
+          "lineHeight": 40,
+          "fontWeight": 700
+        },
+        "textHeading": {
+          "fontSize": 24,
+          "lineHeight": 32,
+          "fontWeight": 700
+        },
+        "textLabel": {
+          "fontSize": 14,
+          "lineHeight": 20,
+          "fontWeight": 600
+        },
+        "textTitle": {
+          "fontSize": 20,
+          "lineHeight": 28,
+          "fontWeight": 600
+        }
+      },
+      "styles": {
+        "badge": {
+          "backgroundColor": "#c2e7ff",
+          "color": "#001d35",
+          "borderRadius": 9999,
+          "paddingTop": 4,
+          "paddingBottom": 4,
+          "paddingLeft": 12,
+          "paddingRight": 12,
+          "fontSize": 12,
+          "fontWeight": 700
+        },
+        "card-note": {
+          "fontSize": 14,
+          "color": "#5f6368"
+        },
+        "h1": {
+          "color": "#0b57d0",
+          "marginBottom": 8
+        }
+      }
+    },
+    "dark": {
+      "roles": {
+        "appbar": {
+          "background": "#282a2c",
+          "borderRadius": 9999,
+          "gap": 12
+        },
+        "avatar": {
+          "background": "#d0bcff",
+          "color": "#381e72"
+        },
+        "badge": {
+          "background": "#004a77",
+          "color": "#d3e3fd",
+          "borderRadius": 9999,
+          "fontSize": 12,
+          "fontWeight": 700
+        },
+        "button": {
+          "background": "#a8c7fa",
+          "color": "#062e6f",
+          "borderRadius": 9999,
+          "minHeight": 48
+        },
+        "card": {
+          "background": "#282a2c",
+          "borderColor": "#444746",
+          "borderRadius": 16,
+          "padding": 16
+        },
+        "fab": {
+          "background": "#004a77",
+          "color": "#d3e3fd",
+          "borderRadius": 16
+        },
+        "list": {
+          "borderColor": "#444746"
+        },
+        "row": {
+          "borderColor": "#444746",
+          "gap": 12,
+          "paddingLeft": 16,
+          "paddingRight": 16
+        },
+        "rowAvatar": {
+          "background": "#a8c7fa",
+          "color": "#062e6f"
+        },
+        "screen": {
+          "background": "#131314",
+          "color": "#e3e3e3"
+        },
+        "textBody": {
+          "fontSize": 16,
+          "lineHeight": 24,
+          "color": "#9aa0a6"
+        },
+        "textDisplay": {
+          "fontSize": 32,
+          "lineHeight": 40,
+          "fontWeight": 700
+        },
+        "textHeading": {
+          "fontSize": 24,
+          "lineHeight": 32,
+          "fontWeight": 700
+        },
+        "textLabel": {
+          "fontSize": 14,
+          "lineHeight": 20,
+          "fontWeight": 600
+        },
+        "textTitle": {
+          "fontSize": 20,
+          "lineHeight": 28,
+          "fontWeight": 600
+        }
+      },
+      "styles": {
+        "badge": {
+          "backgroundColor": "#c2e7ff",
+          "color": "#001d35",
+          "borderRadius": 9999,
+          "paddingTop": 4,
+          "paddingBottom": 4,
+          "paddingLeft": 12,
+          "paddingRight": 12,
+          "fontSize": 12,
+          "fontWeight": 700
+        },
+        "card-note": {
+          "fontSize": 14,
+          "color": "#5f6368"
+        },
+        "h1": {
+          "color": "#0b57d0",
+          "marginBottom": 8
+        }
+      }
+    }
+  }
+}

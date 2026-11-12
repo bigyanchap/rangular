@@ -1,0 +1,131 @@
+{
+  "example": "dinacharya-row",
+  "themes": {
+    "light": {
+      "roles": {
+        "appbar": {
+          "background": "#f0f4f9",
+          "borderRadius": 9999,
+          "gap": 12
+        },
+        "avatar": {
+          "background": "#7b1fa2",
+          "color": "#ffffff"
+        },
+        "list": {
+          "borderColor": "#dadce0"
+        },
+        "row": {
+          "borderColor": "#dadce0",
+          "gap": 12,
+          "paddingLeft": 16,
+          "paddingRight": 16
+        },
+        "screen": {
+          "background": "#ffffff",
+          "color": "#1f1f1f"
+        },
+        "textBody": {
+          "fontSize": 16,
+          "lineHeight": 24,
+          "color": "#5f6368"
+        },
+        "textLabel": {
+          "fontSize": 14,
+          "lineHeight": 20,
+          "fontWeight": 600
+        }
+      },
+      "styles": {
+        "check-cell": {
+          "width": 34,
+          "height": 34
+        },
+        "check-mark": {
+          "color": "#ffffff",
+          "fontSize": 16,
+          "fontWeight": 700,
+          "textAlign": "center"
+        },
+        "check-off": {
+          "width": 34,
+          "height": 34,
+          "borderRadius": 12,
+          "borderWidth": 2,
+          "borderColor": "#a06a35"
+        },
+        "check-on": {
+          "width": 34,
+          "height": 34,
+          "borderRadius": 12,
+          "backgroundColor": "#d9a441",
+          "alignItems": "center",
+          "justifyContent": "center"
+        }
+      }
+    },
+    "dark": {
+      "roles": {
+        "appbar": {
+          "background": "#282a2c",
+          "borderRadius": 9999,
+          "gap": 12
+        },
+        "avatar": {
+          "background": "#d0bcff",
+          "color": "#381e72"
+        },
+        "list": {
+          "borderColor": "#444746"
+        },
+        "row": {
+          "borderColor": "#444746",
+          "gap": 12,
+          "paddingLeft": 16,
+          "paddingRight": 16
+        },
+        "screen": {
+          "background": "#131314",
+          "color": "#e3e3e3"
+        },
+        "textBody": {
+          "fontSize": 16,
+          "lineHeight": 24,
+          "color": "#9aa0a6"
+        },
+        "textLabel": {
+          "fontSize": 14,
+          "lineHeight": 20,
+          "fontWeight": 600
+        }
+      },
+      "styles": {
+        "check-cell": {
+          "width": 34,
+          "height": 34
+        },
+        "check-mark": {
+          "color": "#ffffff",
+          "fontSize": 16,
+          "fontWeight": 700,
+          "textAlign": "center"
+        },
+        "check-off": {
+          "width": 34,
+          "height": 34,
+          "borderRadius": 12,
+          "borderWidth": 2,
+          "borderColor": "#a06a35"
+        },
+        "check-on": {
+          "width": 34,
+          "height": 34,
+          "borderRadius": 12,
+          "backgroundColor": "#d9a441",
+          "alignItems": "center",
+          "justifyContent": "center"
+        }
+      }
+    }
+  }
+}

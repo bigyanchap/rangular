@@ -8,6 +8,14 @@ export interface Diagnostic {
   /** 1-based column in the offending source, when known. */
   column?: number;
   /**
+   * The source file the diagnostic belongs to (Stage 5): the template
+   * (.html) path for template diagnostics, the .ts path for class
+   * diagnostics, and the file holding the styles for style diagnostics.
+   * Optional: pipeline stages that do not know the origin leave it unset,
+   * and compile.ts fills it in where the origin is known.
+   */
+  file?: string;
+  /**
    * A concrete corrected pattern the author (human or AI) can apply.
    * Stage 2.5: diagnostics teach the fix, not just name the problem.
    */
@@ -22,9 +30,12 @@ export function warning(code: string, message: string, line?: number, column?: n
   return { severity: 'warning', code, message, line, column, fix };
 }
 
-export function formatDiagnostic(d: Diagnostic): string {
+export function formatDiagnostic(d: Diagnostic, entryFile?: string): string {
   const where = d.line !== undefined ? ` (${d.line}:${d.column ?? 1})` : '';
-  const head = `${d.severity.toUpperCase()} ${d.code}${where}: ${d.message}`;
+  // The file is printed only when it differs from the file the user asked
+  // about, so single-file output stays as terse as before (Stage 5).
+  const fileNote = d.file && d.file !== entryFile ? ` [in ${d.file}]` : '';
+  const head = `${d.severity.toUpperCase()} ${d.code}${where}: ${d.message}${fileNote}`;
   return d.fix ? `${head}\n  fix: ${d.fix}` : head;
 }
 
@@ -54,8 +65,15 @@ export const DIAGNOSTIC_CODES: Record<string, string> = {
   GEN_STRUCTURAL_TODO: 'A structural directive other than *ngIf/*ngFor is not supported yet; the element was emitted unconditionally.',
   METHOD_UNSUPPORTED: 'A statement in a component method is outside the supported translation subset; it was left as a TODO.',
   CMP_IMPORT_UNRESOLVED: 'A relative import in a compiled file could not be resolved to a source file.',
+  CMP_PATH_ESCAPE: 'A templateUrl, styleUrl or relative import resolved to a file outside the project root; the file was not read.',
   CMP_IMPORT_CYCLE: 'Two or more source files import each other in a cycle; the cycle was broken at the repeated file, whose classes were already registered.',
   CMP_DUP_SELECTOR: 'Two different component classes declare the same selector in one compilation.',
   DI_UNKNOWN_TOKEN: 'A constructor dependency names a type that is not a known @Injectable({ providedIn: \'root\' }) service or HttpClient in this compilation.',
   DI_CYCLE: 'Injectable services depend on each other in a cycle; container registrations could not be ordered.',
+  DOC_HEX_COLOR: 'Doctor: a hex colour literal appears in the component styles instead of a colour role token.',
+  DOC_OFF_SCALE: 'Doctor: a spacing, radius or font-size value in the styles is off its design-token scale (the compiler would snap it).',
+  DOC_RAW_TEXT: 'Doctor: loose text sits directly inside a container element instead of a text element.',
+  DOC_TAP_TARGET: 'Doctor: an element with a (click) binding is sized below the 44 by 44 minimum tap target.',
+  DOC_IMG_SIZE: 'Doctor: an image element has no declared width and height.',
+  CLI_INIT_NOT_EMPTY: 'The rangular init command was pointed at a directory that is not empty.',
 };

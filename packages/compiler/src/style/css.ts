@@ -42,6 +42,29 @@ export function nearestOnScale(scale: number[], value: number): number {
   return best;
 }
 
+/** The supported CSS property set, exported for doctor and the parity guard. */
+export const SUPPORTED_STYLE_PROPERTIES: ReadonlySet<string> = SUPPORTED;
+
+/**
+ * The value the snapper would produce for a property, or undefined when
+ * the property is not snapped at all (colours, width, height and friends
+ * never snap) or the value is exempt (spacing 0, radius full). Doctor
+ * reuses this so its DOC_OFF_SCALE check can never drift from the
+ * compiler's own snapping behaviour.
+ */
+export function snapForProp(prop: string, value: number): number | undefined {
+  if (SPACING_PROPS.has(prop)) {
+    if (value === 0) return undefined;
+    return value < 0 ? -nearestOnScale(spacingScale, -value) : nearestOnScale(spacingScale, value);
+  }
+  if (RADIUS_PROPS.has(prop)) {
+    if (value === 9999) return undefined;
+    return nearestOnScale(radiusScale.filter((n) => n < 9000), value);
+  }
+  if (prop === 'fontSize') return nearestOnScale(TYPE_SCALE_SIZES, value);
+  return undefined;
+}
+
 function snapValue(
   prop: string,
   rawProp: string,
@@ -110,6 +133,13 @@ export function parseCss(cssText: string): ParsedCss {
     for (const selector of selectors) {
       const isClass = selector.startsWith('.');
       const key = isClass ? selector.slice(1) : selector;
+      // Class keys are emitted as StyleSheet property names and object
+      // keys in generated code, so they must be plain identifiers, the
+      // same discipline element selectors already get below.
+      if (isClass && !/^[A-Za-z_-][A-Za-z0-9_-]*$/.test(key)) {
+        diagnostics.push(warning('CSS_SELECTOR', `Unsupported selector '${selector}', only element and .class selectors are supported`, undefined, undefined, `Rewrite '${selector}' as an element selector (h1) or a single class (.card-note); descendant, id and pseudo selectors are not supported`));
+        continue;
+      }
       if (!isClass && !/^[a-z][a-z0-9-]*$/i.test(selector)) {
         diagnostics.push(warning('CSS_SELECTOR', `Unsupported selector '${selector}', only element and .class selectors are supported`, undefined, undefined, `Rewrite '${selector}' as an element selector (h1) or a single class (.card-note); descendant, id and pseudo selectors are not supported`));
         continue;

@@ -35,6 +35,8 @@ export interface ConstructorDep {
 
 export interface ComponentInfo {
   className: string;
+  /** 1-based line of the class declaration in its source file (Stage 5, source maps). */
+  sourceLine?: number;
   selector?: string;
   template?: string;
   templateUrl?: string;
@@ -182,6 +184,7 @@ function readComponentClass(node: ts.ClassDeclaration, sf: ts.SourceFile): Compo
   if (!compDec || !node.name) return undefined;
   const info: ComponentInfo = {
     className: node.name.text,
+    sourceLine: sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1,
     styleUrls: [],
     fields: [],
     methods: [],

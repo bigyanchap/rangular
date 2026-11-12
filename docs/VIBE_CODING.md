@@ -35,8 +35,10 @@ lookup table. This layer removes each failure mode.
    A test regenerates the catalog and fails if the committed files are stale.
 5. **JSON diagnostics:** `rangular build --json` (and `preview --json`)
    prints a single JSON object, `{ ok, file, outFile?, diagnostics:
-   [{ severity, code, message, line, column, fix }] }`, to stdout and
+   [{ severity, code, message, line, column, file?, fix }] }`, to stdout and
    nothing else, so an AI loop can read an error and fix its own source.
+   The per-diagnostic `file` (Stage 5) names the file the diagnostic
+   belongs to: the template `.html`, the class `.ts`, or the styles file.
 6. **Error messages that teach:** every diagnostic carries a `fix:` line
    with the concrete corrected pattern, in human output and in JSON.
 
@@ -242,6 +244,70 @@ method bodies is a defined subset: do not assume all of TypeScript:
   display/heading/title/body steps, and `<label>` (new in Stage 4)
   maps to the label step. See `examples/showcase/` and its recipe
   card for the whole system on one screen.
+
+## Tooling (Stage 5)
+
+The CLI is complete in v1. One line per command:
+
+| Command | What it does |
+|---|---|
+| `rangular build <component.ts> --out <file.tsx> [--json] [--source-map]` | Compile one component to React Native TSX |
+| `rangular ast <template.html>` | Print a template AST |
+| `rangular preview <component.ts> --out <file.html> [--json]` | Render the interactive dev preview |
+| `rangular catalog [--out <dir>]` | Regenerate catalog.json and catalog.md from the code |
+| `rangular watch <component.ts> --out <file.tsx>` | Compile now, then recompile on every change to the component, its template or its imports; the watch set re-resolves after each compile; Ctrl+C stops cleanly |
+| `rangular init <dir>` | Scaffold a starter project (welcome screen, README, .gitignore); refuses a non-empty directory |
+| `rangular doctor <component.ts> [--json]` | The polish linter below |
+
+**Per-file diagnostics.** Every diagnostic may carry a `file`: template
+diagnostics name the `.html` file, class diagnostics the `.ts` file,
+style diagnostics the file holding the styles. The `--json` payloads
+include it per diagnostic (the top level `file` still names the entry
+component), and human output prints the file when it differs from the
+entry file. For style findings in an inline `styles` array, the line
+is counted within the style text itself.
+
+**Source maps.** `build --source-map` writes `<out>.map` (source map
+v3) and appends the `//# sourceMappingURL=` comment to the generated
+file, only with the flag. Granularity is block level in v1: the
+generated component function start maps to the class declaration, and
+each top level template element's JSX start maps to the element's
+line and column in the template. Per-expression maps are post-v1.
+
+**Doctor rules.** Doctor reports findings as diagnostics with `DOC_`
+codes; it never changes anything.
+
+| Code | Severity | Rule |
+|---|---|---|
+| `DOC_HEX_COLOR` | warning | A hex colour literal in styles; use a colour role instead |
+| `DOC_OFF_SCALE` | warning | A spacing, radius or font-size value the compiler would snap (doctor reuses the compiler's snapping logic) |
+| `DOC_RAW_TEXT` | warning | Loose text directly inside `screen`, `card` or `list` instead of a text element |
+| `DOC_TAP_TARGET` | error | A `(click)` element sized below 44 by 44 in its styles |
+| `DOC_IMG_SIZE` | error | Reserved for an image tag; no image tag exists in the v1 tag contract, so the check is inactive |
+
+Exit code is 1 only when an error-severity finding (or a compile
+error) exists; warnings alone exit 0. One suppression exists: a CSS
+comment containing `doctor: allow-hex` in a style text disables
+`DOC_HEX_COLOR` for that file's styles, for deliberate brand colours
+that are not Material roles (see the dinacharya-row recipe card).
+
+**Style snapshot goldens.** Each example carries a
+`styles.snapshot.json`: the preview's resolved key styles per element
+role for both themes, plus the example's own parsed component styles,
+derived from the same token data the preview renders from. A test
+regenerates and compares them; drift fails until the snapshot is
+deliberately updated. Structural and style goldens stand in for
+screenshot goldens until a device screenshot pipeline exists.
+
+**The preview is a promise.** Any code that is successful as a mobile
+responsive must be successful as an app: the preview renderer follows
+React Native defaults (column flex, text only inside text elements),
+the compiler warns and approximates unsupported CSS instead of letting
+the preview silently succeed with web behaviour, and anything the app
+cannot do surfaces as a diagnostic. A parity guard test scans every
+example's generated `.tsx` for web-only APIs, web tags and
+out-of-subset style properties. The full statement is in the README
+and docs/UI_POLISH.md.
 
 ## The proof test
 

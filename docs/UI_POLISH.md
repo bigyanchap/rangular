@@ -78,11 +78,25 @@ Same discipline as golden-file tests, one level up:
 > **Status: the showcase half is delivered in Stage 4.**
 > `examples/showcase/` renders the variants, card, buttons, list,
 > badge and FAB on one screen, in light and dark through the preview
-> Light/Dark toggle, at the preview's fixed phone width. Screenshot
-> golden tests, Display Zoom proofing and the `rangular doctor`
-> linter below remain Stage 5 work.
+> Light/Dark toggle, at the preview's fixed phone width.
+>
+> **Status update, Stage 5:** the `rangular doctor` linter below is
+> delivered, and the golden idea is delivered in snapshot form: each
+> example carries a `styles.snapshot.json` with the preview's resolved
+> key styles per element role for both themes, regenerated and
+> compared by a test. True screenshot goldens (a device or emulator
+> pipeline) and Display Zoom proofing remain future work; the snapshot
+> form stands in for them until that pipeline exists.
 - **Screenshot golden tests:** each showcase screen (and each dogfood component) is screenshotted in CI/emulator and diffed against the approved image. A visual change fails the test until a human approves the new screenshot, exactly like approving a golden file.
 - **Polish linter (`rangular doctor`):** static checks on the generated app: magic numbers outside tokens, touch targets under 44, text outside Text, contrast below 4.5:1, radius/spacing values off-scale, images without dimensions. Reported like compiler errors, with the original Angular source line.
+
+> **Delivered as:** `rangular doctor` with four honestly computable
+> rules (hex colour literals, off-scale values, loose text in
+> containers, tap targets under 44), each a coded diagnostic with the
+> Angular source file, line and a fix. Contrast checking is not
+> implemented (it needs rendered colour pairs, not source text), and
+> the image dimension rule waits for an image tag to exist in the tag
+> contract; there is none in v1.
 - **The acceptance test stays the same one:** the Awaken Me Dinacharya row, rewritten in Rangular, screenshotted side-by-side with the real one at true phone size. Polish is proven when you can't tell which is which at a glance.
 
 ## What this adds to the 77 things
@@ -131,6 +145,34 @@ It does not invent a bespoke brand art direction, custom illustration, or
 content hierarchy the developer never expressed; a theme override layer sits
 on top of the defaults for that (which is also what Google does, angular.dev
 is Material tokens with a custom theme, not raw Material).
+
+## The preview is a promise (Bigyan's principle, 2026-11-12)
+
+In his words: any code that is successful as a mobile responsive must
+be successful as an app.
+
+Meaning, as a design rule for Rangular: if compiled code renders and
+behaves correctly at phone width in the preview, the same generated
+code must work as a real React Native app. The preview is a promise,
+not a demo that can drift from the target.
+
+What parity means in practice today:
+
+- The compiler warns and approximates unsupported CSS (`CSS_UNSUPPORTED`,
+  `STYLE_OFF_SCALE`) instead of letting the preview silently succeed
+  with web behaviour the app does not have.
+- The preview renderer follows React Native layout defaults, not web
+  defaults: column flex direction, and text only inside text elements
+  (doctor's `DOC_RAW_TEXT` rule exists because raw text in a container
+  is a web habit the app cannot honour).
+- Anything the app cannot do must surface as a diagnostic, never as a
+  preview-only success. Unsupported constructs degrade with a warning
+  and a TODO in the generated code, in the open.
+- A parity guard test enforces the checkable half: every example's
+  generated `.tsx` is scanned, and the suite fails if a web-only API
+  (`document.`, `window.`, `localStorage`), a web tag rendered as a
+  JSX element, or a style property outside the supported CSS subset
+  leaks into generated code.
 
 ## One-line version
 

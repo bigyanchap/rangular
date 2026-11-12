@@ -1,0 +1,19 @@
+<screen>
+  <appbar title="Dinacharya"></appbar>
+  <label>Today</label>
+  <list>
+    <row (click)="toggleYoga()" [title]="featured.title" [subtitle]="featured.time" [detail]="featured.pieces">
+      <div class="check-cell">
+        <div class="check-on" *ngIf="yogaDone"><span class="check-mark">✓</span></div>
+        <div class="check-off" *ngIf="!yogaDone"></div>
+      </div>
+    </row>
+    <row *ngFor="let b of blocks; let i = index" [title]="b.title" [subtitle]="b.time" [detail]="b.pieces">
+      <div class="check-cell">
+        <div class="check-on" *ngIf="b.done"><span class="check-mark">✓</span></div>
+        <div class="check-off" *ngIf="!b.done"></div>
+      </div>
+    </row>
+  </list>
+  <p *ngIf="yogaDone">Morning Yoga is done. The day is already won.</p>
+</screen>

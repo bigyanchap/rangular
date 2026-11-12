@@ -14,6 +14,17 @@ Polish is a system, not luck: simple blocks compile to pre-polished
 [docs/UI_POLISH.md](docs/UI_POLISH.md). The full architecture is in
 [docs/BLOCK_DIAGRAM.md](docs/BLOCK_DIAGRAM.md).
 
+## Design principle: the preview is a promise
+
+Any code that is successful as a mobile responsive must be successful
+as an app. If compiled code renders and behaves correctly at phone
+width in the preview, the same generated code must work as a real
+React Native app. The preview never succeeds on something the app
+cannot do: anything the app cannot do surfaces as a compiler
+diagnostic, never as a preview-only success. A parity guard test scans
+every example's generated `.tsx` and fails if a web-only API, a web
+tag, or an out-of-subset style property leaks into generated code.
+
 ## Install and run
 
 Prerequisites: **Node.js 20+ and npm** (the compiler itself has exactly
@@ -84,7 +95,7 @@ flowchart TB
 | M5 | Child components, `@Input` / `@Output` | ✅ Done (Stage 3) |
 | M6 | Injected service + lifecycle + HttpClient | ✅ Done (Stage 3) |
 | - | **Stage 4: Polish lock-in** - complete token set (light + dark), themed primitives, CSS snapping (`STYLE_OFF_SCALE`), preview Light/Dark toggle, showcase example | ✅ Done |
-| M7 | CLI, source maps, error messages, Awaken Me dogfood | 🔶 CLI exists (`build` / `ast` / `preview`); source maps + dogfood pending |
+| M7 | CLI, source maps, error messages, Awaken Me dogfood | ✅ Done (Stage 5) |
 
 ## Packages
 
@@ -93,7 +104,7 @@ flowchart TB
 | `@rangular/compiler` | Template parser + expression (Pratt) parser, `@Component` extractor (TypeScript compiler API), CSS-subset parser, RN code generator, HTML preview renderer |
 | `@rangular/runtime` | Pure-TypeScript helpers for generated apps: `EventEmitter`, `signal()`, DI `Container`, `ReactiveService` (service reactivity base), `HttpClient` (Observable-lite over fetch), `pipe()` |
 | `@rangular/ui` | Rangular Material: `tokens.ts` (pure TS) + shipped-source RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`) |
-| `@rangular/cli` | `rangular build`, `rangular ast`, `rangular preview`, `rangular catalog` (build/preview accept `--json`) |
+| `@rangular/cli` | `rangular build`, `rangular ast`, `rangular preview`, `rangular catalog`, `rangular watch`, `rangular init`, `rangular doctor` (build/preview/doctor accept `--json`; build accepts `--source-map`) |
 
 > Note: `@rangular/ui` primitives and other shipped-source files for generated
 > apps are **source shipped into generated projects**; they are not typechecked
@@ -114,6 +125,9 @@ flowchart TB
   visual proof.
 - [docs/VIBE_CODING.md](docs/VIBE_CODING.md), the AI-facing layer plus
   the full delta tables (Rangular vs Angular, Rangular vs React).
+- [SECURITY.md](SECURITY.md), the security audit: what was tested,
+  what was found and fixed, and the project root boundary rule for
+  files the compiler reads.
 
 All documentation is Markdown on purpose: GitHub renders the Mermaid
 diagrams natively, diffs and search work, and AI tools read it directly.
@@ -140,7 +154,8 @@ through them) **without guessing**, see [docs/VIBE_CODING.md](docs/VIBE_CODING.m
 - **Recipe cards**, `examples/hello/README.md`,
   `examples/counter/README.md`, `examples/inbox/README.md`,
   `examples/profile/README.md`, `examples/favourite/README.md`,
-  `examples/shared-inbox/README.md`, `examples/showcase/README.md`: Intent /
+  `examples/shared-inbox/README.md`, `examples/showcase/README.md`,
+  `examples/dinacharya-row/README.md`: Intent /
   Source / What it compiles to / Rules used / Common mistakes.
 - **Proof test (Stage 2.5)**, `examples/profile/` was written by a fresh
   AI agent given only AGENTS.md, llms.txt, the catalog and the recipe
@@ -292,3 +307,77 @@ value. An off-scale value compiles with the snapped value and earns a
 `STYLE_OFF_SCALE` warning whose fix names it (`margin-bottom: 13px`
 becomes 12). On-scale values and 0 pass silently. Colours are never
 snapped.
+
+## Stage 5: CLI completion, source maps, doctor, dogfood
+
+The final v1 stage is about the working day around the compiler.
+
+**The CLI, complete.** One line per command:
+
+- `rangular build <component.ts> --out <file.tsx> [--json] [--source-map]`: compile one component to React Native TSX.
+- `rangular ast <template.html>`: print a template AST (M0).
+- `rangular preview <component.ts> --out <file.html> [--json]`: render the interactive dev preview.
+- `rangular catalog [--out <dir>]`: regenerate `catalog.json` and `catalog.md` from the code.
+- `rangular watch <component.ts> --out <file.tsx>`: compile now, then recompile on every change to the component, its template, or its imports (the watch set re-resolves after each compile). Prints a timestamped OK or the diagnostics; Ctrl+C stops it cleanly.
+- `rangular init <dir>`: scaffold a starter project (a welcome screen in `src/`, a README, a `.gitignore`). Refuses a non-empty directory.
+- `rangular doctor <component.ts> [--json]`: the polish linter, below.
+
+**Per-file diagnostics.** Diagnostics now carry the file they belong
+to: template problems name the `.html` file, class problems the `.ts`
+file, style problems the file holding the styles. The JSON output
+includes `file` per diagnostic (the top level `file` still names the
+entry component), and human output prints the file whenever it differs
+from the entry file.
+
+**Source maps, honestly scoped.** `rangular build --source-map` also
+writes `<out>.map`, a source map v3, and appends the
+`//# sourceMappingURL=` comment to the generated file (only with the
+flag, so default output is unchanged). Granularity in v1 is block
+level, not per expression: the generated component function start maps
+to the class declaration, and each top level template element's
+generated JSX start maps to that element's line and column in the
+template file.
+
+**Doctor.** `rangular doctor` reports polish findings as diagnostics
+with `DOC_` codes, each with source file, line and a fix: `DOC_HEX_COLOR`
+(a hex colour literal in styles instead of a colour role),
+`DOC_OFF_SCALE` (a value the compiler would snap, reported without
+changing anything), `DOC_RAW_TEXT` (loose text directly inside
+`screen`, `card` or `list` instead of a text element), and
+`DOC_TAP_TARGET` (a `(click)` element sized below 44 by 44, the one
+error-severity rule). Exit code is 1 only when an error finding
+exists; warnings alone exit 0. One escape exists on purpose: a CSS
+comment containing `doctor: allow-hex` in a style text disables the
+hex check for that file's styles, for deliberate brand colours (the
+dogfood example's Awaken Me gold is the case in point).
+
+**Visual goldens, in snapshot form.** There is no device screenshot
+pipeline in this repo yet, so each example carries a
+`styles.snapshot.json`: the preview's resolved key styles per element
+role for both themes, plus the example's own parsed component styles,
+all derived from the same token data the preview renders from. A test
+regenerates every snapshot and fails on drift that was not
+deliberately approved by updating the snapshot. Structural and style
+goldens stand in for screenshot goldens until a device pipeline
+exists.
+
+**Dogfood.** `examples/dinacharya-row/` models one real Awaken Me
+Dinacharya block row: the 34 by 34 check square (flat gold `#d9a441`
+with a check mark when done, bronze outline when not), the title, the
+time range, and the quiet pieces line ("3 pieces, 2 done"). Tapping
+the featured row toggles it, in the preview and in the generated code.
+Its recipe card states plainly what matches the real app and what is
+simplified.
+
+## v1 is complete
+
+What v1 is: an Angular-style component, template, service and DI
+subset compiling to readable React Native TSX, with a Material token
+system in light and dark, an interactive preview that behaves like the
+app, machine-readable diagnostics with fixes, a full CLI, and a recipe
+card proving every capability on a tiny example.
+
+Deliberately post-v1: forms and two-way binding, routing (React
+Navigation), animations, the full RxJS surface, content projection,
+per-expression source maps, device screenshot goldens, and following
+the OS dark mode setting by default.

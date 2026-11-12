@@ -16,12 +16,12 @@ everything you may use is [catalog.md](catalog.md) / `catalog.json`.
 | Path | What lives there |
 |---|---|
 | `packages/compiler/src/` | The compiler: template parser (`template/`), `@Component` extractor (`class/`), CSS subset (`style/`), RN code generator (`codegen/`), HTML preview renderer (`preview/`), catalog generator (`catalog.ts`), pipeline (`compile.ts`) |
-| `packages/cli/src/cli.ts` | The `rangular` CLI: `build`, `ast`, `preview`, `catalog` |
+| `packages/cli/src/cli.ts` | The `rangular` CLI: `build` (with `--json`, `--source-map`), `ast`, `preview`, `catalog`, `watch`, `init`, `doctor` (the polish linter lives in `packages/compiler/src/doctor.ts`) |
 | `packages/runtime/src/index.ts` | Pure-TS helpers for generated apps: `EventEmitter`, `signal()`, `Container`, `ReactiveService` (base class generated services extend), `HttpClient` (Observable-lite over fetch), `pipe()` |
 | `packages/ui/src/tokens.ts` | Rangular Material design tokens (pure TS, part of the build) |
 | `packages/ui/src/primitives.tsx` | RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`) plus the theme context (`RgThemeProvider`, `useRgTheme`); all colours come from the active theme, shipped source for generated apps, deliberately excluded from this repo's `tsc` build |
-| `examples/hello/`, `examples/counter/`, `examples/inbox/`, `examples/profile/`, `examples/favourite/`, `examples/shared-inbox/`, `examples/showcase/` | Tiny single-capability examples, each with a recipe-card `README.md`, golden generated `.tsx` and `preview.html` (profile is the Stage 2.5 proof-test example: written from these docs alone; favourite = child components, shared-inbox = services/DI/lifecycle, showcase = tokens/theming/snapping) |
-| `tests/` | `node:test` suites, parser, expressions, codegen, methods, runtime, tokens, catalog/vibe layer, Stage 3 (children, services, HttpClient, preview behaviour via a DOM shim), Stage 4 (token completeness, primitives hex guard, CSS snapping, preview theme toggle, no-em-dash guard) |
+| `examples/hello/`, `examples/counter/`, `examples/inbox/`, `examples/profile/`, `examples/favourite/`, `examples/shared-inbox/`, `examples/showcase/`, `examples/dinacharya-row/` | Tiny single-capability examples, each with a recipe-card `README.md`, golden generated `.tsx`, `preview.html` and a `styles.snapshot.json` style golden (profile is the Stage 2.5 proof-test example: written from these docs alone; favourite = child components, shared-inbox = services/DI/lifecycle, showcase = tokens/theming/snapping, dinacharya-row = the Stage 5 dogfood example: one real Awaken Me row) |
+| `tests/` | `node:test` suites, parser, expressions, codegen, methods, runtime, tokens, catalog/vibe layer, Stage 3 (children, services, HttpClient, preview behaviour via a DOM shim), Stage 4 (token completeness, primitives hex guard, CSS snapping, preview theme toggle, no-em-dash guard), Stage 5 (per-file diagnostics, source maps, watch, init, doctor, style snapshot goldens, preview parity guard, dogfood behaviour) |
 | `docs/` | `PINPOINT_MAP.md` (design map), `LEARNING_LIST.md` (the 77 things), `BLOCK_DIAGRAM.md` (architecture), `UI_POLISH.md` (polish system), `VIBE_CODING.md` (AI-facing layer + delta tables) |
 | `catalog.json`, `catalog.md` | GENERATED from the code by `rangular catalog`, never hand-edit |
 | `llms.txt` | AI-readable index of the whole repo |
@@ -46,6 +46,18 @@ node dist/packages/cli/src/cli.js preview examples/counter/counter.component.ts 
 
 # Regenerate the catalog after changing tags, primitives, tokens or diagnostics
 node dist/packages/cli/src/cli.js catalog --out .
+
+# Compile with a block level source map (writes <out>.map + the sourceMappingURL comment)
+node dist/packages/cli/src/cli.js build examples/counter/counter.component.ts --out /tmp/counter.tsx --source-map
+
+# Recompile on every save (component, template and imports; Ctrl+C stops)
+node dist/packages/cli/src/cli.js watch examples/counter/counter.component.ts --out /tmp/counter.tsx
+
+# Scaffold a starter project (refuses a non-empty directory)
+node dist/packages/cli/src/cli.js init my-app
+
+# Polish linter: hex colours, off-scale values, loose text, tap targets
+node dist/packages/cli/src/cli.js doctor examples/showcase/showcase.component.ts
 ```
 
 ## Golden rules
@@ -72,3 +84,10 @@ node dist/packages/cli/src/cli.js catalog --out .
 6. **No em dashes anywhere in this repo** (they read as machine-written).
    Write plainly, like a person: commas, periods, colons, hyphens. A guard
    test scans the repo and fails if U+2014 appears in any tracked text file.
+7. **The preview is a promise.** Any code that is successful as a mobile
+   responsive must be successful as an app: if it renders and behaves
+   correctly at phone width in the preview, the same generated code must
+   work as a real React Native app. The preview never succeeds on
+   something the app cannot do; anything the app cannot do surfaces as a
+   diagnostic. A parity guard test scans every example's generated `.tsx`
+   for web-only APIs, web tags and out-of-subset style properties.

@@ -58,7 +58,12 @@ function walk(node: ts.Expression): { ok: boolean; value?: unknown } {
         if (key === undefined) return { ok: false };
         const r = walk(prop.initializer);
         if (!r.ok) return { ok: false };
-        out[key] = r.value;
+        // defineProperty, not assignment: a key like "__proto__" must
+        // become an own data property (the JSON.parse semantics), never
+        // a prototype mutation of the object being built.
+        Object.defineProperty(out, key, {
+          value: r.value, enumerable: true, writable: true, configurable: true,
+        });
       } else if (ts.isShorthandPropertyAssignment(prop)) {
         // `({ x })` refers to a variable, not a literal.
         return { ok: false };
