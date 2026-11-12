@@ -46,13 +46,13 @@ test('[disabled] binding becomes disabled={...}', () => {
   assert.match(code, /from '@rangular\/ui'/);
 });
 
-test('event bindings degrade to a TODO comment plus warning', () => {
+test('event bindings generate onPress handlers (Stage 2, M3)', () => {
   const result = compileComponent({
     tsSource: `@Component({ selector: 'app-t', template: '<button (click)="go()">Go</button>' })
                export class TComponent { go() {} }`,
   });
-  assert.match(result.code, /TODO\(M3\): \(click\)="go\(\)"/);
-  assert.ok(result.diagnostics.some((d) => d.code === 'GEN_EVENT_TODO'));
+  assert.match(result.code, /<RgButton onPress=\{\(\) => go\(\)\}>Go<\/RgButton>/);
+  assert.ok(!result.diagnostics.some((d) => d.code === 'GEN_EVENT_TODO'));
 });
 
 test('golden: hello example output matches the committed file', () => {

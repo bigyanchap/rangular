@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rangular preview — app-inbox</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Roboto, system-ui, sans-serif; background: #e8eaed; display: flex; justify-content: center; padding: 24px 12px; }
+  .screen { width: 360px; max-width: 100%; min-height: 640px; background: #ffffff; color: #1f1f1f; border-radius: 28px; overflow: hidden; box-shadow: 0 10px 28px rgba(0,0,0,.18); padding-bottom: 24px; }
+  .appbar { display: flex; align-items: center; gap: 12px; margin: 12px; background: #f0f4f9; border-radius: 9999px; padding: 10px 16px; }
+  .search { flex: 1; color: #5f6368; font-size: 14px; }
+  .appbar-title { flex: 1; font-size: 20px; font-weight: 600; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: #7b1fa2; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+  .avatar-lg { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; background: #0b57d0; color: #ffffff; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; }
+  .display { font-size: 32px; line-height: 40px; font-weight: 700; margin: 16px 16px 8px; }
+  .heading { font-size: 24px; line-height: 32px; font-weight: 700; margin: 0 0 8px; }
+  .title { font-size: 20px; line-height: 28px; font-weight: 600; margin: 0 0 8px; }
+  .body { font-size: 16px; line-height: 24px; color: #5f6368; margin: 0 16px 16px; }
+  .card { background: #f0f4f9; border: 1px solid #dadce0; border-radius: 16px; padding: 16px; margin: 0 16px 16px; }
+  .card .body { margin: 0; font-size: 14px; }
+  .btn { display: block; margin: 8px 16px 0; background: #0b57d0; color: #ffffff; border: none; border-radius: 9999px; padding: 0 24px; min-height: 48px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .btn[disabled] { opacity: .38; cursor: default; }
+  .list { border-top: 1px solid #dadce0; }
+  .row { display: flex; gap: 12px; align-items: flex-start; padding: 11px 16px; border-bottom: 1px solid #dadce0; }
+  .row-main { flex: 1; display: flex; flex-direction: column; }
+  .row-title { font-weight: 600; font-size: 14px; }
+  .row-sub { font-size: 13px; }
+  .row-detail { font-size: 12.5px; color: #5f6368; }
+  .row-time { font-size: 11px; color: #5f6368; }
+  .fab { display: inline-block; float: right; margin: 8px 16px 0 0; background: #c2e7ff; color: #001d35; border-radius: 16px; padding: 13px 18px; font-size: 14px; font-weight: 600; box-shadow: 0 3px 8px rgba(0,0,0,.25); }
+</style>
+</head>
+<body>
+<div id="app">
+<div class="screen"><header class="appbar"><span class="appbar-menu">&#9776;</span><span class="search">Search in mail</span><span class="avatar">M</span></header>
+<h1 class="display">Inbox</h1>
+<div class="list"><div class="row"><span class="avatar-lg">S</span><span class="row-main"><span class="row-title">Sarju</span><span class="row-sub">Photos from the weekend</span><span class="row-detail">Sharing the album with you…</span></span><span class="row-time">9:12 am</span></div>
+<div class="row"><span class="avatar-lg">G</span><span class="row-main"><span class="row-title">Google</span><span class="row-sub">Security alert</span><span class="row-detail">A new sign-in on your device</span></span><span class="row-time">8:03 am</span></div>
+<div class="row"><span class="avatar-lg">M</span><span class="row-main"><span class="row-title">Medium</span><span class="row-sub">Your weekly reading list</span><span class="row-detail">Stories picked for you</span></span><span class="row-time">Yesterday</span></div>
+<div class="row"><span class="avatar-lg">A</span><span class="row-main"><span class="row-title">Awaken Me</span><span class="row-sub">Build finished successfully</span><span class="row-detail">Your latest build is ready to test</span></span><span class="row-time">Tue</span></div></div>
+</div>
+</div>
+<script>
+// Rangular interactive preview runtime (Stage 2).
+// State and methods are live: (click) handlers mutate state and re-render.
+const TEMPLATE = {"type":"root","children":[{"type":"element","tag":"screen","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"element","tag":"appbar","attrs":{"title":"Mail","search":"Search in mail"},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[],"pos":{"line":2,"column":3}},{"type":"element","tag":"h1","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"expr","expression":"title"}],"pos":{"line":3,"column":7}}],"pos":{"line":3,"column":3}},{"type":"element","tag":"list","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"element","tag":"row","attrs":{},"booleanAttrs":["avatar"],"propBindings":[{"name":"title","expression":"m.from"},{"name":"subtitle","expression":"m.subject"},{"name":"detail","expression":"m.snippet"},{"name":"time","expression":"m.time"}],"eventBindings":[],"children":[],"pos":{"line":5,"column":5},"structural":{"name":"ngFor","expression":"let m of mails; let i = index"}}],"pos":{"line":4,"column":3}},{"type":"element","tag":"p","attrs":{},"booleanAttrs":[],"propBindings":[],"eventBindings":[],"children":[{"type":"text","parts":[{"type":"static","value":"No mail. Enjoy the quiet."}],"pos":{"line":7,"column":33}}],"pos":{"line":7,"column":3},"structural":{"name":"ngIf","expression":"mails.length === 0"}}],"pos":{"line":1,"column":1}}]};
+const state = {"title":"Inbox","mails":[{"id":1,"from":"Sarju","subject":"Photos from the weekend","snippet":"Sharing the album with you…","time":"9:12 am","unread":true},{"id":2,"from":"Google","subject":"Security alert","snippet":"A new sign-in on your device","time":"8:03 am","unread":true},{"id":3,"from":"Medium","subject":"Your weekly reading list","snippet":"Stories picked for you","time":"Yesterday","unread":false},{"id":4,"from":"Awaken Me","subject":"Build finished successfully","snippet":"Your latest build is ready to test","time":"Tue","unread":false}]};
+const methods = {
+
+};
+
+function __tok(s) {
+  var t = [], i = 0;
+  while (i < s.length) {
+    var ch = s[i];
+    if (/\s/.test(ch)) { i++; continue; }
+    if (ch === '"' || ch === "'") {
+      var j = i + 1, v = '';
+      while (j < s.length && s[j] !== ch) {
+        if (s[j] === '\\' && j + 1 < s.length) { v += s[j + 1]; j += 2; }
+        else { v += s[j]; j++; }
+      }
+      t.push({ k: 'str', v: v }); i = j + 1; continue;
+    }
+    if (/[0-9]/.test(ch)) {
+      var j2 = i;
+      while (j2 < s.length && /[0-9.]/.test(s[j2])) j2++;
+      t.push({ k: 'num', v: s.slice(i, j2) }); i = j2; continue;
+    }
+    if (/[A-Za-z_$]/.test(ch)) {
+      var j3 = i;
+      while (j3 < s.length && /[A-Za-z0-9_$]/.test(s[j3])) j3++;
+      t.push({ k: 'id', v: s.slice(i, j3) }); i = j3; continue;
+    }
+    var three = s.slice(i, i + 3), two = s.slice(i, i + 2);
+    if (three === '===' || three === '!==') { t.push({ k: 'p', v: three }); i += 3; continue; }
+    if (['==', '!=', '<=', '>=', '&&', '||'].indexOf(two) >= 0) { t.push({ k: 'p', v: two }); i += 2; continue; }
+    if ('+-*/%<>!?:.,()[]|'.indexOf(ch) >= 0) { t.push({ k: 'p', v: ch }); i++; continue; }
+    throw new Error('preview: unexpected character ' + ch);
+  }
+  t.push({ k: 'eof', v: '' });
+  return t;
+}
+function __parse(src) {
+  var toks = __tok(src), pos = 0;
+  function peek() { return toks[pos]; }
+  function next() { return toks[pos++]; }
+  function atP(v) { var t = peek(); return t.k === 'p' && t.v === v; }
+  function expect(v) { if (!atP(v)) throw new Error('preview: expected ' + v); next(); }
+  var BP = { '||': 1, '&&': 2, '==': 3, '===': 3, '!=': 3, '!==': 3, '<': 4, '>': 4, '<=': 4, '>=': 4, '+': 5, '-': 5, '*': 6, '/': 6, '%': 6 };
+  function parsePipe() {
+    var inp = parseCond();
+    while (atP('|')) {
+      next();
+      var nm = next();
+      if (nm.k !== 'id') throw new Error('preview: pipe name expected');
+      var args = [];
+      while (atP(':')) { next(); args.push(parseCond()); }
+      inp = { type: 'pipe', input: inp, name: nm.v, args: args };
+    }
+    return inp;
+  }
+  function parseCond() {
+    var test = parseBin(1);
+    if (atP('?')) {
+      next();
+      var cons = parsePipe();
+      expect(':');
+      var alt = parseCond();
+      return { type: 'conditional', test: test, consequent: cons, alternate: alt };
+    }
+    return test;
+  }
+  function parseBin(min) {
+    var left = parseUnary();
+    for (;;) {
+      var t = peek();
+      if (t.k !== 'p') break;
+      var pw = BP[t.v];
+      if (pw === undefined || pw < min) break;
+      var op = next().v;
+      var right = parseBin(pw + 1);
+      left = { type: 'binary', op: op, left: left, right: right };
+    }
+    return left;
+  }
+  function parseUnary() {
+    var t = peek();
+    if (t.k === 'p' && (t.v === '!' || t.v === '-')) {
+      var op = next().v;
+      return { type: 'unary', op: op, argument: parseUnary() };
+    }
+    return parsePost();
+  }
+  function parsePost() {
+    var e = parsePrim();
+    for (;;) {
+      if (atP('.')) {
+        next();
+        var pr = next();
+        if (pr.k !== 'id') throw new Error('preview: property expected');
+        e = { type: 'member', object: e, property: pr.v };
+      } else if (atP('[')) {
+        next();
+        var ix = parsePipe();
+        expect(']');
+        e = { type: 'index', object: e, index: ix };
+      } else if (atP('(')) {
+        next();
+        var args = [];
+        if (!atP(')')) {
+          args.push(parsePipe());
+          while (atP(',')) { next(); args.push(parsePipe()); }
+        }
+        expect(')');
+        e = { type: 'call', callee: e, args: args };
+      } else break;
+    }
+    return e;
+  }
+  function parsePrim() {
+    var t = next();
+    if (t.k === 'id') {
+      if (t.v === 'true') return { type: 'literal', value: true };
+      if (t.v === 'false') return { type: 'literal', value: false };
+      if (t.v === 'null') return { type: 'literal', value: null };
+      return { type: 'identifier', name: t.v };
+    }
+    if (t.k === 'num') return { type: 'literal', value: Number(t.v) };
+    if (t.k === 'str') return { type: 'literal', value: t.v };
+    if (t.k === 'p' && t.v === '(') { var inner = parsePipe(); expect(')'); return inner; }
+    throw new Error('preview: unexpected token ' + t.v);
+  }
+  var e = parsePipe();
+  if (peek().k !== 'eof') throw new Error('preview: trailing tokens');
+  return e;
+}
+function __pipe(name, value) {
+  switch (name) {
+    case 'uppercase': return typeof value === 'string' ? value.toUpperCase() : value;
+    case 'lowercase': return typeof value === 'string' ? value.toLowerCase() : value;
+    case 'titlecase': return typeof value === 'string' ? value.replace(/\w\S*/g, function (w) { return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); }) : value;
+    case 'json': return JSON.stringify(value);
+    default: throw new Error("preview: unknown pipe '" + name + "'");
+  }
+}
+function __eval(e, scope) {
+  switch (e.type) {
+    case 'literal': return e.value;
+    case 'identifier': return scope[e.name];
+    case 'member': {
+      var o = __eval(e.object, scope);
+      if (o === null || o === undefined) return undefined;
+      return o[e.property];
+    }
+    case 'index': {
+      var o2 = __eval(e.object, scope);
+      if (o2 === null || o2 === undefined) return undefined;
+      return o2[__eval(e.index, scope)];
+    }
+    case 'call': {
+      var args = e.args.map(function (a) { return __eval(a, scope); });
+      if (e.callee.type === 'member') {
+        var obj = __eval(e.callee.object, scope);
+        if (obj === null || obj === undefined) return undefined;
+        var fn = obj[e.callee.property];
+        if (typeof fn !== 'function') throw new Error('preview: ' + e.callee.property + ' is not a function');
+        return fn.apply(obj, args);
+      }
+      var f = __eval(e.callee, scope);
+      if (typeof f !== 'function') throw new Error('preview: attempted to call a non-function');
+      return f.apply(null, args);
+    }
+    case 'unary': {
+      var v = __eval(e.argument, scope);
+      if (e.op === '!') return !v;
+      if (e.op === '-') return -v;
+      return +v;
+    }
+    case 'binary': {
+      if (e.op === '&&') { var l = __eval(e.left, scope); return l ? __eval(e.right, scope) : l; }
+      if (e.op === '||') { var l2 = __eval(e.left, scope); return l2 ? l2 : __eval(e.right, scope); }
+      var a = __eval(e.left, scope), b = __eval(e.right, scope);
+      switch (e.op) {
+        case '+': return a + b;
+        case '-': return a - b;
+        case '*': return a * b;
+        case '/': return a / b;
+        case '%': return a % b;
+        case '==': return a == b;
+        case '===': return a === b;
+        case '!=': return a != b;
+        case '!==': return a !== b;
+        case '<': return a < b;
+        case '>': return a > b;
+        case '<=': return a <= b;
+        case '>=': return a >= b;
+      }
+      throw new Error('preview: bad operator ' + e.op);
+    }
+    case 'conditional':
+      return __eval(e.test, scope) ? __eval(e.consequent, scope) : __eval(e.alternate, scope);
+    case 'pipe':
+      return __pipe(e.name, __eval(e.input, scope));
+  }
+}
+function __evalSrc(src, scope) { return __eval(__parse(src), scope); }
+function __scope(extra) {
+  var s = {}, k;
+  for (k in state) s[k] = state[k];
+  for (k in methods) s[k] = methods[k];
+  if (extra) for (k in extra) s[k] = extra[k];
+  return s;
+}
+function __extend(scope, extra) {
+  var s = {}, k;
+  for (k in scope) s[k] = scope[k];
+  for (k in extra) s[k] = extra[k];
+  return s;
+}
+function __binding(el, name, scope) {
+  for (var i = 0; i < el.propBindings.length; i++) {
+    if (el.propBindings[i].name === name) {
+      try { return __evalSrc(el.propBindings[i].expression, scope); }
+      catch (err) { console.warn(err); return undefined; }
+    }
+  }
+  return undefined;
+}
+function __attr(el, name, scope) {
+  var b = __binding(el, name, scope);
+  if (b !== undefined) return b;
+  return el.attrs[name];
+}
+function __parseNgFor(expr) {
+  var segs = expr.split(';').map(function (x) { return x.trim(); }).filter(Boolean);
+  var m = /^let\s+([A-Za-z_$][\w$]*)\s+of\s+(.+)$/.exec(segs[0] || '');
+  if (!m) return null;
+  var parts = { item: m[1], source: m[2], index: null };
+  for (var i = 1; i < segs.length; i++) {
+    var lm = /^let\s+([A-Za-z_$][\w$]*)\s*=\s*index$/.exec(segs[i]);
+    if (lm) parts.index = lm[1];
+  }
+  return parts;
+}
+function __buildNodes(nodes, scope) {
+  var out = [];
+  nodes.forEach(function (n) {
+    __buildNode(n, scope).forEach(function (d) { out.push(d); });
+  });
+  return out;
+}
+function __buildNode(node, scope) {
+  if (node.type === 'text') {
+    var txt = '';
+    node.parts.forEach(function (p) {
+      if (p.type === 'static') txt += p.value;
+      else {
+        try {
+          var v = __evalSrc(p.expression, scope);
+          txt += (v === undefined || v === null) ? '' : String(v);
+        } catch (err) { console.warn(err); txt += '{{ ' + p.expression + ' }}'; }
+      }
+    });
+    return [document.createTextNode(txt)];
+  }
+  return __buildElement(node, scope);
+}
+function __buildElement(el, scope) {
+  if (el.structural && el.structural.name === 'ngIf') {
+    var cond;
+    try { cond = __evalSrc(el.structural.expression.split(';')[0].trim(), scope); }
+    catch (err) { console.warn(err); cond = false; }
+    if (!cond) return [];
+    return __buildCore(el, scope);
+  }
+  if (el.structural && el.structural.name === 'ngFor') {
+    var parts = __parseNgFor(el.structural.expression);
+    if (!parts) { console.warn('preview: unparseable *ngFor'); return __buildCore(el, scope); }
+    var items;
+    try { items = __evalSrc(parts.source, scope); }
+    catch (err) { console.warn(err); items = []; }
+    if (!items || typeof items.length !== 'number') return [];
+    var out = [];
+    for (var idx = 0; idx < items.length; idx++) {
+      var extra = {};
+      extra[parts.item] = items[idx];
+      if (parts.index) extra[parts.index] = idx;
+      __buildCore(el, __extend(scope, extra)).forEach(function (d) { out.push(d); });
+    }
+    return out;
+  }
+  return __buildCore(el, scope);
+}
+function __attachEvents(dom, el, scope) {
+  el.eventBindings.forEach(function (ev) {
+    if (ev.name !== 'click') {
+      console.warn('preview: only (click) handlers are wired, got (' + ev.name + ')');
+      return;
+    }
+    dom.addEventListener('click', function (event) {
+      __runHandler(ev.expression, scope, event);
+      __render();
+    });
+  });
+}
+function __runHandler(src, scope, event) {
+  var s = __extend(scope, { $event: event });
+  try {
+    var e = __parse(src);
+    if (e.type === 'call') { __eval(e, s); return; }
+    if (e.type === 'identifier') {
+      var fn = s[e.name];
+      if (typeof fn === 'function') { fn(); return; }
+      console.warn('preview: handler ' + e.name + ' is not a method');
+      return;
+    }
+    __eval(e, s);
+  } catch (err) { console.warn(err); }
+}
+function __buildCore(el, scope) {
+  var kids = __buildNodes(el.children, scope);
+  function wrap(tag, cls) {
+    var d = document.createElement(tag);
+    if (cls) d.className = cls;
+    kids.forEach(function (k) { d.appendChild(k); });
+    return [d];
+  }
+  var title = __attr(el, 'title', scope);
+  switch (el.tag) {
+    case 'screen': return wrap('div', 'screen');
+    case 'appbar': {
+      var bar = document.createElement('header');
+      bar.className = 'appbar';
+      var menu = document.createElement('span');
+      menu.textContent = '☰';
+      bar.appendChild(menu);
+      var search = __attr(el, 'search', scope);
+      var mid = document.createElement('span');
+      if (search) { mid.className = 'search'; mid.textContent = String(search); }
+      else { mid.className = 'appbar-title'; mid.textContent = title ? String(title) : ''; }
+      bar.appendChild(mid);
+      var av = document.createElement('span');
+      av.className = 'avatar';
+      av.textContent = (title ? String(title) : 'R').charAt(0);
+      bar.appendChild(av);
+      return [bar];
+    }
+    case 'h1': return wrap('h1', 'display');
+    case 'h2': return wrap('h2', 'heading');
+    case 'h3': return wrap('h3', 'title');
+    case 'p': return wrap('p', 'body');
+    case 'span': return wrap('span', '');
+    case 'card': return wrap('section', 'card');
+    case 'button': {
+      var b = document.createElement('button');
+      b.className = 'btn';
+      if (__binding(el, 'disabled', scope)) b.disabled = true;
+      kids.forEach(function (k) { b.appendChild(k); });
+      __attachEvents(b, el, scope);
+      return [b];
+    }
+    case 'list': return wrap('div', 'list');
+    case 'row': {
+      var row = document.createElement('div');
+      row.className = 'row';
+      if (el.booleanAttrs.indexOf('avatar') >= 0) {
+        var avl = document.createElement('span');
+        avl.className = 'avatar-lg';
+        avl.textContent = (title ? String(title) : '•').charAt(0);
+        row.appendChild(avl);
+      }
+      var main = document.createElement('span');
+      main.className = 'row-main';
+      var rt = document.createElement('span');
+      rt.className = 'row-title';
+      rt.textContent = title ? String(title) : '';
+      main.appendChild(rt);
+      var sub = __attr(el, 'subtitle', scope);
+      if (sub) {
+        var rs = document.createElement('span');
+        rs.className = 'row-sub';
+        rs.textContent = String(sub);
+        main.appendChild(rs);
+      }
+      var det = __attr(el, 'detail', scope);
+      if (det) {
+        var rd = document.createElement('span');
+        rd.className = 'row-detail';
+        rd.textContent = String(det);
+        main.appendChild(rd);
+      }
+      kids.forEach(function (k) { main.appendChild(k); });
+      row.appendChild(main);
+      var tm = __attr(el, 'time', scope);
+      if (tm) {
+        var rtEl = document.createElement('span');
+        rtEl.className = 'row-time';
+        rtEl.textContent = String(tm);
+        row.appendChild(rtEl);
+      }
+      __attachEvents(row, el, scope);
+      return [row];
+    }
+    case 'fab': {
+      var f = wrap('div', 'fab')[0];
+      if (!el.children.length) {
+        var lbl = __attr(el, 'label', scope);
+        f.textContent = lbl ? String(lbl) : 'Compose';
+      }
+      __attachEvents(f, el, scope);
+      return [f];
+    }
+    case 'header': return wrap('header', '');
+    case 'section': return wrap('section', '');
+    default: return wrap('div', '');
+  }
+}
+function __render() {
+  var app = document.getElementById('app');
+  app.innerHTML = '';
+  __buildNodes(TEMPLATE.children, __scope()).forEach(function (n) { app.appendChild(n); });
+}
+__render();
+
+</script>
+</body>
+</html>

@@ -11,6 +11,20 @@ export interface ComponentField {
   isOutput: boolean;
 }
 
+export interface MethodParam {
+  /** Bare parameter name, e.g. `step` or `$event`. */
+  name: string;
+  /** Full source text, e.g. `step: number = 1` — preserved in generated .tsx. */
+  text: string;
+}
+
+export interface ComponentMethod {
+  name: string;
+  params: MethodParam[];
+  /** Source text of the method body block (including braces), if it has one. */
+  body?: string;
+}
+
 export interface ComponentInfo {
   className: string;
   selector?: string;
@@ -21,6 +35,8 @@ export interface ComponentInfo {
   styles?: string;
   fields: ComponentField[];
   methods: string[];
+  /** Method signatures + body source, for method translation (Stage 2). */
+  methodDetails: ComponentMethod[];
 }
 
 export interface ParseComponentResult {
@@ -77,6 +93,7 @@ export function parseComponent(tsSource: string, fileName = 'component.ts'): Par
           styleUrls: [],
           fields: [],
           methods: [],
+          methodDetails: [],
         };
         const arg = decoratorArgs(compDec)[0];
         if (arg && ts.isObjectLiteralExpression(arg)) {
@@ -101,6 +118,14 @@ export function parseComponent(tsSource: string, fileName = 'component.ts'): Par
             });
           } else if (ts.isMethodDeclaration(member) && member.name) {
             info.methods.push(member.name.getText(sf));
+            info.methodDetails.push({
+              name: member.name.getText(sf),
+              params: member.parameters.map((p) => ({
+                name: p.name.getText(sf),
+                text: p.getText(sf),
+              })),
+              body: member.body ? member.body.getText(sf) : undefined,
+            });
           }
         }
         found = info;

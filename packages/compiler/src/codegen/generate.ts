@@ -2,7 +2,10 @@ import { ComponentInfo } from '../class/parseComponent';
 import { Diagnostic, warning } from '../diagnostics';
 import { ParsedCss } from '../style/css';
 import { ElementNode, TemplateNode, TemplateRoot } from '../template/ast';
-import { exprToCode } from '../template/expr';
+import { exprToCode, parseExpression } from '../template/expr';
+import { isLiteralSource } from '../template/literal';
+import { parseNgFor, parseNgIf } from '../template/structural';
+import { analyzeMutatedFields, setterName, translateMethods } from './methods';
 
 export interface GenerateResult {
   code: string;
@@ -33,18 +36,12 @@ const TAG_MAP: Record<string, TagMapping> = {
   list: { component: 'RgList', fromUi: true },
   row: { component: 'RgRow', fromUi: true },
   fab: { component: 'RgFab', fromUi: true },
+  input: { component: 'TextInput', fromUi: false },
 };
 
 /** True when an initializer source text is a plain literal we may hoist. */
 export function isLiteralInitializer(init: string): boolean {
-  const t = init.trim();
-  return (
-    /^('([^'\\]|\\.)*'|"([^"\\]|\\.)*"|`[^`]*`)$/.test(t) ||
-    /^-?\d+(\.\d+)?$/.test(t) ||
-    /^(true|false|null)$/.test(t) ||
-    t.startsWith('[') ||
-    t.startsWith('{')
-  );
+  return isLiteralSource(init);
 }
 
 /** StyleSheet keys must be valid JS identifiers: `card-note` -> `cardNote`. */
@@ -56,11 +53,32 @@ export function componentFunctionName(className: string): string {
   return className.endsWith('Component') ? className.slice(0, -'Component'.length) : className;
 }
 
+const EVENT_PROPS: Record<string, string> = {
+  click: 'onPress',
+  change: 'onChange',
+  submit: 'onSubmit',
+};
+
+/** Map a template (event) to its React Native prop name. */
+export function eventPropName(eventName: string, tag: string): { prop: string; known: boolean } {
+  if (eventName === 'input') {
+    return tag.toLowerCase() === 'input'
+      ? { prop: 'onChangeText', known: true }
+      : { prop: 'onInput', known: false };
+  }
+  const known = EVENT_PROPS[eventName];
+  if (known) return { prop: known, known: true };
+  return { prop: 'on' + eventName.charAt(0).toUpperCase() + eventName.slice(1), known: false };
+}
+
 /**
  * Generate a React Native .tsx function component from a parsed component,
- * its template AST and its parsed styles. Events and structural directives
- * are parsed but their codegen is deferred (Stage 2): they emit a TODO
- * comment plus a warning instead of broken code.
+ * its template AST and its parsed styles.
+ *
+ * Stage 2 (M3/M4): fields assigned inside methods become useState state;
+ * methods are translated to const arrow functions; (event) bindings become
+ * onPress-style props; *ngIf wraps its element in `{cond && (...)}` and
+ * *ngFor in `{items.map((item, i) => (...))}`.
  */
 export function generateComponent(
   component: ComponentInfo,
@@ -71,6 +89,21 @@ export function generateComponent(
   const usedRn = new Set<string>();
   const usedUi = new Set<string>();
   const usesPipeHelper = { value: false };
+
+  // --- State analysis (M3) -------------------------------------------------
+  const mutated = analyzeMutatedFields(component);
+  const stateFields = new Set<string>();
+  for (const field of component.fields) {
+    if (field.isInput || field.isOutput) continue;
+    if (field.initializer && isLiteralInitializer(field.initializer) && mutated.has(field.name)) {
+      stateFields.add(field.name);
+    } else if (mutated.has(field.name) && field.initializer && !isLiteralInitializer(field.initializer)) {
+      diagnostics.push(warning(
+        'GEN_FIELD_STATE',
+        `Field '${field.name}' is assigned in a method but has a non-literal initializer; it cannot be hoisted to useState yet`,
+      ));
+    }
+  }
 
   const styleKeys = new Set(Object.keys(css.styles));
 
@@ -84,17 +117,22 @@ export function generateComponent(
     return refs.length === 1 ? refs[0] : `[${refs.join(', ')}]`;
   };
 
+  const codeExpr = (source: string): string => {
+    const code = exprToCode(source);
+    if (code.includes("pipe('")) usesPipeHelper.value = true;
+    return code;
+  };
+
   const renderText = (node: TemplateNode & { type: 'text' }, indent: string): string => {
     const parts = node.parts.map((p) => {
       if (p.type === 'static') return p.value;
-      const code = exprToCode(p.expression);
-      if (code.includes("pipe('")) usesPipeHelper.value = true;
-      return `{${code}}`;
+      return `{${codeExpr(p.expression)}}`;
     });
     return indent + parts.join('');
   };
 
-  const renderElement = (el: ElementNode, depth: number): string[] => {
+  /** Render one element without its structural directive (handled by renderElement). */
+  const renderCore = (el: ElementNode, depth: number, extraProps: string[]): string[] => {
     const indent = '  '.repeat(depth + 2);
     const lines: string[] = [];
     const mapping = TAG_MAP[el.tag.toLowerCase()];
@@ -115,24 +153,7 @@ export function generateComponent(
       usedRn.add('View');
     }
 
-    if (el.structural) {
-      diagnostics.push(warning(
-        'GEN_STRUCTURAL_TODO',
-        `*${el.structural.name}="${el.structural.expression}" is parsed but code generation arrives in Stage 2 (M4) — element emitted unconditionally for now.`,
-        el.pos.line, el.pos.column,
-      ));
-      lines.push(`${indent}{/* TODO(M4): *${el.structural.name}="${el.structural.expression}" */}`);
-    }
-    for (const ev of el.eventBindings) {
-      diagnostics.push(warning(
-        'GEN_EVENT_TODO',
-        `(${ev.name})="${ev.expression}" is parsed but event code generation arrives in Stage 2 (M3) — handler not emitted yet.`,
-        el.pos.line, el.pos.column,
-      ));
-      lines.push(`${indent}{/* TODO(M3): (${ev.name})="${ev.expression}" */}`);
-    }
-
-    const props: string[] = [];
+    const props: string[] = [...extraProps];
     if (mapping?.variant) props.push(`variant="${mapping.variant}"`);
     for (const [name, value] of Object.entries(el.attrs)) {
       if (name === 'class') continue;
@@ -140,9 +161,18 @@ export function generateComponent(
     }
     for (const b of el.booleanAttrs) props.push(b);
     for (const p of el.propBindings) {
-      const code = exprToCode(p.expression);
-      if (code.includes("pipe('")) usesPipeHelper.value = true;
-      props.push(`${p.name}={${code}}`);
+      props.push(`${p.name}={${codeExpr(p.expression)}}`);
+    }
+    // Event bindings (M3): (click) -> onPress={() => handler()} etc.
+    for (const ev of el.eventBindings) {
+      const { prop, known } = eventPropName(ev.name, el.tag);
+      if (!known) {
+        lines.push(`${indent}{/* (${ev.name}) has no standard RN prop — mapped to ${prop} */}`);
+      }
+      const src = ev.expression.trim();
+      let isBareRef = false;
+      try { isBareRef = parseExpression(src).type === 'identifier'; } catch { /* raw fallback below */ }
+      props.push(isBareRef ? `${prop}={${src}}` : `${prop}={() => ${codeExpr(src)}}`);
     }
     const style = styleFor(el);
     if (style) props.push(`style={${style}}`);
@@ -172,6 +202,65 @@ export function generateComponent(
     return lines;
   };
 
+  /** Render an element, applying *ngIf / *ngFor wrapping when present (M4). */
+  const renderElement = (el: ElementNode, depth: number): string[] => {
+    const indent = '  '.repeat(depth + 2);
+    if (!el.structural) return renderCore(el, depth, []);
+    const stripped: ElementNode = { ...el, structural: undefined };
+
+    if (el.structural.name === 'ngIf') {
+      const parts = parseNgIf(el.structural.expression);
+      if (parts.elseRef || parts.thenRef) {
+        diagnostics.push(warning(
+          'GEN_NGIF_ELSE_TODO',
+          `*ngIf with 'else'/'then' microsyntax is not generated yet — element emitted unconditionally`,
+          el.pos.line, el.pos.column,
+        ));
+        return [
+          `${indent}{/* TODO(M5+): *ngIf else/then — "${el.structural.expression}" */}`,
+          ...renderCore(stripped, depth, []),
+        ];
+      }
+      const inner = renderCore(stripped, depth + 1, []);
+      return [
+        `${indent}{${codeExpr(parts.condition)} && (`,
+        ...inner,
+        `${indent})}`,
+      ];
+    }
+
+    if (el.structural.name === 'ngFor') {
+      const { parts, diagnostics: forDiags } = parseNgFor(el.structural.expression, el.pos.line, el.pos.column);
+      diagnostics.push(...forDiags);
+      if (!parts) {
+        return [
+          `${indent}{/* TODO: unparseable *ngFor="${el.structural.expression}" — element emitted once */}`,
+          ...renderCore(stripped, depth, []),
+        ];
+      }
+      const indexName = parts.indexVar ?? 'index';
+      const keyExpr = parts.trackBy
+        ? `${parts.trackBy}(${parts.itemVar})`
+        : `${parts.itemVar}?.id ?? ${indexName}`;
+      const inner = renderCore(stripped, depth + 1, [`key={${keyExpr}}`]);
+      return [
+        `${indent}{${codeExpr(parts.source)}.map((${parts.itemVar}, ${indexName}) => (`,
+        ...inner,
+        `${indent}))}`,
+      ];
+    }
+
+    diagnostics.push(warning(
+      'GEN_STRUCTURAL_TODO',
+      `*${el.structural.name} is not supported yet — element emitted unconditionally`,
+      el.pos.line, el.pos.column,
+    ));
+    return [
+      `${indent}{/* TODO: *${el.structural.name}="${el.structural.expression}" */}`,
+      ...renderCore(stripped, depth, []),
+    ];
+  };
+
   const bodyLines: string[] = [];
   for (const node of ast.children) {
     if (node.type === 'text') {
@@ -188,18 +277,34 @@ export function generateComponent(
     ? `{ ${inputs.map((f) => f.name).join(', ')} }: { ${inputs.map((f) => `${f.name}?: any`).join('; ')} }`
     : '';
 
+  // --- Fields: state hoisting (M3) ------------------------------------------
   const fieldLines: string[] = [];
   for (const field of component.fields) {
     if (field.isInput || field.isOutput) continue;
     if (field.initializer && isLiteralInitializer(field.initializer)) {
-      fieldLines.push(`  const ${field.name} = ${field.initializer};`);
+      if (stateFields.has(field.name)) {
+        fieldLines.push(`  const [${field.name}, ${setterName(field.name)}] = useState(${field.initializer});`);
+      } else {
+        fieldLines.push(`  const ${field.name} = ${field.initializer};`);
+      }
     } else if (field.initializer) {
-      fieldLines.push(`  // TODO: field '${field.name}' has a non-literal initializer (${field.initializer}) — state hoisting arrives in Stage 2 (M3).`);
-      diagnostics.push(warning('GEN_FIELD', `Field '${field.name}' has a non-literal initializer; not hoisted in Stage 0+1`));
+      fieldLines.push(`  // TODO: field '${field.name}' has a non-literal initializer (${field.initializer}) — not hoisted; wire it up manually for now.`);
+      diagnostics.push(warning('GEN_FIELD', `Field '${field.name}' has a non-literal initializer; not hoisted`));
     }
   }
 
+  // --- Methods: translation (M3) --------------------------------------------
+  const { methods: translated, diagnostics: methodDiags } = translateMethods(component, 'react', stateFields);
+  diagnostics.push(...methodDiags);
+  const methodLines: string[] = [];
+  for (const m of translated) {
+    methodLines.push(`  const ${m.name} = (${m.paramTexts.join(', ')}) => {`);
+    for (const line of m.lines) methodLines.push(line ? `    ${line}` : line);
+    methodLines.push('  };');
+  }
+
   const importLines: string[] = [];
+  if (stateFields.size) importLines.push(`import { useState } from 'react';`);
   if (usedRn.size) {
     const rn = [...usedRn].filter((n) => n !== 'StyleSheet').sort();
     const all = usedRn.has('StyleSheet') ? [...rn, 'StyleSheet'] : rn;
@@ -223,6 +328,7 @@ export function generateComponent(
     '',
     `export default function ${fnName}(${propsDecl}) {`,
     ...fieldLines,
+    ...methodLines,
     '  return (',
     ...bodyLines,
     '  );',

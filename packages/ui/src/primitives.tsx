@@ -115,7 +115,10 @@ export function RgButton({ children, disabled, onPress, style }: any) {
   );
 }
 
-export function RgList({ data, renderItem, keyExtractor }: any) {
+export function RgList({ data, renderItem, keyExtractor, children }: any) {
+  // Generated code (Stage 2) renders rows as children — e.g. a *ngFor map —
+  // rather than via FlatList's data/renderItem. Support both shapes.
+  if (children) return <View>{children}</View>;
   return (
     <FlatList
       data={data}
@@ -125,9 +128,14 @@ export function RgList({ data, renderItem, keyExtractor }: any) {
   );
 }
 
-export function RgRow({ title, subtitle, detail, time, children }: any) {
+export function RgRow({ title, subtitle, detail, time, avatar, children }: any) {
   return (
     <View style={styles.row}>
+      {avatar ? (
+        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ color: c.onPrimary, fontSize: 16, fontWeight: '600' }}>{(title || '•').charAt(0)}</Text>
+        </View>
+      ) : null}
       <View style={{ flex: 1 }}>
         {title ? <Text style={styles.rowTitle}>{title}</Text> : null}
         {subtitle ? <Text style={styles.rowSub}>{subtitle}</Text> : null}

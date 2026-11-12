@@ -45,8 +45,8 @@ flowchart TB
 | M0 | Template AST + AST printer | ✅ Done (Stage 0+1) |
 | M1 | Static component transpiles | ✅ Done (Stage 0+1) |
 | M2 | Interpolation `{{ }}` + `[prop]` binding | ✅ Done (Stage 0+1) |
-| M3 | Events + state (counter) | ⏳ Parsed; codegen emits TODO + diagnostic (Stage 2) |
-| M4 | `*ngIf` / `*ngFor` | ⏳ Parsed; codegen emits TODO + diagnostic (Stage 2) |
+| M3 | Events + state (counter) | ✅ Done (Stage 2) |
+| M4 | `*ngIf` / `*ngFor` | ✅ Done (Stage 2) |
 | M5 | Child components, `@Input` / `@Output` | ⏳ `@Input`/`@Output` are extracted; wiring is Stage 3 |
 | M6 | Injected service + lifecycle | ⏳ Runtime `Container` exists; bridging is Stage 3 |
 | M7 | CLI, source maps, error messages, Awaken Me dogfood | 🔶 CLI exists (`build` / `ast` / `preview`); source maps + dogfood pending |
@@ -85,3 +85,42 @@ node dist/packages/cli/src/cli.js preview examples/hello/hello.component.ts --ou
 The committed `examples/hello/hello.component.tsx` and
 `examples/hello/preview.html` are the golden outputs of the two commands
 above; the golden-file test keeps them honest.
+
+## Stage 2: events, state, `*ngIf` / `*ngFor`
+
+Two more examples live beside `hello` — same CLI commands, same golden rule:
+
+- `examples/counter/` — **M3.** A field assigned inside any method becomes
+  React state (`count` → `const [count, setCount] = useState(0)`); fields
+  never assigned stay plain `const`. Methods become const arrow functions,
+  and `(click)` bindings become `onPress` props.
+- `examples/inbox/` — **M4.** A `*ngFor` row over a literal `mails` array
+  becomes a keyed `.map(...)`, and the `*ngIf` empty state becomes
+  `{cond && (...)}`.
+
+**Supported method-translation subset.** Method bodies are translated from
+the TypeScript AST: `this.field` reads, assignments (`=`, `+=`, `-=`, `*=`,
+`/=`), `this.field++` / `--`, `this.method(...)` calls, `$event` parameters,
+expression statements, `return`, `if` / `else`, blocks, and local
+`const`/`let` declarations. Anything else (loops, `try`, `switch`, …)
+produces a `METHOD_UNSUPPORTED` warning and a `TODO` comment in the
+generated code — it is never silently dropped and never emits broken
+syntax. Field initializers composed of literals (including nested arrays
+and objects) hoist to `const`/`useState`; other initializers keep the
+warning + TODO behaviour.
+
+**`else` in `*ngIf`** microsyntax is detected and reported
+(`GEN_NGIF_ELSE_TODO`) with the element emitted unconditionally; full
+else/then support is a later stage. `*ngFor` supports
+`let item of items`, `let i = index`, and `trackBy: fnName`
+(key = `fnName(item)`, otherwise `item?.id ?? i`).
+
+**Interactive previews.** `rangular preview` now emits a *working* page for
+Stage 2 components: literal fields become a JS `state` object, methods are
+translated into functions that mutate it, and a small in-page runtime
+(expression evaluator + DOM renderer over the serialized template AST)
+re-renders on every `(click)`. `*ngIf` and `*ngFor` behave in the preview
+as they will in React Native. The preview uses the compiler's own AST
+expression evaluator (`packages/compiler/src/template/evaluate.ts`, with
+built-in pipes `uppercase`, `lowercase`, `titlecase`, `json`) — no
+`eval`/`Function` on source text anywhere.

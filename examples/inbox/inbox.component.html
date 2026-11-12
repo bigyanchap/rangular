@@ -1,0 +1,8 @@
+<screen>
+  <appbar title="Mail" search="Search in mail"></appbar>
+  <h1>{{ title }}</h1>
+  <list>
+    <row avatar *ngFor="let m of mails; let i = index" [title]="m.from" [subtitle]="m.subject" [detail]="m.snippet" [time]="m.time"></row>
+  </list>
+  <p *ngIf="mails.length === 0">No mail. Enjoy the quiet.</p>
+</screen>
