@@ -69,13 +69,13 @@ the repo's actual behaviour today (Stage 3), not aspirations.
 | Template-driven forms (`[(ngModel)]`, validators as attributes, `#name="ngModel"` refs) | Wired (Stage 8) on `<input>` only: `[(ngModel)]` writes back through the field's state setter, the explicit `[ngModel]` plus `(ngModelChange)` pair works, `required` / `minlength` / `maxlength` / `email` / `pattern` attributes validate with Angular's error shapes, and refs expose `valid` / `invalid` / `touched` / `errors` to template expressions. See the Forms section below for the exact limits |
 | Reactive forms (`FormGroup`, `FormControl`, `Validators` from `@angular/forms`) | Wired (Stage 8): the classes are runtime classes, a group field is a stable ref-held instance, `[formGroup]` plus `formControlName` binds controls, and `profileForm.get('email')` evaluates in template expressions. See the Forms section below |
 | `<form (submit)="save()">` | Wired (Stage 8) as a lightweight form element: a `<button type="submit">` inside calls the handler after marking every ngModel input touched (and `markAllAsTouched()` on a reactive group). There is no NgForm object |
+| Routing (`Routes` array, `<router-outlet>`, `routerLink`, `ActivatedRoute`, `Router`) | Wired (Stage 9) in the modern standalone form: the compiler mirrors the `export const routes: Routes = [...]` array that `provideRouter(routes)` consumes, not the historical `RouterModule.forRoot` module form. The root component hosts one `<router-outlet>`; route components are ordinary components imported by the routes file; `routerLink` (string or array form) on a `<button>` or `<row>` compiles to a navigation press; `ActivatedRoute.snapshot.params` and its `paramMap` Observable-lite, and `Router.navigate` / `navigateByUrl`, are runtime classes. See the Routing section below for the exact limits |
 
 **Not supported yet**: do not use these in Rangular source today:
 
 | Angular feature | Status today | Planned |
 |---|---|---|
 | Two-way binding `[(x)]` beyond ngModel | Only `[(ngModel)]` on `<input>` is a real two-way binding (Stage 8). Any other `[(x)]` is *parsed* but degrades to a one-way `[x]` prop binding with no write-back; Stage 6 controls use the explicit `[value]` plus `(change)` pattern instead | Not planned beyond ngModel |
-| Routing (`@angular/router`, `<router-outlet>`) | Not supported, no router exists; a dashed/unknown tag is passed through or warns. The Stage 6 `switcher` is view state inside one screen, never a router | Stage 9 (map to native navigation) |
 | NgModules (`@NgModule`, `providers` arrays, module-scoped DI) | Not supported, resolution is import-based instead: `@Component` classes are entry points, and `@Injectable({ providedIn: 'root' })` classes are the injectable services (Stage 3). An `@NgModule` file errors with `CLS_NO_COMPONENT`; an `@Injectable` without `providedIn: 'root'` is not registered, so injecting it is a `DI_UNKNOWN_TOKEN` error | Not planned as modules |
 | Component constructor *bodies* | Not translated, only constructor parameter properties are read (they are the DI declarations). Do one-time setup in `ngOnInit` instead | Not planned |
 | Animations (`@angular/animations`, `:enter`/`:leave`) | Not supported anywhere in the compiler | Post-v1 |
@@ -106,8 +106,9 @@ The expression language inside `{{ }}`, `[prop]="..."`, `*ngIf="..."` and
 method bodies is a defined subset: do not assume all of TypeScript:
 
 - Identifiers and member access: `title`, `m.from`, `mails.length`
-- Literals: strings (`'Follow'`), numbers, `true` / `false`, arrays/objects in
-  field initializers
+- Literals: strings (`'Follow'`), numbers, `true` / `false`, objects in
+  field initializers, and array literals in any expression (Stage 9:
+  `['/mail', m.id]` is what the `[routerLink]` array form is made of)
 - Arithmetic `+ - * / %`, comparison `== === != !== < > <= >=`, logic `&& ||`
 - Unary `!` and `-`, including on the right-hand side of an assignment:
   `this.following = !this.following` is supported and is the toggle pattern
@@ -172,7 +173,8 @@ applications already use. The source stays in Angular style:
   disabled control keeps its value and emits nothing.
 - **Switcher means view state, not routing.** It changes a field on
   the same screen, and panels below it switch with `*ngIf` on that
-  field. Routing is Stage 9.
+  field. Real navigation between screens is routing (Stage 9, see the
+  Routing section).
 - **Switch motion:** the knob only ever moves toward its target. The
   React Native primitive animates it with a plain linear timing move,
   never a spring, so there is no overshoot and no backward bounce.
@@ -309,6 +311,109 @@ marks all controls touched, then calls the handler; handlers read
 
 See `examples/signup-form/` (template-driven) and
 `examples/profile-form/` (reactive) and their recipe cards.
+
+## Routing (Stage 9)
+
+Routing mirrors the modern standalone Angular form: a routes file
+exporting a `Routes` array, the same array `provideRouter(routes)`
+consumes in a current Angular app. The historical
+`RouterModule.forRoot(routes)` module form is not used, because
+Rangular has no NgModules; everything else about the source (the
+outlet, the links, the injected services) is written exactly as in
+Angular.
+
+- **One discovery rule.** The routes file is `app.routes.ts` next to
+  the root component, or the file named by the CLI flag
+  `rangular build --routes <file>` (also on preview, watch and
+  doctor). It is read whenever it exists. The supported shape is one
+  exported variable whose name ends in `routes` (or whose type
+  mentions `Routes`) initialised with an array literal of plain
+  object entries:
+
+  ```ts
+  import { Routes } from '@angular/router';
+  import { InboxComponent } from './inbox.component';
+  import { MailDetailComponent } from './mail-detail.component';
+  import { NotFoundComponent } from './not-found.component';
+
+  export const routes: Routes = [
+    { path: '', redirectTo: 'inbox', pathMatch: 'full' },
+    { path: 'inbox', component: InboxComponent },
+    { path: 'mail/:id', component: MailDetailComponent },
+    { path: '**', component: NotFoundComponent },
+  ];
+  ```
+
+- **Entries.** A `path` (string, required), a `component` (a plain
+  class reference to an `@Component` the routes file imports), or a
+  `redirectTo` (a plain path, full match only; `pathMatch` is read
+  and only `'full'` semantics exist). `data` and `title` keys are
+  accepted and ignored. Matching tries entries in declaration order:
+  a `:name` segment captures exactly one segment as a string, `**`
+  matches anything including nothing, segment counts must otherwise
+  be equal, and redirects restart matching at the target (chains
+  work, loops fail closed as no-match).
+- **The outlet.** The root component's template holds one
+  `<router-outlet></router-outlet>`, compiled to the `RgOutlet`
+  primitive. The generated root holds a module-level `RgNavigator`
+  (a stack of matched entries) in React state and renders the
+  component whose pattern matches the current entry, keyed by the
+  concrete path. Route components compile exactly like child
+  components and receive no props from the shell.
+- **Links.** `routerLink="/inbox"` and
+  `[routerLink]="['/mail', m.id]"` work on any tappable block
+  (`<button>`, `<row>`, `<fab>`); they compile to an `onPress` that
+  calls the generated `Router`. The array form goes through
+  `Router.navigate` (commands joined with `/`, numbers stringified),
+  the string form through `navigateByUrl`. Combined with a `(click)`
+  handler, the handler runs first, then the navigation. On a child
+  component tag a routerLink warns `GEN_ROUTE_UNSUPPORTED`; navigate
+  from inside the component instead.
+- **Parameters.** Inject `ActivatedRoute`
+  (`constructor(private route: ActivatedRoute)`): the outlet creates
+  one instance per mount from the current entry.
+  `route.snapshot.params` is a plain object of strings, and
+  `route.paramMap` is an Observable-lite that emits the current
+  params on subscribe and again on each navigation while subscribed.
+  **Simplification, stated plainly:** in Angular, navigating from
+  `/mail/2` to `/mail/3` reuses the component and pushes the new
+  value through `paramMap`; in Rangular v1 the outlet remounts the
+  component (the key is the concrete path), so `ngOnInit` runs again
+  with the new snapshot. Code that reads the snapshot in `ngOnInit`
+  behaves identically in both.
+- **Navigation from code.** Inject `Router`:
+  `this.router.navigate(['/mail', 3])` and
+  `this.router.navigateByUrl('/mail/3')` write to the one navigator
+  and return whether the path matched. Commands resolve from the
+  root in v1; relative-to-current-route navigation is not supported.
+  `RgNavigator.back()` pops the stack and returns false at the root.
+  Wiring the phone's hardware back button to it belongs to the app
+  shell and lands with the Expo scaffold in Stage 12.
+- **Preview.** The preview runs the same flow: it starts at the
+  empty-path match (redirects applied), rows and buttons with links
+  navigate, the outlet swaps components, and at stack depth 2 or
+  more a dashed "Preview navigation" bar with a Back button appears
+  above the routed content. That bar is preview chrome only, a
+  stand-in for the phone's back affordance; it is not part of the
+  app UI and never appears in generated code. The preview's matcher
+  is a hand mirror of the runtime matcher, parity-tested over a
+  table of paths.
+- **Diagnostics.** No routes file while routing is used:
+  `GEN_ROUTES_MISSING` (error). A component name that is not a
+  resolved `@Component` (including the root component itself):
+  `GEN_ROUTE_COMPONENT` (error). Two entries with the same path:
+  `GEN_ROUTE_DUPLICATE` (warning, the first entry wins). An entry
+  using `children`, `canActivate`, `canActivateChild`,
+  `canDeactivate`, `canMatch`, `resolve`, `loadComponent` or
+  `loadChildren`, an unknown key, a malformed entry, an outlet
+  inside a child component, or a redirect to an undeclared path:
+  `GEN_ROUTE_UNSUPPORTED`, naming the feature.
+- **Not in this version.** Child routes and nested outlets, guards,
+  resolvers, lazy loading, `routerLinkActive`, and relative
+  navigation. The `switcher` block remains view state inside one
+  screen; it is not a tab bar and not routing.
+
+See `examples/mini-mail/` and its recipe card.
 
 ## Child components (Stage 3, M5)
 

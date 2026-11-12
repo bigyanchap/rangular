@@ -16,6 +16,7 @@ export type Expr =
   | { type: 'unary'; op: string; argument: Expr }
   | { type: 'binary'; op: string; left: Expr; right: Expr }
   | { type: 'conditional'; test: Expr; consequent: Expr; alternate: Expr }
+  | { type: 'array'; elements: Expr[] }
   | { type: 'pipe'; input: Expr; name: string; args: Expr[] };
 
 interface Token {
@@ -185,6 +186,23 @@ class Parser {
       this.expectPunct(')');
       return inner;
     }
+    if (t.kind === 'punct' && t.value === '[') {
+      // Array literal (Stage 9): the [routerLink]="['/mail', m.id]" form.
+      // A '[' in postfix position is an index access instead; parsePostfix
+      // handles that, this branch only runs where a primary is expected.
+      // A trailing comma is tolerated, as in TypeScript.
+      const elements: Expr[] = [];
+      if (!this.atPunct(']')) {
+        elements.push(this.parsePipe());
+        while (this.atPunct(',')) {
+          this.next();
+          if (this.atPunct(']')) break;
+          elements.push(this.parsePipe());
+        }
+      }
+      this.expectPunct(']');
+      return { type: 'array', elements };
+    }
     throw new Error(`Unexpected token '${t.value || 'end of expression'}'`);
   }
 
@@ -212,6 +230,8 @@ export function exprToString(expr: Expr): string {
     case 'binary': return `(${exprToString(expr.left)} ${expr.op} ${exprToString(expr.right)})`;
     case 'conditional':
       return `(${exprToString(expr.test)} ? ${exprToString(expr.consequent)} : ${exprToString(expr.alternate)})`;
+    case 'array':
+      return `[${expr.elements.map(exprToString).join(', ')}]`;
     case 'pipe': {
       const args = expr.args.length ? `:${expr.args.map(exprToString).join(':')}` : '';
       return `(${exprToString(expr.input)} | ${expr.name}${args})`;
@@ -272,6 +292,7 @@ function withRefRoots(expr: Expr, refBases: Map<string, string>): Expr {
       case 'binary': return { ...e, left: visit(e.left), right: visit(e.right) };
       case 'conditional':
         return { ...e, test: visit(e.test), consequent: visit(e.consequent), alternate: visit(e.alternate) };
+      case 'array': return { ...e, elements: e.elements.map(visit) };
       case 'pipe': return { ...e, input: visit(e.input), args: e.args.map(visit) };
       default: return e;
     }
@@ -311,6 +332,7 @@ function codeOf(expr: Expr, renames?: Map<string, string>): string {
     case 'binary': return `(${codeOf(expr.left, renames)} ${expr.op} ${codeOf(expr.right, renames)})`;
     case 'conditional':
       return `(${codeOf(expr.test, renames)} ? ${codeOf(expr.consequent, renames)} : ${codeOf(expr.alternate, renames)})`;
+    case 'array': return `[${expr.elements.map((el) => codeOf(el, renames)).join(', ')}]`;
     case 'identifier': return renames?.get(expr.name) ?? expr.name;
     case 'member': return `${codeOf(expr.object, renames)}.${expr.property}`;
     case 'index': return `${codeOf(expr.object, renames)}[${codeOf(expr.index, renames)}]`;

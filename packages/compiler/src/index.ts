@@ -7,6 +7,7 @@ export * from './template/evaluate';
 export * from './template/literal';
 export * from './template/structural';
 export * from './class/parseComponent';
+export * from './class/parseRoutes';
 export * from './style/css';
 export * from './codegen/generate';
 export * from './codegen/methods';

@@ -1,5 +1,6 @@
 import { ICON_NAMES, ICON_PATHS, ICON_SIZES, DEFAULT_ICON_SIZE } from '../../../ui/src/icons';
 import { ComponentInfo, ServiceInfo } from '../class/parseComponent';
+import { ResolvedRoute } from '../class/parseRoutes';
 import { analyzeFormInitializer, FormFieldInfo, isFormInitializer } from '../class/formInit';
 import { Diagnostic, error, warning } from '../diagnostics';
 import { nearestOnScale, ParsedCss } from '../style/css';
@@ -39,6 +40,13 @@ export interface GenerateContext {
   children?: ChildUnitInput[];
   /** Every @Injectable class resolved through imports (Stage 3, M6). */
   services?: ServiceInfo[];
+  /**
+   * The resolved route table (Stage 9), present when a routes file was
+   * resolved for this compilation. When routing is also USED (an outlet,
+   * a routerLink, or a Router/ActivatedRoute injection), codegen emits
+   * the module-level navigator and router and wires the outlet.
+   */
+  routes?: ResolvedRoute[];
   /**
    * Source map request (Stage 5): when present, codegen records block
    * level segments (component function starts and template element
@@ -89,6 +97,7 @@ export const TAG_MAP: Record<string, TagMapping> = {
   radio: { component: 'RgRadio', fromUi: true },
   input: { component: 'RgInput', fromUi: true },
   form: { component: 'View', fromUi: false },
+  'router-outlet': { component: 'RgOutlet', fromUi: true },
 };
 
 /** True when an initializer source text is a plain literal we may hoist. */
@@ -225,8 +234,17 @@ class Generator {
   private usedRuntime = new Set<string>();
   private reactImports = new Set<string>();
   private childBySelector = new Map<string, ComponentInfo>();
+  private childByClassName = new Map<string, ComponentInfo>();
   private rootServices = new Map<string, ServiceInfo>();
   private allServices: ServiceInfo[] = [];
+  /** The resolved route table (Stage 9), when a routes file was resolved. */
+  private routes?: ResolvedRoute[];
+  /**
+   * True when a route table exists AND routing is used somewhere in the
+   * compilation (Stage 9): only then are the module-level navigator and
+   * router emitted and the outlet and links wired to them.
+   */
+  private routingActive = false;
   private styles: StyleEntry[] = [];
   /** Source map bookkeeping (Stage 5): element records keyed by marker id. */
   private smConfig?: GenerateContext['sourceMap'];
@@ -235,8 +253,10 @@ class Generator {
 
   constructor(context: GenerateContext) {
     this.smConfig = context.sourceMap;
+    this.routes = context.routes;
     for (const child of context.children ?? []) {
       if (child.info.selector) this.childBySelector.set(child.info.selector, child.info);
+      this.childByClassName.set(child.info.className, child.info);
     }
     this.allServices = context.services ?? [];
     for (const svc of this.allServices) {
@@ -251,6 +271,45 @@ class Generator {
       serviceBlocks.push(this.generateService(svc));
     }
     const registrations = this.registrationLines(entry, children);
+
+    // --- Routing activation (Stage 9) --------------------------------------
+    // The navigator and router exist in the output only when a route
+    // table was resolved AND routing is used: an outlet or routerLink
+    // in any template of the compilation, or a Router / ActivatedRoute
+    // injection in any unit. The entry template's outlet also gives the
+    // entry component its navigation state (see generateUnit).
+    const templateUsage = (nodes: TemplateNode[]): { outlet: boolean; used: boolean } => {
+      const usage = { outlet: false, used: false };
+      const walk = (list: TemplateNode[]): void => {
+        for (const n of list) {
+          if (n.type !== 'element') continue;
+          if (n.tag.toLowerCase() === 'router-outlet') { usage.outlet = true; usage.used = true; }
+          if (n.attrs['routerLink'] !== undefined
+            || n.propBindings.some((b) => b.name === 'routerLink')) usage.used = true;
+          walk(n.children);
+        }
+      };
+      walk(nodes);
+      return usage;
+    };
+    const entryUsage = templateUsage(ast.children);
+    const childUsage = children.map((c) => templateUsage(c.ast.children));
+    const injectsRouter = [entry, ...children.map((c) => c.info)]
+      .some((info) => (info.constructorDeps ?? []).some(
+        (d) => d.typeName === 'Router' || d.typeName === 'ActivatedRoute',
+      ));
+    this.routingActive = this.routes !== undefined
+      && (entryUsage.used || childUsage.some((u) => u.used) || injectsRouter);
+    const navLines: string[] = [];
+    if (this.routingActive) {
+      this.usedRuntime.add('RgNavigator');
+      this.usedRuntime.add('Router');
+      const defs = (this.routes ?? []).map((r) => (r.redirectTo !== undefined
+        ? { path: r.path, redirectTo: r.redirectTo }
+        : { path: r.path }));
+      navLines.push(`const __navigator = new RgNavigator(${JSON.stringify(defs)});`);
+      navLines.push('const __router = new Router(__navigator);');
+    }
 
     const childBlocks: string[][] = [];
     children.forEach((child, i) => {
@@ -280,6 +339,7 @@ class Generator {
       entry: true,
       stylePrefix: '',
       order: -1,
+      hasOutlet: entryUsage.outlet,
       tsFile: this.smConfig?.entryTsFile,
       templateFile: this.smConfig?.entryTemplateFile,
     });
@@ -314,6 +374,7 @@ class Generator {
     ];
     for (const block of serviceBlocks) lines.push(...block, '');
     if (registrations.length) lines.push(...registrations, '');
+    if (navLines.length) lines.push(...navLines, '');
     for (const block of childBlocks) lines.push(...block, '');
     lines.push(...entryBlock, ...styleBlock, '');
     if (this.smConfig) this.finishSourceMap(lines);
@@ -397,11 +458,12 @@ class Generator {
   private validateDeps(owner: string, deps: { propertyName: string; typeName: string }[]): void {
     for (const dep of deps) {
       if (dep.typeName === HTTP_CLIENT || this.rootServices.has(dep.typeName)) continue;
+      if (this.routingActive && (dep.typeName === 'Router' || dep.typeName === 'ActivatedRoute')) continue;
       this.diagnostics.push(error(
         'DI_UNKNOWN_TOKEN',
-        `${owner}: no provider for '${dep.typeName}' (injected as '${dep.propertyName}'), it is not an @Injectable({ providedIn: 'root' }) service in this compilation and not HttpClient`,
+        `${owner}: no provider for '${dep.typeName}' (injected as '${dep.propertyName}'), it is not an @Injectable({ providedIn: 'root' }) service in this compilation and not a built-in token`,
         undefined, undefined,
-        `Make '${dep.typeName}' an @Injectable({ providedIn: 'root' }) class and import it from the component file (imports are followed transitively), or inject HttpClient`,
+        `Make '${dep.typeName}' an @Injectable({ providedIn: 'root' }) class and import it from the component file (imports are followed transitively), or inject a built-in: HttpClient, or Router / ActivatedRoute in a routed app`,
       ));
     }
   }
@@ -513,7 +575,7 @@ class Generator {
     component: ComponentInfo,
     ast: TemplateRoot,
     css: ParsedCss,
-    opts: { entry: boolean; stylePrefix: string; order: number; tsFile?: string; templateFile?: string },
+    opts: { entry: boolean; stylePrefix: string; order: number; hasOutlet?: boolean; tsFile?: string; templateFile?: string },
   ): string[] {
     const diagnostics = this.diagnostics;
     diagnostics.push(...css.diagnostics);
@@ -995,8 +1057,61 @@ class Generator {
       return lines;
     };
 
+    /**
+     * Render a <router-outlet> (Stage 9). Only the entry component may
+     * host one: nested outlets belong to child routes, which are not in
+     * this version (GEN_ROUTE_UNSUPPORTED). The outlet renders the
+     * route component whose pattern equals the navigator's current
+     * routePath; each route component is keyed by the concrete path, so
+     * navigating to the same component with new parameters remounts it
+     * (the stated v1 simplification) and its ActivatedRoute, created
+     * here per render, always carries the current entry's params.
+     * Redirect-only routes render nothing. With no route table in the
+     * compilation the outlet renders empty; compile.ts has already
+     * reported GEN_ROUTES_MISSING for the entry template, and a child
+     * template's outlet earns that warning here.
+     */
+    const renderOutlet = (el: ElementNode, depth: number): string[] => {
+      const indent = '  '.repeat(depth + 2);
+      this.usedUi.add('RgOutlet');
+      if (!opts.entry) {
+        if (this.routingActive) {
+          diagnostics.push(warning(
+            'GEN_ROUTE_UNSUPPORTED',
+            '<router-outlet> appears in a child component; nested outlets belong to child routes, which Rangular routing does not support yet',
+            el.pos.line, el.pos.column,
+            'Keep the single <router-outlet> in the root component; child routes are on the roadmap in docs/ROADMAP.md',
+          ));
+        } else {
+          diagnostics.push(warning(
+            'GEN_ROUTES_MISSING',
+            '<router-outlet> appears in a child component template, but no routes file was resolved for this compilation',
+            el.pos.line, el.pos.column,
+            "Create app.routes.ts next to the root component: export const routes: Routes = [{ path: 'home', component: HomeComponent }];",
+          ));
+        }
+        return [`${indent}<RgOutlet />`];
+      }
+      if (!this.routingActive) return [`${indent}<RgOutlet />`];
+      const lines: string[] = [`${indent}<RgOutlet>`];
+      for (const route of this.routes ?? []) {
+        if (!route.componentName) continue;
+        const info = this.childByClassName.get(route.componentName);
+        if (!info) continue;
+        const fn = componentFunctionName(route.componentName);
+        const needsRoute = (info.constructorDeps ?? []).some((d) => d.typeName === 'ActivatedRoute');
+        if (needsRoute) this.usedRuntime.add('ActivatedRoute');
+        lines.push(`${indent}  {__route.routePath === ${JSON.stringify(route.path)} && (`);
+        lines.push(`${indent}    <${fn} key={__route.path}${needsRoute ? ' __rgRoute={new ActivatedRoute(__route.params, __navigator)}' : ''} />`);
+        lines.push(`${indent}  )}`);
+      }
+      lines.push(`${indent}</RgOutlet>`);
+      return lines;
+    };
+
     /** Render one element without its structural directive (handled by renderElement). */
     const renderCore = (el: ElementNode, depth: number, extraProps: string[], formCtx?: FormInfo): string[] => {
+      if (el.tag.toLowerCase() === 'router-outlet') return renderOutlet(el, depth);
       if (el.tag.toLowerCase() === 'icon') return renderIcon(el, depth, extraProps);
       if (el.tag.toLowerCase() === 'input') return renderInput(el, depth, extraProps);
       const indent = '  '.repeat(depth + 2);
@@ -1023,12 +1138,55 @@ class Generator {
         this.usedRn.add('View');
       }
 
+      // Routing links (Stage 9): routerLink and [routerLink] are
+      // consumed here, never emitted as props. They become navigation
+      // in the element's onPress below: an array expression goes
+      // through Router.navigate (the Angular commands form), anything
+      // else through navigateByUrl. On a child component tag a link has
+      // nowhere to attach (the child renders its own root), so it is
+      // dropped with a GEN_ROUTE_UNSUPPORTED warning. Without an active
+      // route table the attributes are consumed silently in the entry
+      // unit (compile.ts already reported GEN_ROUTES_MISSING) and earn
+      // that warning in child units, whose usage compile.ts cannot see
+      // before codegen.
+      const linkAttr = el.attrs['routerLink'];
+      const linkBinding = el.propBindings.find((b) => b.name === 'routerLink');
+      let navCall: string | undefined;
+      if (linkAttr !== undefined || linkBinding) {
+        if (childInfo) {
+          diagnostics.push(warning(
+            'GEN_ROUTE_UNSUPPORTED',
+            `routerLink on the component tag <${el.tag}> is not supported; a link belongs on a tappable block of the template`,
+            el.pos.line, el.pos.column,
+            'Put routerLink on a <button> or <row>, or handle the tap inside the component and call this.router.navigate([...]) from its class',
+          ));
+        } else if (this.routingActive) {
+          if (linkAttr !== undefined) {
+            navCall = `__router.navigateByUrl(${JSON.stringify(linkAttr)})`;
+          } else if (linkBinding) {
+            let isArrayForm = false;
+            try { isArrayForm = parseExpression(linkBinding.expression).type === 'array'; } catch { /* raw fallback: treated as a URL */ }
+            navCall = isArrayForm
+              ? `__router.navigate(${codeExpr(linkBinding.expression)})`
+              : `__router.navigateByUrl(${codeExpr(linkBinding.expression)})`;
+          }
+        } else if (!opts.entry) {
+          diagnostics.push(warning(
+            'GEN_ROUTES_MISSING',
+            'routerLink appears in a child component template, but no routes file was resolved for this compilation',
+            el.pos.line, el.pos.column,
+            "Create app.routes.ts next to the root component: export const routes: Routes = [{ path: 'home', component: HomeComponent }];",
+          ));
+        }
+      }
+
       const props: string[] = [...extraProps];
       if (mapping?.variant) props.push(`variant="${mapping.variant}"`);
       const isFormEl = el.tag.toLowerCase() === 'form';
       const isButtonEl = el.tag.toLowerCase() === 'button';
       for (const [name, value] of Object.entries(el.attrs)) {
         if (name === 'class') continue;
+        if (name === 'routerLink') continue;
         // A button's type is forms machinery (Stage 8): type="submit"
         // is consumed by the submit rewrite below, never a prop.
         if (isButtonEl && name === 'type') continue;
@@ -1038,6 +1196,7 @@ class Generator {
       for (const p of el.propBindings) {
         // [formGroup] is the reactive binding mechanism, not a View prop.
         if (isFormEl && p.name === 'formGroup') continue;
+        if (p.name === 'routerLink') continue;
         props.push(`${p.name}={${codeExpr(p.expression)}}`);
       }
       // Form submit (Stage 8): a <button type="submit"> statically
@@ -1066,6 +1225,7 @@ class Generator {
       // Event bindings (M3): (click) -> onPress={() => handler()} etc.
       // On a child component, an event named after one of its @Output fields
       // becomes that output's callback prop instead (M5).
+      let navComposed = false;
       for (const ev of el.eventBindings) {
         // A form's own (submit)/(ngSubmit) is consumed by the rewrite
         // above; it is not a prop on the generated View.
@@ -1086,6 +1246,15 @@ class Generator {
           props.push(isBareRef ? `onChange={${src}}` : `onChange={($event) => ${codeExpr(src)}}`);
           continue;
         }
+        if (ev.name === 'click' && navCall) {
+          // A tap that both handles and navigates (Stage 9): the
+          // handler runs first, then the navigation, one onPress.
+          props.push(isBareRef
+            ? `onPress={() => { ${src}(); ${navCall}; }}`
+            : `onPress={() => { ${codeExpr(src)}; ${navCall}; }}`);
+          navComposed = true;
+          continue;
+        }
         const { prop, known } = eventPropName(ev.name, el.tag);
         if (!known) {
           lines.push(`${indent}{/* (${ev.name}) has no standard RN prop, mapped to ${prop} */}`);
@@ -1093,6 +1262,12 @@ class Generator {
         props.push(isBareRef ? `${prop}={${src}}` : `${prop}={() => ${codeExpr(src)}}`);
       }
       if (submitPress) props.push(`onPress={${submitPress}}`);
+      // A link with no (click) of its own navigates on tap (Stage 9).
+      // A submit button keeps its submit onPress; the link is dropped
+      // there, a form submit and a navigation are two different intents.
+      if (navCall && !navComposed && !submitPress) {
+        props.push(`onPress={() => ${navCall}}`);
+      }
       const style = styleFor(el);
       if (style) props.push(`style={${style}}`);
       if (el.ref) props.push(`ref={${el.ref}Ref}`);
@@ -1214,8 +1389,14 @@ class Generator {
     const fnName = componentFunctionName(component.className);
     const inputs = component.fields.filter((f) => f.isInput);
     const outputs = component.fields.filter((f) => f.isOutput);
+    // Routing (Stage 9): a component injecting ActivatedRoute receives
+    // its instance through a compiler-owned prop, __rgRoute, which the
+    // outlet supplies per mount. It is not an @Input and never appears
+    // in author templates.
+    const injectsRoute = this.routingActive
+      && (component.constructorDeps ?? []).some((d) => d.typeName === 'ActivatedRoute');
     let propsDecl = '';
-    if (inputs.length || outputs.length) {
+    if (inputs.length || outputs.length || injectsRoute) {
       const destructured: string[] = [];
       const types: string[] = [];
       for (const f of inputs) {
@@ -1227,6 +1408,10 @@ class Generator {
         destructured.push(outputPropName(f.name));
         types.push(`${outputPropName(f.name)}?: (value: any) => void`);
       }
+      if (injectsRoute) {
+        destructured.push('__rgRoute');
+        types.push('__rgRoute?: any');
+      }
       propsDecl = `{ ${destructured.join(', ')} }: { ${types.join('; ')} }`;
     }
 
@@ -1237,6 +1422,10 @@ class Generator {
         this.usedRuntime.add('Container');
         this.usedRuntime.add(HTTP_CLIENT);
         depLines.push(`  const ${dep.propertyName} = __container.get<HttpClient>(HttpClient);`);
+      } else if (this.routingActive && dep.typeName === 'Router') {
+        depLines.push(`  const ${dep.propertyName} = __router;`);
+      } else if (this.routingActive && dep.typeName === 'ActivatedRoute') {
+        depLines.push(`  const ${dep.propertyName} = __rgRoute;`);
       } else if (this.rootServices.has(dep.typeName)) {
         this.usedRuntime.add('Container');
         this.reactImports.add('useSyncExternalStore');
@@ -1381,10 +1570,24 @@ class Generator {
           '  );',
         ];
 
+    // --- Navigation state (Stage 9) ------------------------------------------
+    // The entry component hosting the outlet mirrors the navigator's
+    // current entry in state, so a navigation re-renders it and the
+    // outlet swaps the route component. The subscription is the
+    // useEffect cleanup, the same shape lifecycle uses.
+    const navLines: string[] = [];
+    if (opts.entry && opts.hasOutlet && this.routingActive) {
+      this.reactImports.add('useState');
+      this.reactImports.add('useEffect');
+      navLines.push('  const [__route, __setRoute] = useState(__navigator.current);');
+      navLines.push('  useEffect(() => __navigator.subscribe(() => __setRoute(__navigator.current)), []);');
+    }
+
     const exportKw = opts.entry ? 'export default function' : 'export function';
     return [
       `${exportKw} ${fnName}(${propsDecl}) {`,
       ...depLines,
+      ...navLines,
       ...fieldLines,
       ...formLines,
       ...modelLines,

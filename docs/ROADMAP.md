@@ -39,9 +39,13 @@ As built: an `<input>` block compiles to a Material style `RgInput` field. Templ
 
 ## Stage 9: Routing
 
+Status: built in this change.
+
 Angular ground: the Angular Router guide, covering route configuration, `RouterOutlet`, `RouterLink` and route parameters through `ActivatedRoute`.
 
 The stage adds a `Routes` configuration, a `router-outlet` block, `routerLink` navigation and route parameters. The Angular source keeps the router model. The generated app maps that model to native navigation.
+
+As built: the routes file is the modern standalone form, `export const routes: Routes = [...]` (the array `provideRouter` consumes, not `RouterModule.forRoot`), discovered as a sibling `app.routes.ts` next to the root component or named with the CLI `--routes` flag; it is read whenever it exists and using routing without one is `GEN_ROUTES_MISSING`. A runtime `matchRoute` resolves declaration order, `:param` segment capture (always strings), full match redirects (chains resolve, loops fail closed) and the `**` wildcard; a runtime `RgNavigator` stack, a `Router` service (`navigate` / `navigateByUrl`) and an `ActivatedRoute` (`snapshot.params` plus a `paramMap` Observable-lite) carry the model in generated code and in the preview, whose matcher is a hand mirror parity-tested against the runtime. The root component hosts one `<router-outlet>` (the `RgOutlet` primitive); route components are ordinary imported components, remounted per concrete path, so same-component parameter changes remount in v1 (a stated simplification; Angular reuses the component). `routerLink` in string and array forms compiles to a navigation press on tappable blocks; array literals joined the expression subset for it. Guards, resolvers, lazy loading and child routes are `GEN_ROUTE_UNSUPPORTED` errors naming the feature; unknown components are `GEN_ROUTE_COMPONENT`; duplicate paths warn `GEN_ROUTE_DUPLICATE`. The preview shows a marked preview-only Back bar at depth 2 or more; hardware back wiring belongs to the Stage 12 Expo scaffold. The mini-mail example (shell, inbox, `mail/:id` detail over the shared MailService, wildcard not-found reached through a deliberately stale link) proves the flow in generated code and in the interactive preview.
 
 ## Stage 10: Pickers and overlays
 

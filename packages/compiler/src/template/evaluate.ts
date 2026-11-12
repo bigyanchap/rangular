@@ -90,6 +90,8 @@ export function evaluateExpr(expr: Expr, scope: Scope, refs?: Scope): unknown {
       return evaluateExpr(expr.test, scope, refs)
         ? evaluateExpr(expr.consequent, scope, refs)
         : evaluateExpr(expr.alternate, scope, refs);
+    case 'array':
+      return expr.elements.map((el) => evaluateExpr(el, scope, refs));
     case 'pipe': {
       const value = evaluateExpr(expr.input, scope, refs);
       const args = expr.args.map((a) => evaluateExpr(a, scope, refs));

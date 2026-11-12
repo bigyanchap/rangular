@@ -1,0 +1,6 @@
+<section>
+  <list>
+    <row *ngFor="let m of mail.mails" avatar [title]="m.from" [subtitle]="m.subject" [detail]="m.snippet" [time]="m.time" [routerLink]="['/mail', m.id]"></row>
+  </list>
+  <row title="Archived (old link)" detail="This folder moved away" routerLink="/archive"></row>
+</section>

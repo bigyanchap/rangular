@@ -1,0 +1,9 @@
+<section>
+  <card *ngIf="mail">
+    <h3>{{ mail.subject }}</h3>
+    <p>From {{ mail.from }}, {{ mail.time }}</p>
+    <p>{{ mail.body }}</p>
+  </card>
+  <p *ngIf="!mail">This mail could not be found.</p>
+  <button (click)="backToInbox()">Back to inbox</button>
+</section>

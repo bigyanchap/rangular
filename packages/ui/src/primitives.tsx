@@ -446,12 +446,12 @@ export function RgList({ data, renderItem, keyExtractor, children }: any) {
   );
 }
 
-export function RgRow({ title, subtitle, detail, time, avatar, children }: any) {
+export function RgRow({ title, subtitle, detail, time, avatar, onPress, children }: any) {
   const t = useRgTheme();
   const c = t.colors;
   const styles = stylesFor(t);
-  return (
-    <View style={styles.row}>
+  const content = (
+    <>
       {avatar ? (
         <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={{ color: c.onPrimary, fontSize: 16, fontWeight: '600' }}>{(title || '•').charAt(0)}</Text>
@@ -464,8 +464,31 @@ export function RgRow({ title, subtitle, detail, time, avatar, children }: any) 
         {children}
       </View>
       {time ? <Text style={{ fontSize: 11, color: c.textMuted }}>{time}</Text> : null}
-    </View>
+    </>
   );
+  // A row with an onPress (a (click) handler or a routerLink in the
+  // template) is a Pressable; a row without one stays a plain View, so
+  // static lists pay nothing for the affordance.
+  if (onPress) {
+    return (
+      <Pressable onPress={onPress} style={({ pressed }: any) => [styles.row, pressed && { opacity: 0.7 }]}>
+        {content}
+      </Pressable>
+    );
+  }
+  return <View style={styles.row}>{content}</View>;
+}
+
+/**
+ * The router outlet (Stage 9). The generated root component renders the
+ * matched route component inside it; the outlet itself is a transparent
+ * wrapper (a fragment), because the navigation state and the route
+ * matching live in the generated component and the runtime navigator,
+ * not in a visual primitive. It exists as a named primitive so the
+ * tag-to-primitive contract stays complete in the catalog.
+ */
+export function RgOutlet({ children }: any) {
+  return <>{children}</>;
 }
 
 export function RgFab({ children, label, onPress }: any) {

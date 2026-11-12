@@ -4,7 +4,9 @@
  * the ReactiveService base class generated services extend (Stage 3),
  * HttpClient, an Observable-lite wrapper over fetch (Stage 3), and the
  * forms core (Stage 8): Validators, FormControl and FormGroup, mirroring
- * @angular/forms semantics. No react or react-native imports live in this
+ * @angular/forms semantics (Stage 8), and the routing core (Stage 9):
+ * matchRoute, RgNavigator, Router and ActivatedRoute, mirroring
+ * @angular/router. No react or react-native imports live in this
  * file: generated components bridge services to React themselves
  * (useSyncExternalStore over __subscribe / __getVersion), so this package
  * stays environment-free and unit-testable.
@@ -366,5 +368,213 @@ export class FormGroup {
 
   markAllAsTouched(): void {
     for (const control of Object.values(this.controls)) control.markAsTouched();
+  }
+}
+
+// --- Routing (Stage 9) -------------------------------------------------------
+//
+// The @angular/router model, at the size a phone app needs: a Routes
+// array of path patterns, a native navigation stack under it, and the
+// two injectables Angular authors know, Router (navigate from code)
+// and ActivatedRoute (read the current route's parameters).
+//
+// Matching rules (v1, stated plainly):
+//  - paths are segment lists; a leading or trailing slash means nothing
+//    ('/mail/3', 'mail/3' and 'mail/3/' are the same path);
+//  - entries are tried in declaration order, the first match wins;
+//  - a ':name' segment captures one segment into params (always a
+//    string, exactly as in Angular);
+//  - '**' matches any path, including the empty one;
+//  - an entry with redirectTo matches on its full path only (the
+//    pathMatch: 'full' behaviour) and matching restarts at the target;
+//    redirect loops and chains longer than 10 hops match nothing;
+//  - every other entry must match the whole path: there are no child
+//    routes or prefix matches in v1, so segment counts must be equal.
+//
+// The preview page runtime mirrors matchRoute in plain JavaScript; the
+// two implementations are parity-tested against the same table of
+// paths in tests/stage9.test.ts.
+
+/** One route pattern, the shape the generated navigator is built from. */
+export interface RgRouteDef {
+  path: string;
+  redirectTo?: string;
+}
+
+/** A resolved navigation: the concrete path, its params, and the pattern that matched. */
+export interface RouteMatch {
+  /** The concrete path navigated to, normalised (no leading or trailing slash). */
+  path: string;
+  /** Captured ':param' segments, values are always strings. */
+  params: Record<string, string>;
+  /** The route pattern that matched, e.g. 'mail/:id'. */
+  routePath: string;
+}
+
+/** Normalise a path: split on '/', drop empty segments, rejoin. */
+export function normalizeRoutePath(raw: string): string {
+  return raw.split('/').filter((s) => s.length > 0).join('/');
+}
+
+function segmentsOf(path: string): string[] {
+  const normalized = normalizeRoutePath(path);
+  return normalized === '' ? [] : normalized.split('/');
+}
+
+/** Match one pattern against one concrete path; params or null. */
+function matchSegments(pattern: string, path: string): Record<string, string> | null {
+  if (pattern === '**') return {};
+  const want = segmentsOf(pattern);
+  const got = segmentsOf(path);
+  if (want.length !== got.length) return null;
+  const params: Record<string, string> = {};
+  for (let i = 0; i < want.length; i++) {
+    if (want[i].startsWith(':')) params[want[i].slice(1)] = got[i];
+    else if (want[i] !== got[i]) return null;
+  }
+  return params;
+}
+
+/**
+ * Match a path against a route table, following redirects. Returns the
+ * final match, or null when nothing matches (no entry and no wildcard).
+ */
+export function matchRoute(routes: RgRouteDef[], rawPath: string): RouteMatch | null {
+  let current = normalizeRoutePath(rawPath);
+  const seen = new Set<string>();
+  for (let hop = 0; hop <= 10; hop++) {
+    let hit: { def: RgRouteDef; params: Record<string, string> } | null = null;
+    for (const def of routes) {
+      const params = matchSegments(def.path, current);
+      if (params) { hit = { def, params }; break; }
+    }
+    if (!hit) return null;
+    if (hit.def.redirectTo === undefined) {
+      return { path: current, params: hit.params, routePath: hit.def.path };
+    }
+    if (seen.has(current)) return null;
+    seen.add(current);
+    current = normalizeRoutePath(hit.def.redirectTo);
+  }
+  return null;
+}
+
+/**
+ * The navigation stack of a generated app (Stage 9). One instance lives
+ * at module level in the generated file; the root component subscribes
+ * and re-renders the outlet whenever the top entry changes. The stack
+ * always holds at least the initial entry (the match for the empty
+ * path, redirects followed), so `current` is always defined and
+ * `back()` at depth 1 is a no-op that returns false.
+ */
+export class RgNavigator {
+  private entries: RouteMatch[];
+  private listeners = new Set<() => void>();
+
+  constructor(private readonly routes: RgRouteDef[]) {
+    const initial = matchRoute(routes, '');
+    this.entries = [initial ?? { path: '', params: {}, routePath: '' }];
+  }
+
+  /** The entry on top of the stack: what the outlet renders. */
+  get current(): RouteMatch {
+    return this.entries[this.entries.length - 1];
+  }
+
+  /** Stack depth; the app can go back exactly when this is above 1. */
+  get depth(): number {
+    return this.entries.length;
+  }
+
+  /** Push a new entry; false (and no change) when no route matches. */
+  navigate(rawPath: string): boolean {
+    const match = matchRoute(this.routes, rawPath);
+    if (!match) return false;
+    this.entries.push(match);
+    this.emit();
+    return true;
+  }
+
+  /** Pop back to the previous entry; false at the root of the stack. */
+  back(): boolean {
+    if (this.entries.length <= 1) return false;
+    this.entries.pop();
+    this.emit();
+    return true;
+  }
+
+  /** Subscribe to navigation changes; returns an unsubscribe function. */
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => { this.listeners.delete(listener); };
+  }
+
+  private emit(): void {
+    for (const listener of [...this.listeners]) listener();
+  }
+}
+
+/**
+ * The injectable Angular authors navigate with (Stage 9). Generated
+ * components receive the one instance bound to the app's navigator.
+ *
+ * `navigate(commands)` joins the command segments with '/': numbers
+ * are stringified, and slashes at segment edges mean nothing, so
+ * `navigate(['/mail', 3])` and `navigate(['mail', '3'])` both land on
+ * 'mail/3'. In v1 commands always resolve from the app root; Angular's
+ * relative-to-current-route navigation is not in this version.
+ */
+export class Router {
+  constructor(private readonly navigator: RgNavigator) {}
+
+  navigate(commands: unknown[]): boolean {
+    return this.navigator.navigate(commands.map((c) => String(c)).join('/'));
+  }
+
+  navigateByUrl(url: string): boolean {
+    return this.navigator.navigate(url);
+  }
+}
+
+/**
+ * The injectable that carries the current route's parameters into a
+ * route component (Stage 9). The outlet creates one instance per mount
+ * from the current navigation entry and passes it to the component.
+ *
+ * `snapshot.params` is the plain params object. `paramMap` is an
+ * Observable-lite that emits the current params on subscribe and, while
+ * subscribed, again whenever the navigator's current entry changes.
+ * In v1 the generated outlet remounts a route component when the path
+ * changes (it keys the component by the concrete path), so a component
+ * normally sees exactly one emission per mount; the snapshot is the
+ * primary surface, exactly the pattern Angular's own docs teach first.
+ */
+export class ActivatedRoute {
+  readonly paramMap: ObservableLite<Record<string, string>>;
+
+  constructor(
+    private readonly initialParams: Record<string, string>,
+    private readonly navigatorRef?: RgNavigator,
+  ) {
+    this.paramMap = {
+      subscribe: (next?: (value: Record<string, string>) => void): Subscription => {
+        if (!next) return { unsubscribe: () => undefined };
+        next(this.snapshot.params);
+        if (!this.navigatorRef) return { unsubscribe: () => undefined };
+        const nav = this.navigatorRef;
+        const off = nav.subscribe(() => next(nav.current.params));
+        return { unsubscribe: off };
+      },
+    };
+  }
+
+  /**
+   * The current parameters, read live: with a navigator attached the
+   * snapshot reflects the latest navigation (Angular refreshes the
+   * snapshot on each activation the same way); without one it is the
+   * fixed set the instance was constructed with.
+   */
+  get snapshot(): { params: Record<string, string> } {
+    return { params: this.navigatorRef ? this.navigatorRef.current.params : this.initialParams };
   }
 }

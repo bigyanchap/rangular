@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 /**
  * Rangular CLI:
- *   rangular build <component.ts> --out <file.tsx> [--json] [--source-map]
+ *   rangular build <component.ts> --out <file.tsx> [--json] [--source-map] [--routes <file>]
  *   rangular ast <template.html>
- *   rangular preview <component.ts> --out <file.html> [--json]
+ *   rangular preview <component.ts> --out <file.html> [--json] [--routes <file>]
  *   rangular catalog [--out <dir>]
- *   rangular watch <component.ts> --out <file.tsx>
+ *   rangular watch <component.ts> --out <file.tsx> [--routes <file>]
  *   rangular init <dir>
- *   rangular doctor <component.ts> [--json]
+ *   rangular doctor <component.ts> [--json] [--routes <file>]
+ *
+ * --routes names the routes file (Stage 9); without it the compiler
+ * auto-discovers a sibling app.routes.ts next to the component.
  *
  * Run from the compiled output: node dist/packages/cli/src/cli.js ...
  *
@@ -110,14 +113,29 @@ function printJson(payload: Record<string, unknown>): void {
 
 const USAGE = [
   'Usage:',
-  '  rangular build <component.ts> --out <file.tsx> [--json] [--source-map]',
+  '  rangular build <component.ts> --out <file.tsx> [--json] [--source-map] [--routes <file>]',
   '  rangular ast <template.html>',
-  '  rangular preview <component.ts> --out <file.html> [--json]',
+  '  rangular preview <component.ts> --out <file.html> [--json] [--routes <file>]',
   '  rangular catalog [--out <dir>]',
-  '  rangular watch <component.ts> --out <file.tsx>',
+  '  rangular watch <component.ts> --out <file.tsx> [--routes <file>]',
   '  rangular init <dir>',
-  '  rangular doctor <component.ts> [--json]',
+  '  rangular doctor <component.ts> [--json] [--routes <file>]',
 ].join('\n');
+
+/**
+ * The --routes flag (Stage 9) as a specifier the compiler can resolve
+ * from the entry file: a './'-style relative path from the component's
+ * directory to the routes file. The compiler's own project-root
+ * boundary still applies to the resolved file.
+ */
+function routesSpecifierFor(entryAbs: string, routesArg: string | undefined): string | undefined {
+  if (!routesArg) return undefined;
+  const routesAbs = path.resolve(routesArg);
+  if (!fs.existsSync(routesAbs)) fail(`routes file not found: ${routesArg}`);
+  let rel = path.relative(path.dirname(entryAbs), routesAbs).split(path.sep).join('/');
+  if (!rel.startsWith('.')) rel = `./${rel}`;
+  return rel;
+}
 
 /** `rangular init <dir>`: scaffold a starter project (Stage 5). */
 function initProject(dirArg: string): void {
@@ -201,7 +219,7 @@ loose text, small tap targets) with the fix for each.
 }
 
 /** `rangular watch`: compile now, then recompile on every change (Stage 5). */
-function startWatch(target: string, out: string): void {
+function startWatch(target: string, out: string, routesSpecifier: string | undefined): void {
   let watchers: fs.FSWatcher[] = [];
   let timer: NodeJS.Timeout | undefined;
   let compiling = false;
@@ -238,7 +256,7 @@ function startWatch(target: string, out: string): void {
     try {
       const stamp = new Date().toISOString();
       const { tsSource, resolveFile, resolveImport, absPath, rootDir } = readComponent(target);
-      const result = compileComponent({ tsSource, fileName: absPath, resolveFile, resolveImport, rootDir });
+      const result = compileComponent({ tsSource, fileName: absPath, resolveFile, resolveImport, rootDir, routesSpecifier });
       for (const d of result.diagnostics) console.error(formatDiagnostic(d, absPath));
       if (hasErrors(result.diagnostics)) {
         const errors = result.diagnostics.filter((d) => d.severity === 'error').length;
@@ -314,13 +332,17 @@ function main(): void {
   if (command === 'watch') {
     const out = option(rest, '--out');
     if (!out) fail(`--out <file> is required for 'watch'`);
-    startWatch(target, out);
+    const { absPath: watchAbs } = readComponent(target);
+    startWatch(target, out, routesSpecifierFor(watchAbs, option(rest, '--routes')));
     return;
   }
 
   if (command === 'doctor') {
     const { tsSource, resolveFile, resolveImport, absPath, rootDir } = readComponent(target);
-    const result = compileComponent({ tsSource, fileName: absPath, resolveFile, resolveImport, rootDir });
+    const result = compileComponent({
+      tsSource, fileName: absPath, resolveFile, resolveImport, rootDir,
+      routesSpecifier: routesSpecifierFor(absPath, option(rest, '--routes')),
+    });
     const styleTexts = doctorStyleTexts(result, absPath, (abs) => (
       withinRoot(rootDir, abs) && fs.existsSync(abs) ? fs.readFileSync(abs, 'utf8') : undefined
     ));
@@ -348,9 +370,10 @@ function main(): void {
     const out = option(rest, '--out');
     if (!out) fail(`--out <file> is required for '${command}'`);
     const { tsSource, resolveFile, resolveImport, absPath, rootDir } = readComponent(target);
+    const routesSpecifier = routesSpecifierFor(absPath, option(rest, '--routes'));
     if (command === 'build') {
       const sourceMap = rest.includes('--source-map');
-      const result = compileComponent({ tsSource, fileName: absPath, resolveFile, resolveImport, sourceMap, rootDir });
+      const result = compileComponent({ tsSource, fileName: absPath, resolveFile, resolveImport, sourceMap, rootDir, routesSpecifier });
       const ok = !hasErrors(result.diagnostics);
       const writeOut = (): void => {
         fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
@@ -382,7 +405,7 @@ function main(): void {
     }
     // preview, through the full compiler so child components and services
     // resolved from imports render exactly as they compile (Stage 3).
-    const compiled = compileComponent({ tsSource, fileName: absPath, resolveFile, resolveImport, rootDir });
+    const compiled = compileComponent({ tsSource, fileName: absPath, resolveFile, resolveImport, rootDir, routesSpecifier });
     const allDiags = compiled.diagnostics;
     if (!compiled.component || !compiled.ast || hasErrors(allDiags)) {
       if (json) {
@@ -396,6 +419,7 @@ function main(): void {
     const html = renderPreview(component, compiled.ast, {
       children: compiled.children,
       services: compiled.services,
+      routes: compiled.routes,
     });
     if (json) {
       fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });

@@ -131,6 +131,11 @@
       "tag": "form",
       "component": "View",
       "from": "react-native"
+    },
+    {
+      "tag": "router-outlet",
+      "component": "RgOutlet",
+      "from": "@rangular/ui"
     }
   ],
   "events": [
@@ -487,6 +492,19 @@
           "name": "avatar",
           "type": "any"
         },
+        {
+          "name": "onPress",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgOutlet",
+      "props": [
         {
           "name": "children",
           "type": "any"
@@ -1037,6 +1055,22 @@
       "meaning": "A field initialised with new FormGroup(...) or new FormControl(...) uses a shape the preview cannot evaluate (only literal values, Validators references and validator calls are supported); the generated app runs the initializer as written."
     },
     {
+      "code": "GEN_ROUTES_MISSING",
+      "meaning": "A template uses <router-outlet> or routerLink, or a component injects Router or ActivatedRoute, but no routes file was resolved: the compiler looks for app.routes.ts next to the root component, or the file named by the CLI --routes flag."
+    },
+    {
+      "code": "GEN_ROUTE_COMPONENT",
+      "meaning": "A route entry names a component class that is not an @Component class resolved in this compilation."
+    },
+    {
+      "code": "GEN_ROUTE_DUPLICATE",
+      "meaning": "Two route entries declare the same path; matching tries entries in order, so the first one wins and the later one never renders."
+    },
+    {
+      "code": "GEN_ROUTE_UNSUPPORTED",
+      "meaning": "A route entry or routing construct uses an Angular routing feature Rangular does not support yet (child routes, guards, resolvers, lazy loading, nested outlets, routerLink on a component tag), or a route entry is not a plain object literal with a string path."
+    },
+    {
       "code": "METHOD_UNSUPPORTED",
       "meaning": "A statement in a component method is outside the supported translation subset; it was left as a TODO."
     },
@@ -1058,7 +1092,7 @@
     },
     {
       "code": "DI_UNKNOWN_TOKEN",
-      "meaning": "A constructor dependency names a type that is not a known @Injectable({ providedIn: 'root' }) service or HttpClient in this compilation."
+      "meaning": "A constructor dependency names a type that is not a known @Injectable({ providedIn: 'root' }) service in this compilation and not a built-in token (HttpClient, or Router / ActivatedRoute in a routed app)."
     },
     {
       "code": "DI_CYCLE",

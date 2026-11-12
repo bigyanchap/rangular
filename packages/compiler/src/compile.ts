@@ -4,12 +4,13 @@ import {
   parseClassFile,
   ServiceInfo,
 } from './class/parseComponent';
+import { parseRoutesFile, ResolvedRoute } from './class/parseRoutes';
 import { analyzeFormInitializer, isFormInitializer } from './class/formInit';
 import { ChildUnitInput, generateComponent } from './codegen/generate';
 import { SourceMapV3 } from './codegen/sourceMap';
 import { Diagnostic, error, warning } from './diagnostics';
 import { parseCss, ParsedCss } from './style/css';
-import { TemplateRoot } from './template/ast';
+import { TemplateNode, TemplateRoot } from './template/ast';
 import { parseTemplate } from './template/parser';
 
 export interface ResolvedSource {
@@ -35,6 +36,15 @@ export interface CompileOptions {
   /** Ask codegen for a block level source map (Stage 5). */
   sourceMap?: boolean;
   /**
+   * Routes file specifier (Stage 9), resolved like a relative import
+   * from the entry file, e.g. './app.routes.ts'. When omitted, the
+   * compiler auto-discovers a sibling 'app.routes.ts' next to the entry
+   * component: the routes file is read whenever it exists, and required
+   * (GEN_ROUTES_MISSING) whenever a template uses <router-outlet> or
+   * routerLink, or a component injects Router / ActivatedRoute.
+   */
+  routesSpecifier?: string;
+  /**
    * Project root boundary (security audit, 2026-11-12): when set, every
    * file a compilation resolves (templateUrl, styleUrls, relative
    * imports) must stay inside this directory tree. A path that escapes
@@ -58,6 +68,12 @@ export interface CompileResult {
   children: ChildUnitInput[];
   /** Every @Injectable class resolved through imports (M6). */
   services: ServiceInfo[];
+  /**
+   * The resolved route table (Stage 9): the routes file's entries with
+   * their component classes resolved against the registry. Empty when
+   * the compilation has no routes file.
+   */
+  routes: ResolvedRoute[];
   /**
    * Every source file this compilation read (Stage 5): the entry .ts, the
    * templates, and every resolved relative import. `rangular watch` watches
@@ -142,7 +158,8 @@ function isTemplateDriven(code: string): boolean {
     || code === 'GEN_NGMODEL_TARGET'
     || code === 'GEN_NGMODEL_EXPR'
     || code === 'GEN_FORM_CONTROL'
-    || code === 'GEN_FORMGROUP_TYPE';
+    || code === 'GEN_FORMGROUP_TYPE'
+    || code === 'GEN_ROUTE_UNSUPPORTED';
 }
 
 function isStyleDriven(code: string): boolean {
@@ -264,7 +281,7 @@ export function compileComponent(options: CompileOptions): CompileResult {
   const component = entryParsed?.components[0];
   if (!component) {
     diagnostics.push({ ...error('CLS_NO_COMPONENT', 'No @Component-decorated class found in the source', undefined, undefined, "Decorate the class: @Component({ selector: 'app-x', templateUrl: './x.component.html' }) export class XComponent { ... }, only @Component classes are compiled; @NgModule/@Injectable classes are not entry points"), file: entryKey });
-    return { code: '', diagnostics, children: [], services: [...servicesByName.values()], files };
+    return { code: '', diagnostics, children: [], services: [...servicesByName.values()], routes: [], files };
   }
 
   // --- Entry template --------------------------------------------------------
@@ -276,7 +293,7 @@ export function compileComponent(options: CompileOptions): CompileResult {
     : entryKey;
   if (component.templateUrl && escapesRoot(entryTemplateFile)) {
     diagnostics.push(pathEscape(`templateUrl '${component.templateUrl}'`, entryTemplateFile));
-    return { code: '', diagnostics, component, children: [], services: [...servicesByName.values()], files };
+    return { code: '', diagnostics, component, children: [], services: [...servicesByName.values()], routes: [], files };
   }
   if (component.templateUrl) files.push(entryTemplateFile);
   const entryStyleUrls = allowedStyleUrls(component, entryKey);
@@ -292,16 +309,157 @@ export function compileComponent(options: CompileOptions): CompileResult {
         undefined, undefined,
         'Check the path is relative to the component file and the template file exists, e.g. templateUrl: \'./x.component.html\'',
       ), file: entryKey });
-      return { code: '', diagnostics, component, children: [], services: [...servicesByName.values()], files };
+      return { code: '', diagnostics, component, children: [], services: [...servicesByName.values()], routes: [], files };
     }
   }
   if (!templateSource) {
     diagnostics.push({ ...error('CMP_TEMPLATE', 'Component has neither an inline template nor a templateUrl', undefined, undefined, "Add templateUrl: './x.component.html' (or an inline template: `...`) to the @Component decorator"), file: entryKey });
-    return { code: '', diagnostics, component, children: [], services: [...servicesByName.values()], files };
+    return { code: '', diagnostics, component, children: [], services: [...servicesByName.values()], routes: [], files };
   }
 
   const { root, diagnostics: tplDiags } = parseTemplate(templateSource);
   diagnostics.push(...tagFile(tplDiags, entryTemplateFile));
+
+  // --- Routes (Stage 9) ------------------------------------------------------
+  // Discovery rule (the one rule, also stated in AGENTS.md and the
+  // Routing section of docs/VIBE_CODING.md): the routes file is the one
+  // named by routesSpecifier (the CLI --routes flag), or a sibling
+  // 'app.routes.ts' next to the entry component. It is read whenever it
+  // exists; it is REQUIRED whenever routing is used: a <router-outlet>
+  // or routerLink in a template, or a Router / ActivatedRoute injection
+  // in any registered component. The routes file is visited like any
+  // imported file, so the components it imports register as children
+  // before the child pass below runs.
+  const routingUsageIn = (nodes: TemplateNode[]): { outlet: boolean; links: boolean } => {
+    const usage = { outlet: false, links: false };
+    const walk = (list: TemplateNode[]): void => {
+      for (const n of list) {
+        if (n.type !== 'element') continue;
+        if (n.tag.toLowerCase() === 'router-outlet') usage.outlet = true;
+        if (n.attrs['routerLink'] !== undefined
+          || n.propBindings.some((b) => b.name === 'routerLink')) usage.links = true;
+        walk(n.children);
+      }
+    };
+    walk(nodes);
+    return usage;
+  };
+  const entryUsage = routingUsageIn(root.children);
+  const injectsRouter = [component, ...[...componentsBySelector.values()].map((c) => c.info)]
+    .some((info) => (info.constructorDeps ?? []).some(
+      (d) => d.typeName === 'Router' || d.typeName === 'ActivatedRoute',
+    ));
+  const routingUsed = entryUsage.outlet || entryUsage.links || injectsRouter;
+  const routesSpecifier = options.routesSpecifier ?? './app.routes.ts';
+  // A resolver may signal a missing file by throwing instead of
+  // returning undefined; for the optional routes file both mean absent.
+  let routesResolved: { source: string; fileName: string } | undefined;
+  try {
+    routesResolved = readRelative(entryKey, routesSpecifier);
+  } catch {
+    routesResolved = undefined;
+  }
+  let routes: ResolvedRoute[] | undefined;
+  if (routesResolved) {
+    if (escapesRoot(routesResolved.fileName)) {
+      diagnostics.push(pathEscape(`Routes file '${routesSpecifier}'`, routesResolved.fileName));
+    } else {
+      const visitedBefore = new Set(files);
+      visitFile(routesResolved.fileName, routesResolved.source);
+      for (const f of visited) if (!visitedBefore.has(f)) files.push(f);
+      const parsedRoutes = parseRoutesFile(routesResolved.source, routesResolved.fileName);
+      diagnostics.push(...tagFile(parsedRoutes.diagnostics, routesResolved.fileName));
+      if (!parsedRoutes.found && (routingUsed || options.routesSpecifier)) {
+        diagnostics.push({
+          ...error(
+            'GEN_ROUTES_MISSING',
+            `Routes file '${routesResolved.fileName}' holds no Routes array; nothing was registered`,
+            undefined, undefined,
+            "Export the route table from the routes file: export const routes: Routes = [{ path: 'home', component: HomeComponent }];",
+          ),
+          file: entryKey,
+        });
+      } else {
+        const byClassName = new Map<string, ComponentInfo>();
+        byClassName.set(component.className, component);
+        for (const { info } of componentsBySelector.values()) byClassName.set(info.className, info);
+        const seenPaths = new Set<string>();
+        routes = [];
+        for (const def of parsedRoutes.routes) {
+          if (seenPaths.has(def.path)) {
+            diagnostics.push({
+              ...warning(
+                'GEN_ROUTE_DUPLICATE',
+                `Path '${def.path}' is declared more than once in the routes file; the first entry wins and this one never matches`,
+                undefined, undefined,
+                'Give each route a unique path; matching tries entries in declaration order',
+              ),
+              file: routesResolved.fileName,
+            });
+          }
+          seenPaths.add(def.path);
+          if (def.componentName !== undefined) {
+            const info = byClassName.get(def.componentName);
+            if (!info) {
+              diagnostics.push({
+                ...error(
+                  'GEN_ROUTE_COMPONENT',
+                  `Route '${def.path}' names component '${def.componentName}', which is not an @Component class resolved in this compilation`,
+                  undefined, undefined,
+                  `Import ${def.componentName} in the routes file (its file is followed like any import) and make sure it is decorated with @Component`,
+                ),
+                file: routesResolved.fileName,
+              });
+              continue;
+            }
+            if (info === component) {
+              diagnostics.push({
+                ...error(
+                  'GEN_ROUTE_COMPONENT',
+                  `Route '${def.path}' names the root component '${def.componentName}' itself; the root component hosts the outlet and cannot also be a route target`,
+                  undefined, undefined,
+                  'Point the route at a separate screen component and keep the root component as the shell',
+                ),
+                file: routesResolved.fileName,
+              });
+              continue;
+            }
+            routes.push({ ...def, selector: info.selector });
+          } else {
+            routes.push({ ...def });
+          }
+        }
+        const declaredPaths = new Set(parsedRoutes.routes.map((r) => r.path));
+        for (const def of parsedRoutes.routes) {
+          if (def.redirectTo !== undefined && !declaredPaths.has(def.redirectTo)) {
+            diagnostics.push({
+              ...error(
+                'GEN_ROUTE_UNSUPPORTED',
+                `Route '${def.path}' redirects to '${def.redirectTo}', which is not the path of any route in the table`,
+                undefined, undefined,
+                `Point redirectTo at a declared path (declared: ${[...declaredPaths].join(', ')}), or add a route with that path`,
+              ),
+              file: routesResolved.fileName,
+            });
+          }
+        }
+      }
+    }
+  } else if (routingUsed || options.routesSpecifier) {
+    diagnostics.push({
+      ...error(
+        'GEN_ROUTES_MISSING',
+        `Routing is used (${[
+          entryUsage.outlet ? 'a <router-outlet>' : '',
+          entryUsage.links ? 'routerLink' : '',
+          injectsRouter ? 'a Router/ActivatedRoute injection' : '',
+        ].filter(Boolean).join(', ')}) but no routes file was found at '${routesSpecifier}'`,
+        undefined, undefined,
+        "Create app.routes.ts next to the root component: export const routes: Routes = [{ path: 'home', component: HomeComponent }]; or pass the routes file explicitly (rangular build --routes <file>)",
+      ),
+      file: entryKey,
+    });
+  }
 
   const loadCss = (info: ComponentInfo, fileKey: string, styleUrls: string[]): ParsedCss => {
     let stylesText = info.styles ?? '';
@@ -378,6 +536,7 @@ export function compileComponent(options: CompileOptions): CompileResult {
   const { code, diagnostics: genDiags, sourceMap } = generateComponent(component, root, css, {
     children,
     services,
+    routes,
     ...(options.sourceMap
       ? { sourceMap: { entryTsFile: entryKey, entryTemplateFile, contents: fileSources } }
       : {}),
@@ -397,7 +556,7 @@ export function compileComponent(options: CompileOptions): CompileResult {
     else diagnostics.push({ ...d, file: entryKey });
   }
 
-  return { code, diagnostics, ast: root, component, css, children, services, files, sourceMap };
+  return { code, diagnostics, ast: root, component, css, children, services, routes: routes ?? [], files, sourceMap };
 }
 
 export function hasErrors(diagnostics: Diagnostic[]): boolean {

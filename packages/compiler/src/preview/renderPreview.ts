@@ -1,7 +1,8 @@
 import { colours, theme } from '../../../ui/src/tokens';
 import { ICON_PATHS, ICON_SIZES, DEFAULT_ICON_SIZE } from '../../../ui/src/icons';
-import { FormGroup, ValidatorFn, Validators, validateValue } from '../../../runtime/src/index';
+import { ActivatedRoute, FormGroup, matchRoute, RouteMatch, ValidatorFn, Validators, validateValue } from '../../../runtime/src/index';
 import { ComponentField, ComponentInfo, ServiceInfo } from '../class/parseComponent';
+import { ResolvedRoute } from '../class/parseRoutes';
 import { evaluateFormInitializer, isFormInitializer } from '../class/formInit';
 import { ChildUnitInput, outputPropName } from '../codegen/generate';
 import { translateMethods } from '../codegen/methods';
@@ -22,6 +23,12 @@ import { parseNgFor, parseNgIf } from '../template/structural';
 export interface PreviewData {
   children?: ChildUnitInput[];
   services?: ServiceInfo[];
+  /**
+   * The resolved route table (Stage 9). The server paint renders the
+   * initial route (the match for the empty path, redirects followed)
+   * into the shell's <router-outlet>; the page runtime navigates.
+   */
+  routes?: ResolvedRoute[];
 }
 
 /**
@@ -105,6 +112,12 @@ function formInitsOf(host: { fields: ComponentField[] }): Record<string, string>
 /** Preview stand-in for HttpClient: get() returns an Observable that never emits. */
 const HTTP_STUB = {
   get: () => ({ subscribe: () => ({ unsubscribe: () => undefined }) }),
+};
+
+/** Preview stand-in for Router in the static paint: navigation is a page-runtime behaviour. */
+const ROUTER_STUB = {
+  navigate: () => true,
+  navigateByUrl: () => true,
 };
 
 /**
@@ -224,11 +237,19 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
     if (child.info.selector) childDefs.set(child.info.selector, child);
   }
   const serviceScopes = buildServiceScopes(data.services ?? []);
+  // --- Routing (Stage 9): the initial entry the static paint shows.
+  // The runtime matcher resolves the empty path (redirects followed);
+  // an unmatched start falls back to an empty entry and an empty outlet.
+  const initialEntry: RouteMatch = (data.routes?.length
+    ? matchRoute(data.routes.map((r) => ({ path: r.path, redirectTo: r.redirectTo })), '')
+    : null) ?? { path: '', params: {}, routePath: '' };
   const assignDeps = (scope: Scope, info: ComponentInfo): void => {
     for (const dep of info.constructorDeps ?? []) {
       const svc = serviceScopes.get(dep.typeName);
       if (svc) scope[dep.propertyName] = svc;
       else if (dep.typeName === 'HttpClient') scope[dep.propertyName] = HTTP_STUB;
+      else if (dep.typeName === 'ActivatedRoute') scope[dep.propertyName] = new ActivatedRoute(initialEntry.params);
+      else if (dep.typeName === 'Router') scope[dep.propertyName] = ROUTER_STUB;
     }
   };
   assignDeps(baseScope, component);
@@ -371,6 +392,19 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   const renderCore = (el: ElementNode, scope: Scope): string => {
     const childDef = childDefs.get(el.tag);
     if (childDef) return renderChild(el, childDef, scope);
+    // Routing (Stage 9): the outlet paints the initial route's
+    // component, resolved through the same child machinery; the page
+    // runtime takes over navigation from there.
+    if (el.tag === 'router-outlet') {
+      const route = (data.routes ?? []).find((r) => r.path === initialEntry.routePath && r.selector);
+      const def = route?.selector ? childDefs.get(route.selector) : undefined;
+      if (!route || !def) return '';
+      const synthetic: ElementNode = {
+        type: 'element', tag: route.selector!, attrs: {}, booleanAttrs: [],
+        propBindings: [], twoWayBindings: [], eventBindings: [], children: [], pos: el.pos,
+      };
+      return renderChild(synthetic, def, scope);
+    }
     // Forms (Stage 8): a form paints as a plain wrapper; its [formGroup]
     // instance is handed to descendant inputs through the scope so a
     // formControlName input paints its control's current value. The
@@ -533,6 +567,8 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   body { margin: 0; font-family: Roboto, system-ui, sans-serif; background: #e8eaed; display: flex; flex-direction: column; align-items: center; padding: 24px 12px; }
   .preview-chrome { width: 360px; max-width: 100%; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 13px; color: #444746; }
   .preview-chrome button { background: #ffffff; color: #0b57d0; border: 1px solid #dadce0; border-radius: 9999px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .preview-nav-back { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 16px 0; padding: 8px 12px; border: 1px dashed #b3261e; border-radius: 12px; color: #b3261e; font-size: 12px; background: #ffffff; }
+  .preview-nav-back button { background: #b3261e; color: #ffffff; border: none; border-radius: 9999px; padding: 4px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
   .screen { width: 360px; max-width: 100%; min-height: 640px; background: var(--screen-bg); color: var(--text); border-radius: 28px; overflow: hidden; box-shadow: 0 10px 28px rgba(0,0,0,.18); padding-bottom: ${t.spacing.xxl}px; }
   .appbar { display: flex; align-items: center; gap: ${t.spacing.md}px; margin: ${t.spacing.md}px; background: var(--surface-variant); border-radius: ${t.radius.full}px; padding: 10px ${t.spacing.lg}px; }
   .search { flex: 1; color: var(--text-muted); font-size: 14px; }
@@ -709,6 +745,11 @@ ${serviceEntries.join(',\n')}
 const COMPONENTS = {
 ${componentEntries.join(',\n')}
 };
+const ROUTES = ${jsonForScript((data.routes ?? []).map((r) => ({
+    path: r.path,
+    ...(r.selector ? { selector: r.selector } : {}),
+    ...(r.redirectTo !== undefined ? { redirectTo: r.redirectTo } : {}),
+  })))};
 const ROOT_DEPS = ${jsonForScript(rootDeps)};
 const ROOT_ONINIT = ${rootOnInit};
 ${PAGE_RUNTIME}${needsWiring ? `\n${ROOT_WIRING}` : ''}${Object.keys(rootFormInits).length ? `\n${ROOT_FORM_WIRING}` : ''}
@@ -899,6 +940,17 @@ function __parse(src) {
     if (t.k === 'num') return { type: 'literal', value: Number(t.v) };
     if (t.k === 'str') return { type: 'literal', value: t.v };
     if (t.k === 'p' && t.v === '(') { var inner = parsePipe(); expect(')'); return inner; }
+    if (t.k === 'p' && t.v === '[') {
+      // Array literal (Stage 9): the [routerLink]="['/mail', m.id]" form,
+      // mirroring the compiler parser, trailing comma included.
+      var elements = [];
+      if (!atP(']')) {
+        elements.push(parsePipe());
+        while (atP(',')) { next(); if (atP(']')) break; elements.push(parsePipe()); }
+      }
+      expect(']');
+      return { type: 'array', elements: elements };
+    }
     throw new Error('preview: unexpected token ' + t.v);
   }
   var e = parsePipe();
@@ -978,6 +1030,8 @@ function __eval(e, scope) {
     }
     case 'conditional':
       return __eval(e.test, scope) ? __eval(e.consequent, scope) : __eval(e.alternate, scope);
+    case 'array':
+      return e.elements.map(function (el) { return __eval(el, scope); });
     case 'pipe':
       return __pipe(e.name, __eval(e.input, scope));
   }
@@ -1503,6 +1557,7 @@ function __buildInput(el, scope, form) {
   return wrap;
 }
 function __buildCore(el, scope, path, form) {
+  if (el.tag === 'router-outlet') return __buildOutlet(el, scope, path);
   if (COMPONENTS[el.tag]) return __buildChild(el, scope, path);
   var kidsForm = form;
   if (el.tag === 'form') kidsForm = __formCtx(el, scope);
@@ -1565,6 +1620,9 @@ function __buildCore(el, scope, path, form) {
         });
       } else {
         __attachEvents(b, el, scope);
+        // A routerLink on the button navigates after any (click)
+        // handler, the same composition the compiler generates.
+        __attachNav(b, el, scope);
       }
       return [b];
     }
@@ -1694,6 +1752,7 @@ function __buildCore(el, scope, path, form) {
         row.appendChild(rtEl);
       }
       __attachEvents(row, el, scope);
+      __attachNav(row, el, scope);
       return [row];
     }
     case 'icon': {
@@ -1708,6 +1767,7 @@ function __buildCore(el, scope, path, form) {
         f.textContent = lbl ? String(lbl) : 'Compose';
       }
       __attachEvents(f, el, scope);
+      __attachNav(f, el, scope);
       return [f];
     }
     case 'header': return wrap('header', '');
@@ -1721,7 +1781,16 @@ function __httpStub() {
   return { get: function () { return { subscribe: function () { return { unsubscribe: function () {} }; } }; } };
 }
 function __resolveDep(token) {
-  return token === 'HttpClient' ? __httpStub() : __service(token);
+  if (token === 'HttpClient') return __httpStub();
+  // Routing tokens (Stage 9): the Router is one shared object over the
+  // preview's navigation stack; ActivatedRoute is seeded per route
+  // component instance by the outlet (see __buildOutlet), falling back
+  // to the current entry's params for any other consumer.
+  if (token === 'Router') return __routerObj;
+  if (token === 'ActivatedRoute') {
+    return __activatedRouteObj(__pendingRouteParams || __currentEntry().params);
+  }
+  return __service(token);
 }
 function __bind(def, inst) {
   var fns = {};
@@ -1800,6 +1869,143 @@ function __buildChild(el, scope, path) {
     __attachEvents(nodes[0], { eventBindings: domEvents }, scope);
   }
   return nodes;
+}
+// Routing runtime (Stage 9). Plain-JS mirrors of the @rangular/runtime
+// matcher and navigator: the same segment rules, the same redirect
+// handling, parity-tested against the runtime over a table of paths.
+// The stack lives outside component state, like the generated app has
+// its module-level navigator; navigating re-renders the shell and the
+// outlet renders the top entry's route component. An ActivatedRoute is
+// seeded per route instance by __buildOutlet (through __pendingRoute
+// params), and the instance path keys on the matched route plus the
+// concrete path, so a parameter change remounts the component, the
+// same simplification the generated outlet makes.
+// The back bar __buildOutlet adds above the routed content at depth 2+
+// is PREVIEW CHROME ONLY: it stands in for the phone's back affordance.
+// The generated app exposes RgNavigator.back() and the Expo scaffold
+// wires the hardware back button to it (Stage 12); nothing of the bar
+// exists in generated code or in the app UI.
+var __navStack = [];
+var __pendingRouteParams = null;
+function __normalizePath(p) {
+  return String(p).split('/').filter(function (s) { return s.length > 0; }).join('/');
+}
+function __segmentsOf(p) {
+  var n = __normalizePath(p);
+  return n === '' ? [] : n.split('/');
+}
+function __matchSegments(pattern, path) {
+  if (pattern === '**') return {};
+  var want = __segmentsOf(pattern), got = __segmentsOf(path);
+  if (want.length !== got.length) return null;
+  var params = {};
+  for (var i = 0; i < want.length; i++) {
+    if (want[i].charAt(0) === ':') params[want[i].slice(1)] = got[i];
+    else if (want[i] !== got[i]) return null;
+  }
+  return params;
+}
+function __matchRoute(rawPath) {
+  var current = __normalizePath(rawPath);
+  var seen = {};
+  for (var hop = 0; hop <= 10; hop++) {
+    var hit = null;
+    for (var i = 0; i < ROUTES.length; i++) {
+      var params = __matchSegments(ROUTES[i].path, current);
+      if (params) { hit = { def: ROUTES[i], params: params }; break; }
+    }
+    if (!hit) return null;
+    if (hit.def.redirectTo === undefined) {
+      return { path: current, params: hit.params, routePath: hit.def.path };
+    }
+    if (seen[current]) return null;
+    seen[current] = true;
+    current = __normalizePath(hit.def.redirectTo);
+  }
+  return null;
+}
+function __currentEntry() {
+  return __navStack[__navStack.length - 1] || { path: '', params: {}, routePath: '' };
+}
+function __navigateTo(target) {
+  var raw = Array.isArray(target)
+    ? target.map(function (c) { return String(c); }).join('/')
+    : String(target);
+  var match = __matchRoute(raw);
+  if (!match) { console.warn('preview: no route matches ' + raw); return false; }
+  __navStack.push(match);
+  __render();
+  return true;
+}
+function __navBack() {
+  if (__navStack.length <= 1) return;
+  __navStack.pop();
+  __render();
+}
+var __routerObj = {
+  navigate: function (commands) { return __navigateTo(commands); },
+  navigateByUrl: function (url) { return __navigateTo(url); }
+};
+function __activatedRouteObj(params) {
+  var p = params || {};
+  return {
+    snapshot: { params: p },
+    paramMap: {
+      subscribe: function (next) {
+        if (next) next(p);
+        return { unsubscribe: function () {} };
+      }
+    }
+  };
+}
+function __navTarget(el, scope) {
+  for (var i = 0; i < el.propBindings.length; i++) {
+    if (el.propBindings[i].name === 'routerLink') {
+      try { return __evalSrc(el.propBindings[i].expression, scope); }
+      catch (err) { console.warn(err); return undefined; }
+    }
+  }
+  return el.attrs['routerLink'];
+}
+function __attachNav(dom, el, scope) {
+  if (!ROUTES.length || !dom || !dom.addEventListener) return;
+  var target = __navTarget(el, scope);
+  if (target === undefined) return;
+  dom.addEventListener('click', function () { __navigateTo(target); });
+}
+function __buildOutlet(el, scope, path) {
+  var entry = __currentEntry();
+  var out = [];
+  if (__navStack.length > 1) {
+    var bar = document.createElement('div');
+    bar.className = 'preview-nav-back';
+    var label = document.createElement('span');
+    label.textContent = 'Preview navigation: /' + entry.path;
+    bar.appendChild(label);
+    var back = document.createElement('button');
+    back.type = 'button';
+    back.textContent = 'Back';
+    back.addEventListener('click', function () { __navBack(); });
+    bar.appendChild(back);
+    out.push(bar);
+  }
+  var def = null;
+  for (var i = 0; i < ROUTES.length; i++) {
+    if (ROUTES[i].path === entry.routePath && ROUTES[i].selector) { def = ROUTES[i]; break; }
+  }
+  if (!def) return out;
+  var childEl = {
+    type: 'element', tag: def.selector, attrs: {}, booleanAttrs: [],
+    propBindings: [], twoWayBindings: [], eventBindings: [], children: [],
+    pos: el.pos
+  };
+  __pendingRouteParams = entry.params;
+  var nodes = __buildChild(childEl, scope, path + '/route:' + entry.routePath + ':' + entry.path);
+  __pendingRouteParams = null;
+  return out.concat(nodes);
+}
+if (ROUTES.length) {
+  __navStack = [__matchRoute('') || { path: '', params: {}, routePath: '' }];
 }
 function __render() {
   var app = document.getElementById('app');

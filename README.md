@@ -99,15 +99,16 @@ flowchart TB
 | - | **Stage 6: Controls**, Material style switch, checkbox, segmented page switcher and radio group, settings example | ✅ Done |
 | - | **Stage 7: Icons**, one `<icon>` block over a curated set of 27 Material style icons, compile time name validation, icons example | ✅ Done |
 | - | **Stage 8: Forms**, the `<input>` block (`RgInput`), `[(ngModel)]` two-way binding with attribute validators and template refs, a lightweight `<form (submit)>` element, reactive `FormGroup` / `FormControl` / `Validators`, signup-form and profile-form examples | ✅ Done |
-| - | Stages 9 to 12: routing, pickers and overlays, data display, language completeness and app readiness | Planned, see [docs/ROADMAP.md](docs/ROADMAP.md) |
+| - | **Stage 9: Routing**, a `Routes` array in `app.routes.ts` (or `--routes`), `<router-outlet>` in the root component, `routerLink` in string and array forms, `ActivatedRoute` params (`snapshot` + `paramMap`), `Router.navigate` / `navigateByUrl`, runtime `RgNavigator` + `matchRoute`, mini-mail example | ✅ Done |
+| - | Stages 10 to 12: pickers and overlays, data display, language completeness and app readiness | Planned, see [docs/ROADMAP.md](docs/ROADMAP.md) |
 
 ## Packages
 
 | Package | What it is |
 |---|---|
 | `@rangular/compiler` | Template parser + expression (Pratt) parser, `@Component` extractor (TypeScript compiler API), CSS-subset parser, RN code generator, HTML preview renderer |
-| `@rangular/runtime` | Pure-TypeScript helpers for generated apps: `EventEmitter`, `signal()`, DI `Container`, `ReactiveService` (service reactivity base), `HttpClient` (Observable-lite over fetch), `pipe()`, forms classes (`Validators`, `validateValue`, `FormControl`, `FormGroup`) |
-| `@rangular/ui` | Rangular Material: `tokens.ts` (pure TS), `icons.ts` (the curated icon set as SVG path data) + shipped-source RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`, `RgSwitch`, `RgCheckbox`, `RgSwitcher`, `RgOption`, `RgRadioGroup`, `RgRadio`, `RgIcon`, `RgInput`) |
+| `@rangular/runtime` | Pure-TypeScript helpers for generated apps: `EventEmitter`, `signal()`, DI `Container`, `ReactiveService` (service reactivity base), `HttpClient` (Observable-lite over fetch), `pipe()`, forms classes (`Validators`, `validateValue`, `FormControl`, `FormGroup`), routing classes (`RgNavigator`, `matchRoute`, `Router`, `ActivatedRoute`) |
+| `@rangular/ui` | Rangular Material: `tokens.ts` (pure TS), `icons.ts` (the curated icon set as SVG path data) + shipped-source RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`, `RgSwitch`, `RgCheckbox`, `RgSwitcher`, `RgOption`, `RgRadioGroup`, `RgRadio`, `RgIcon`, `RgInput`, `RgOutlet`) |
 | `@rangular/cli` | `rangular build`, `rangular ast`, `rangular preview`, `rangular catalog`, `rangular watch`, `rangular init`, `rangular doctor` (build/preview/doctor accept `--json`; build accepts `--source-map`) |
 
 > Note: `@rangular/ui` primitives and other shipped-source files for generated
@@ -403,8 +404,8 @@ label, the way a select element reads its options. Wrong nesting
 earns a `GEN_CONTROL_NESTING` warning with a fix line.
 
 **The switcher is view state, not routing.** It changes a field on
-the same screen; routing is Stage 9 in
-[docs/ROADMAP.md](docs/ROADMAP.md).
+the same screen; real navigation between screens is routing
+(Stage 9, below).
 
 **Switch motion.** The knob only ever moves toward its target:
 the React Native primitive uses a plain linear timing move, never
@@ -491,6 +492,59 @@ for the app. Group-level validators, `FormArray` and async
 validators are not in this stage. The full boundary list is the
 Forms section of [docs/VIBE_CODING.md](docs/VIBE_CODING.md).
 
+## Stage 9: routing
+
+Angular apps navigate with a route table, an outlet and links;
+Rangular source now does the same, in the modern standalone form.
+The routes live in `app.routes.ts` next to the root component (or
+in the file named by `rangular build --routes <file>`), as the
+`export const routes: Routes = [...]` array that `provideRouter`
+consumes in current Angular, not the historical
+`RouterModule.forRoot` module form:
+
+```ts
+export const routes: Routes = [
+  { path: '', redirectTo: 'inbox', pathMatch: 'full' },
+  { path: 'inbox', component: InboxComponent },
+  { path: 'mail/:id', component: MailDetailComponent },
+  { path: '**', component: NotFoundComponent },
+];
+```
+
+The root component hosts one `<router-outlet>`; the generated app
+builds a runtime `RgNavigator` (a stack of matched entries) from
+the table, mirrors its current entry in state, and renders the
+matched route component inside the `RgOutlet` primitive. Route
+components are ordinary components imported by the routes file.
+`routerLink="/inbox"` and `[routerLink]="['/mail', m.id]"` on a
+`<button>` or `<row>` compile to a navigation press (array literals
+joined the expression subset for the array form). A detail screen
+injects `ActivatedRoute` and reads `route.snapshot.params.id` (a
+string, always) or subscribes to `route.paramMap`; a method
+navigates with `this.router.navigate(['/inbox'])` or
+`navigateByUrl`. Matching is one runtime function: declaration
+order, one-segment `:param` capture, full-match redirects (chains
+resolve, loops fail closed), `**` catches the rest.
+
+Boundaries, stated plainly: same-component parameter changes
+remount the component in v1 (Angular reuses it and pushes the new
+value through `paramMap`); navigation commands resolve from the
+root; there are no child routes, guards, resolvers, lazy loading
+or `routerLinkActive` yet, and a route entry using one is a
+`GEN_ROUTE_UNSUPPORTED` error naming the feature. No routes file
+while routing is used is `GEN_ROUTES_MISSING`; an unknown
+component class is `GEN_ROUTE_COMPONENT`; a repeated path warns
+`GEN_ROUTE_DUPLICATE`. The preview runs the whole flow and shows a
+dashed "Preview navigation" Back bar at depth 2 or more: preview
+chrome only, standing in for the phone's back affordance
+(`RgNavigator.back()` is the app-side API; the hardware button
+wiring lands with the Stage 12 Expo scaffold). The
+[mini-mail example](examples/mini-mail/) proves it end to end:
+shell, inbox, a `mail/:id` detail reading its param over the
+shared MailService, and a wildcard page reached through a
+deliberately stale link. The full boundary list is the Routing
+section of [docs/VIBE_CODING.md](docs/VIBE_CODING.md).
+
 ## v1 is complete
 
 What v1 is: an Angular-style component, template, service and DI
@@ -499,8 +553,7 @@ system in light and dark, an interactive preview that behaves like the
 app, machine-readable diagnostics with fixes, a full CLI, and a recipe
 card proving every capability on a tiny example.
 
-Deliberately post-v1: routing
-(Stage 9), animations, the full RxJS surface, content projection
+Deliberately post-v1: animations, the full RxJS surface, content projection
 (Stage 12), per-expression source maps, device screenshot goldens,
 and following the OS dark mode setting by default. The full
 sequence is in [docs/ROADMAP.md](docs/ROADMAP.md).
