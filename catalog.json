@@ -93,6 +93,11 @@
       "from": "@rangular/ui"
     },
     {
+      "tag": "icon-button",
+      "component": "RgIconButton",
+      "from": "@rangular/ui"
+    },
+    {
       "tag": "switch",
       "component": "RgSwitch",
       "from": "@rangular/ui"
@@ -329,6 +334,35 @@
         },
         {
           "name": "avatar",
+          "type": "any"
+        },
+        {
+          "name": "onMenu",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgIconButton",
+      "props": [
+        {
+          "name": "name",
+          "type": "any"
+        },
+        {
+          "name": "size",
+          "type": "any"
+        },
+        {
+          "name": "color",
+          "type": "any"
+        },
+        {
+          "name": "onPress",
+          "type": "any"
+        },
+        {
+          "name": "style",
           "type": "any"
         }
       ]

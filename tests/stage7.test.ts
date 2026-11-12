@@ -252,9 +252,10 @@ test('icons preview: server paint draws every icon with its label, coloured by r
     children: result.children,
     services: result.services,
   });
-  // 27 set icons + the appbar menu + 4 usage icons, in the server paint
-  // (everything before the page script).
-  assert.equal((html.split('<script>')[0].match(/<svg /g) ?? []).length, 32);
+  // 27 set icons + 4 usage icons + 3 icon buttons, in the server paint
+  // (everything before the page script). The appbar draws no menu: it
+  // has no menu handler, and a dead control is not drawn.
+  assert.equal((html.split('<script>')[0].match(/<svg /g) ?? []).length, 34);
   for (const name of ICON_NAMES) {
     assert.ok(html.includes(`<path d="${ICON_PATHS[name][0]}"`), `preview missing path for ${name}`);
     assert.ok(html.includes(`>${name}<`), `preview missing label for ${name}`);
@@ -331,8 +332,8 @@ test('icons preview behaviour: the page runtime draws the same paths as the serv
   });
   const app = loadPreview(html);
   const iconEls = findAll(app, (e) => e.className === 'icon');
-  // 27 in the *ngFor set + appbar menu + 4 usage icons, all drawn at runtime.
-  assert.equal(iconEls.length, 32);
+  // 27 in the *ngFor set + 4 usage icons + 3 icon buttons, at runtime.
+  assert.equal(iconEls.length, 34);
   const runtimeMarkup = iconEls.map((e) => e.markup).join('\n');
   for (const name of ICON_NAMES) {
     // Parity: the identical path data the server painted and RgIcon ships.

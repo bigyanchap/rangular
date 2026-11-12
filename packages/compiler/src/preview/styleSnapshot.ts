@@ -61,6 +61,7 @@ function allRoles(mode: ThemeMode): Record<string, StyleRecord> {
       borderRadius: t.radius.full, fontSize: ty.caption.fontSize, fontWeight: 700,
     },
     icon: { color: c.text },
+    iconButton: { minWidth: 48, minHeight: 48 },
     fab: { background: c.primaryContainer, color: c.onPrimaryContainer, borderRadius: t.radius.lg },
     switch: {
       background: c.surfaceVariant, borderColor: c.outline, knobBackground: c.onSurfaceVariant,
@@ -146,6 +147,7 @@ function rolesForElement(el: ElementNode): string[] {
     case 'p': return ['textBody'];
     case 'label': return ['textLabel'];
     case 'icon': return ['icon'];
+    case 'icon-button': return ['iconButton', 'icon'];
     case 'fab': return ['fab'];
     case 'switch': return ['switch'];
     case 'checkbox': return ['checkbox'];

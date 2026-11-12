@@ -41,6 +41,7 @@
   .btn[disabled] { opacity: .38; cursor: default; }
   .stack { display: flex; flex-direction: column; gap: 12px; }
   .btn-text { background: transparent; color: var(--primary); text-align: left; padding: 0 8px; }
+  .icon-btn { align-self: flex-start; width: 48px; height: 48px; display: inline-flex; align-items: center; justify-content: flex-start; background: transparent; border: none; padding: 0; cursor: pointer; }
   .form { display: flex; flex-direction: column; }
   .field { display: flex; flex-direction: column; gap: 4px; margin: 12px 0 0; }
   .field-label { font-size: 14px; font-weight: 600; color: var(--text-muted); }
@@ -2066,6 +2067,16 @@ function __buildCore(el, scope, path, form) {
       iconBadgeWrap.appendChild(iconNode);
       iconBadgeWrap.appendChild(iconDot);
       return [iconBadgeWrap];
+    }
+    case 'icon-button': {
+      var ibName = __attr(el, 'name', scope);
+      if (!ibName) return [];
+      var ib = document.createElement('button');
+      ib.className = 'icon-btn';
+      ib.appendChild(__icon(String(ibName), __iconSize(el, scope), __attr(el, 'color', scope)));
+      __attachEvents(ib, el, scope);
+      __attachNav(ib, el, scope);
+      return [ib];
     }
     case 'fab': {
       var f = wrap('div', 'fab')[0];

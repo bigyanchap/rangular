@@ -904,6 +904,11 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
         const dot = badgeHtml(el, scope);
         return dot ? `<span class="icon-badge">${svg}${dot}</span>` : svg;
       }
+      case 'icon-button': {
+        const name = bound(el, 'name', scope);
+        if (!name) return '';
+        return `<button class="icon-btn">${iconSvg(name, iconSizeOf(el, scope), bound(el, 'color', scope))}</button>`;
+      }
       case 'fab': return `<div class="fab">${inner || escapeHtml(bound(el, 'label', scope) ?? 'Compose')}</div>`;
       case 'header': return `<header class="stack"${dirStyle}>${inner}</header>`;
       case 'section': return `<section class="stack"${dirStyle}>${inner}</section>`;
@@ -957,6 +962,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .btn[disabled] { opacity: .38; cursor: default; }
   .stack { display: flex; flex-direction: column; gap: ${t.spacing.md}px; }
   .btn-text { background: transparent; color: var(--primary); text-align: left; padding: 0 ${t.spacing.sm}px; }
+  .icon-btn { align-self: flex-start; width: 48px; height: 48px; display: inline-flex; align-items: center; justify-content: flex-start; background: transparent; border: none; padding: 0; cursor: pointer; }
   .form { display: flex; flex-direction: column; }
   .field { display: flex; flex-direction: column; gap: ${t.spacing.xs}px; margin: ${t.spacing.md}px 0 0; }
   .field-label { font-size: ${t.typography.label.fontSize}px; font-weight: 600; color: var(--text-muted); }
@@ -3193,6 +3199,16 @@ function __buildCore(el, scope, path, form) {
       iconBadgeWrap.appendChild(iconNode);
       iconBadgeWrap.appendChild(iconDot);
       return [iconBadgeWrap];
+    }
+    case 'icon-button': {
+      var ibName = __attr(el, 'name', scope);
+      if (!ibName) return [];
+      var ib = document.createElement('button');
+      ib.className = 'icon-btn';
+      ib.appendChild(__icon(String(ibName), __iconSize(el, scope), __attr(el, 'color', scope)));
+      __attachEvents(ib, el, scope);
+      __attachNav(ib, el, scope);
+      return [ib];
     }
     case 'fab': {
       var f = wrap('div', 'fab')[0];

@@ -49,8 +49,24 @@ test('appbar draws no menu and no avatar unless the app asks for them', () => {
   assert.ok(optedBar![0].includes('<svg'), 'menu icon appears when asked');
 
   const primitives = fs.readFileSync(path.join(ROOT, 'packages', 'ui', 'src', 'primitives.tsx'), 'utf8');
-  assert.match(primitives, /menu \? <RgIcon name="menu"/);
+  assert.match(primitives, /menu \? \(onMenu \? \(/);
   assert.match(primitives, /avatar \? \(/);
+});
+
+test('icon-button compiles to RgIconButton and paints a real button in preview', () => {
+  const result = compileInline('<screen><icon-button name="chevron-left" (click)="go()"></icon-button></screen>');
+  assert.equal(hasErrors(result.diagnostics), false, JSON.stringify(result.diagnostics));
+  assert.match(result.code, /RgIconButton/);
+  assert.match(result.code, /name="chevron-left"/);
+  const html = renderPreview(result.component!, result.ast!);
+  assert.match(html, /class="icon-btn"/);
+  const primitives = fs.readFileSync(path.join(ROOT, 'packages', 'ui', 'src', 'primitives.tsx'), 'utf8');
+  assert.match(primitives, /export function RgIconButton/);
+});
+
+test('icon-button with an unknown icon name is a GEN_ICON_UNKNOWN error', () => {
+  const result = compileInline('<screen><icon-button name="rocket"></icon-button></screen>');
+  assert.ok(result.diagnostics.some((d) => d.code === 'GEN_ICON_UNKNOWN'), JSON.stringify(result.diagnostics));
 });
 
 test('button variant text renders the quiet form in preview and primitives', () => {

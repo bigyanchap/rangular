@@ -84,7 +84,7 @@ export default function MiniMail() {
   useEffect(() => __navigator.subscribe(() => __setRoute(__navigator.current)), []);
   return (
     <RgScreen>
-      <RgAppbar title="Mini Mail" avatar="M" menu />
+      <RgAppbar title="Mini Mail" avatar="M" />
       <RgOutlet>
         {__route.routePath === "inbox" && (
           <Inbox key={__route.path} />

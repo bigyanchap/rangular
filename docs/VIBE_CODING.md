@@ -1053,6 +1053,15 @@ See `examples/mailbox-pro/` and its recipe card.
   with `variant="text"` is the quiet form, for back links and
   secondary actions: no fill, primary coloured label, left
   aligned, same 48 high target.
+- **Only meaningful buttons (2026-11-12, same finding).** Back is
+  an `<icon-button name="chevron-left" routerLink="/home">`: a
+  48 square target, glyph at the left edge, no label, the pattern
+  Google apps use. A full width labelled button for going back,
+  a menu icon with no menu, an avatar with no user: none of these
+  are meaningful controls, and Rangular does not draw them by
+  default anymore. If an action needs words, use a button. If it
+  is one clear symbol sized action, use an icon button. If it
+  does nothing when tapped, do not draw it.
 
 ## Tooling (Stage 5)
 

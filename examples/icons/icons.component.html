@@ -1,5 +1,5 @@
 <screen>
-  <appbar title="Icons" menu></appbar>
+  <appbar title="Icons"></appbar>
 
   <label>The set</label>
   <div class="icon-cell" *ngFor="let name of names">
@@ -24,4 +24,13 @@
     <icon name="sun"></icon>
     <p>Good morning</p>
   </div>
+
+  <label>Icon buttons: the meaningful kind</label>
+  <p>An icon button is for one clear action, like Back. It carries a 48 square touch target and no label. If an action needs words, use a button instead.</p>
+  <div class="icon-line">
+    <icon-button name="chevron-left" (click)="tapIcon('chevron-left')"></icon-button>
+    <icon-button name="settings" (click)="tapIcon('settings')"></icon-button>
+    <icon-button name="share" (click)="tapIcon('share')"></icon-button>
+  </div>
+  <p *ngIf="lastTap">Last tapped: {{ lastTap }}</p>
 </screen>

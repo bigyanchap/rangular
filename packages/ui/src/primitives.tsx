@@ -175,6 +175,15 @@ function buildStyles(t: Theme) {
     // screens whose blocks were direct children of the screen got the
     // rhythm. Found by the Rangular Tutorial app, 2026-11-12.
     section: { flexDirection: 'column', gap: t.spacing.md },
+    // An icon button: the Google pattern for actions like Back. A
+    // 48 square touch target that hugs the left edge (alignSelf
+    // flex-start, glyph left aligned) so the chevron lines up with
+    // the headings below it, instead of a full width labelled
+    // button doing a small job.
+    iconButton: {
+      alignSelf: 'flex-start', width: 48, height: 48,
+      alignItems: 'flex-start', justifyContent: 'center',
+    },
     appbarTitle: { flex: 1, fontSize: t.typography.title.fontSize, fontWeight: '600', color: c.text },
     searchText: { flex: 1, fontSize: t.typography.body.fontSize, color: c.textMuted },
     card: {
@@ -454,7 +463,7 @@ export function RgScreen({ children, style, theme: mode }: any) {
   );
 }
 
-export function RgAppbar({ title, search, menu, avatar }: any) {
+export function RgAppbar({ title, search, menu, avatar, onMenu }: any) {
   const t = useRgTheme();
   const c = t.colors;
   const styles = stylesFor(t);
@@ -466,7 +475,11 @@ export function RgAppbar({ title, search, menu, avatar }: any) {
   // in at all (found by the Rangular Tutorial app, 2026-11-12).
   return (
     <View style={styles.appbar}>
-      {menu ? <RgIcon name="menu" size={24} color="textMuted" /> : null}
+      {menu ? (onMenu ? (
+        <Pressable onPress={onMenu} style={({ pressed }) => [pressed && styles.buttonPressed]}>
+          <RgIcon name="menu" size={24} color="textMuted" />
+        </Pressable>
+      ) : <RgIcon name="menu" size={24} color="textMuted" />) : null}
       {search ? <Text style={styles.searchText}>{search}</Text> : <Text style={styles.appbarTitle}>{title}</Text>}
       {avatar ? (
         <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: c.avatar, alignItems: 'center', justifyContent: 'center' }}>
@@ -474,6 +487,22 @@ export function RgAppbar({ title, search, menu, avatar }: any) {
         </View>
       ) : null}
     </View>
+  );
+}
+
+export function RgIconButton({ name, size = 28, color, onPress, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.iconButton,
+        pressed && styles.buttonPressed,
+        style,
+      ]}
+    >
+      <RgIcon name={name} size={size} color={color} />
+    </Pressable>
   );
 }
 

@@ -26,7 +26,7 @@ export class IconsComponent {
 
 ```html
 <screen>
-  <appbar title="Icons" menu></appbar>
+  <appbar title="Icons"></appbar>
 
   <label>The set</label>
   <div class="icon-cell" *ngFor="let name of names">
@@ -84,6 +84,7 @@ import { RgAppbar, RgIcon, RgScreen } from '@rangular/ui';
 - **Sizes snap like styles do.** A size off the scale (20, 24, 28) earns a `GEN_ICON_SIZE` warning and the generated code uses the nearest on-scale size, ties going to the lower value, the same rule the style translator applies. A size that is not a number at all falls back to the default 24, also with the warning.
 - **App side requirement.** `RgIcon` renders through react-native-svg. That library ships inside Expo Go and is a standard part of Expo and React Native projects, so a generated app needs nothing unusual, but it is a real dependency of the generated app and it is named here so nobody is surprised by it.
 - **Icons are static.** An icon has no events and no state. Put it next to text in a row (a `div` with `flex-direction: row`, as in the usage strip) rather than inside a button: a button's children render as one text label today, so an icon inside a button would not draw as an icon. A tappable icon row is a row with a `(click)` handler.
+- **A tappable icon is an `<icon-button>`.** It takes the same `name`, `size` and `color`, carries a 48 square touch target, and accepts `(click)` and `routerLink`. It is the right block for one clear symbol sized action, Back above all: `<icon-button name="chevron-left" routerLink="/home"></icon-button>`. An unknown static name is the same `GEN_ICON_UNKNOWN` error. If the action needs words, use a `<button>`; if it does nothing when tapped, draw neither.
 - **Preview note.** The preview paints component class styles only in the generated app, not in its own stylesheet (the known preview limit documented in the settings recipe), so in the preview the set cells stack in a simple column. The drawings, sizes and colours are the real ones in both.
 
 **Common mistakes**

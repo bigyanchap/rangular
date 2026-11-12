@@ -108,6 +108,7 @@ export const TAG_MAP: Record<string, TagMapping> = {
   row: { component: 'RgRow', fromUi: true },
   fab: { component: 'RgFab', fromUi: true },
   icon: { component: 'RgIcon', fromUi: true },
+  'icon-button': { component: 'RgIconButton', fromUi: true },
   switch: { component: 'RgSwitch', fromUi: true },
   switcher: { component: 'RgSwitcher', fromUi: true },
   option: { component: 'RgOption', fromUi: true },
@@ -954,6 +955,18 @@ class Generator {
             line: node.pos.line,
             column: node.pos.column,
             fix: 'Use one of the names listed under Icons in catalog.md, e.g. <chip icon="star">Starred</chip>',
+            validIcons: ICON_NAMES,
+          });
+        }
+        if (node.tag.toLowerCase() === 'icon-button' && node.attrs['name'] !== undefined
+          && !(node.attrs['name'] in ICON_PATHS)) {
+          diagnostics.push({
+            severity: 'error',
+            code: 'GEN_ICON_UNKNOWN',
+            message: `Unknown icon name '${node.attrs['name']}' in an <icon-button> name attribute: it is not in the Rangular icon set`,
+            line: node.pos.line,
+            column: node.pos.column,
+            fix: 'Use one of the names listed under Icons in catalog.md, e.g. <icon-button name="chevron-left" routerLink="/home"></icon-button>',
             validIcons: ICON_NAMES,
           });
         }
