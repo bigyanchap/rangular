@@ -102,8 +102,8 @@ git clone https://github.com/bigyanchap/rangular.git
 cd rangular
 npm install
 npm test
-node dist/packages/cli/src/cli.js init my-habit-app --app
-cd apps/my-habit-app
+node dist/packages/cli/src/cli.js init my-app --app
+cd apps/my-app
 npm install
 npx expo start
 ```
@@ -113,3 +113,21 @@ The clone form differs only in the command prefix: `init <name>
 folder, and there is no single `serve` command yet, so Expo is
 started directly and components are recompiled with the build
 command spelled out in the created app's own README.
+
+## Temporary step: apps scaffolded before the SDK 58 move
+
+The store build of Expo Go supports Expo SDK 58 only. Apps
+scaffolded now already carry the SDK 58 pins and need nothing here.
+But an app scaffolded earlier carries the SDK 54 set, and Expo Go
+refuses it with an SDK version error. Upgrade that app in place,
+inside its own folder (the one containing `app.json`):
+
+```sh
+npx expo install expo@^58.0.0 --fix
+npx expo start
+```
+
+The `--fix` step moves Expo to SDK 58 and aligns the rest of the
+app's dependencies (React, React Native, SVG, the Babel preset) to
+the versions SDK 58 expects. This section is temporary: it comes
+out when Rangular is published on npm.
