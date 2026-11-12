@@ -136,6 +136,81 @@
       "tag": "router-outlet",
       "component": "RgOutlet",
       "from": "@rangular/ui"
+    },
+    {
+      "tag": "sheet",
+      "component": "RgSheet",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "dialog",
+      "component": "RgDialog",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "actions",
+      "component": "RgActions",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "datetime-picker",
+      "component": "RgDateTimePicker",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "tabs",
+      "component": "RgTabs",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "tab",
+      "component": "RgTab",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "accordion",
+      "component": "RgAccordion",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "panel",
+      "component": "RgPanel",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "table",
+      "component": "RgTable",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "column",
+      "component": "RgColumn",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "slider",
+      "component": "RgSlider",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "progress-bar",
+      "component": "RgProgressBar",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "spinner",
+      "component": "RgSpinner",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "chips",
+      "component": "RgChips",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "chip",
+      "component": "RgChip",
+      "from": "@rangular/ui"
     }
   ],
   "events": [
@@ -154,6 +229,26 @@
     {
       "event": "blur",
       "rnProp": "onBlur"
+    },
+    {
+      "event": "close",
+      "rnProp": "onClose"
+    },
+    {
+      "event": "focus",
+      "rnProp": "onFocus"
+    },
+    {
+      "event": "toggle",
+      "rnProp": "onToggle"
+    },
+    {
+      "event": "remove",
+      "rnProp": "onRemove"
+    },
+    {
+      "event": "optionSelected",
+      "rnProp": "onOptionSelected"
     },
     {
       "event": "input",
@@ -188,6 +283,10 @@
         },
         {
           "name": "color",
+          "type": "any"
+        },
+        {
+          "name": "badge",
           "type": "any"
         },
         {
@@ -272,6 +371,10 @@
           "type": "any"
         },
         {
+          "name": "badge",
+          "type": "any"
+        },
+        {
           "name": "style",
           "type": "any"
         }
@@ -290,6 +393,10 @@
         },
         {
           "name": "onBlur",
+          "type": "any"
+        },
+        {
+          "name": "onFocus",
           "type": "any"
         },
         {
@@ -314,6 +421,14 @@
         },
         {
           "name": "keyboardType",
+          "type": "any"
+        },
+        {
+          "name": "options",
+          "type": "any"
+        },
+        {
+          "name": "onOptionSelected",
           "type": "any"
         },
         {
@@ -497,6 +612,10 @@
           "type": "any"
         },
         {
+          "name": "badge",
+          "type": "any"
+        },
+        {
           "name": "children",
           "type": "any"
         }
@@ -524,6 +643,338 @@
         },
         {
           "name": "onPress",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgSheet",
+      "props": [
+        {
+          "name": "open",
+          "type": "any"
+        },
+        {
+          "name": "onClose",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgDialog",
+      "props": [
+        {
+          "name": "open",
+          "type": "any"
+        },
+        {
+          "name": "onClose",
+          "type": "any"
+        },
+        {
+          "name": "title",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgActions",
+      "props": [
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgSnackbar",
+      "props": [
+        {
+          "name": "message",
+          "type": "any"
+        },
+        {
+          "name": "actionLabel",
+          "type": "any"
+        },
+        {
+          "name": "onAction",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgDateTimePicker",
+      "props": [
+        {
+          "name": "value",
+          "type": "any"
+        },
+        {
+          "name": "mode",
+          "type": "any"
+        },
+        {
+          "name": "label",
+          "type": "any"
+        },
+        {
+          "name": "minuteInterval",
+          "type": "any"
+        },
+        {
+          "name": "onChange",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgTab",
+      "props": [
+        {
+          "name": "label",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgTabs",
+      "props": [
+        {
+          "name": "index",
+          "type": "any"
+        },
+        {
+          "name": "onChange",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgAccordion",
+      "props": [
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgPanel",
+      "props": [
+        {
+          "name": "title",
+          "type": "any"
+        },
+        {
+          "name": "subtitle",
+          "type": "any"
+        },
+        {
+          "name": "expanded",
+          "type": "any"
+        },
+        {
+          "name": "onToggle",
+          "type": "any"
+        },
+        {
+          "name": "__groupExpanded",
+          "type": "any"
+        },
+        {
+          "name": "__groupToggle",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgColumn",
+      "props": [
+        {
+          "name": "name",
+          "type": "any"
+        },
+        {
+          "name": "header",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgTable",
+      "props": [
+        {
+          "name": "data",
+          "type": "any"
+        },
+        {
+          "name": "emptyText",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgSlider",
+      "props": [
+        {
+          "name": "value",
+          "type": "any"
+        },
+        {
+          "name": "min",
+          "type": "any"
+        },
+        {
+          "name": "max",
+          "type": "any"
+        },
+        {
+          "name": "step",
+          "type": "any"
+        },
+        {
+          "name": "disabled",
+          "type": "any"
+        },
+        {
+          "name": "onChange",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgProgressBar",
+      "props": [
+        {
+          "name": "value",
+          "type": "any"
+        },
+        {
+          "name": "mode",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgSpinner",
+      "props": [
+        {
+          "name": "size",
+          "type": "any"
+        },
+        {
+          "name": "color",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgChips",
+      "props": [
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgChip",
+      "props": [
+        {
+          "name": "icon",
+          "type": "any"
+        },
+        {
+          "name": "removable",
+          "type": "any"
+        },
+        {
+          "name": "onRemove",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
           "type": "any"
         }
       ]
@@ -1020,7 +1471,7 @@
     },
     {
       "code": "GEN_CONTROL_NESTING",
-      "meaning": "A control declaration is nested in the wrong parent; option belongs in switcher and radio belongs in radio-group, and those groups accept only their own declarations."
+      "meaning": "A declaration is nested in the wrong parent; option belongs in switcher, radio belongs in radio-group, tab belongs in tabs, and column belongs in table, and those groups (plus accordion, which takes panels only) accept only their own declarations."
     },
     {
       "code": "GEN_ICON_UNKNOWN",
@@ -1071,6 +1522,42 @@
       "meaning": "A route entry or routing construct uses an Angular routing feature Rangular does not support yet (child routes, guards, resolvers, lazy loading, nested outlets, routerLink on a component tag), or a route entry is not a plain object literal with a string path."
     },
     {
+      "code": "GEN_PICKER_MODE",
+      "meaning": "A <datetime-picker> mode is not one of the three picker modes (date, time, datetime)."
+    },
+    {
+      "code": "GEN_PICKER_INTERVAL",
+      "meaning": "A <datetime-picker> minuteInterval is not 1 or 5; the generated code uses the nearest of the two."
+    },
+    {
+      "code": "GEN_OVERLAY_OPEN",
+      "meaning": "A <sheet> or <dialog> has no [open] binding, so it cannot be opened or closed from the component; it renders statically open."
+    },
+    {
+      "code": "GEN_EVENT_ASSIGNMENT",
+      "meaning": "An event binding holds an assignment statement (for example (close)=\"sheetOpen = false\"); template event bindings take a method call, never an assignment, so the binding was dropped."
+    },
+    {
+      "code": "GEN_TABLE_COLUMN",
+      "meaning": "A <column> has no name attribute (or key alias) naming the row property it displays, so the table cannot read its cells."
+    },
+    {
+      "code": "GEN_SLIDER_RANGE",
+      "meaning": "A <slider> range is unusable: min must be below max (an error, checked when both are statically known), and step must be above zero (a warning; the generated code uses 1)."
+    },
+    {
+      "code": "GEN_PROGRESS_RANGE",
+      "meaning": "A <progress-bar> value is statically known to sit outside 0 to 100; the generated code clamps it into range."
+    },
+    {
+      "code": "GEN_SPINNER_SIZE",
+      "meaning": "A <spinner> size is off the icon size scale (20, 24, 28); the generated code uses the nearest on-scale size."
+    },
+    {
+      "code": "GEN_BADGE_HOST",
+      "meaning": "A badge attribute or [badge] binding sits on an element that cannot host a badge in this version (button, row and icon can); the badge was dropped."
+    },
+    {
       "code": "METHOD_UNSUPPORTED",
       "meaning": "A statement in a component method is outside the supported translation subset; it was left as a TODO."
     },
@@ -1092,7 +1579,7 @@
     },
     {
       "code": "DI_UNKNOWN_TOKEN",
-      "meaning": "A constructor dependency names a type that is not a known @Injectable({ providedIn: 'root' }) service in this compilation and not a built-in token (HttpClient, or Router / ActivatedRoute in a routed app)."
+      "meaning": "A constructor dependency names a type that is not a known @Injectable({ providedIn: 'root' }) service in this compilation and not a built-in token (HttpClient, Router / ActivatedRoute in a routed app, or SnackBar in a component)."
     },
     {
       "code": "DI_CYCLE",
@@ -1121,6 +1608,26 @@
     {
       "code": "CLI_INIT_NOT_EMPTY",
       "meaning": "The rangular init command was pointed at a directory that is not empty."
+    },
+    {
+      "code": "PIPE_UNKNOWN",
+      "meaning": "A template uses a pipe that is neither a built-in pipe nor a @Pipe class resolved in this compilation; the JSON form lists the known pipes in the fix."
+    },
+    {
+      "code": "GEN_VALIDATOR_ARG",
+      "meaning": "A static minlength or maxlength attribute value is not a plain number; the validator was dropped instead of emitting the text into generated code."
+    },
+    {
+      "code": "DIR_UNSUPPORTED",
+      "meaning": "An attribute directive is outside the supported subset (a bracket selector, @Input fields, an ElementRef, and ngOnInit or setter bodies made only of this.el.nativeElement.style.<prop> assignments), or it is used on a host the subset cannot style; the directive applied no styles."
+    },
+    {
+      "code": "PROJECTION_SELECT_UNSUPPORTED",
+      "meaning": "An <ng-content> carries a select attribute; multi-slot projection is not supported yet, so the element behaves as the default slot and receives all projected children."
+    },
+    {
+      "code": "CLI_INIT_UNSAFE",
+      "meaning": "The rangular init target name is not a safe directory name (letters, digits, dot, underscore and hyphen only, and not . or ..); nothing was written."
     }
   ]
 }

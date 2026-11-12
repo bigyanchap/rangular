@@ -1,0 +1,34 @@
+<screen>
+  <appbar title="Reminder"></appbar>
+
+  <form (submit)="save()">
+    <input label="Title" placeholder="What should I remember?" [(ngModel)]="title">
+    <datetime-picker label="When" mode="datetime" [value]="when" (change)="onWhen($event)"></datetime-picker>
+    <p>When (ISO): {{ when }}</p>
+    <p>Repeat: {{ repeat }}</p>
+    <button type="submit">Save</button>
+  </form>
+
+  <button (click)="openSheet()">Repeat options</button>
+  <button (click)="openConfirm()">Delete</button>
+  <p *ngIf="deleted">This reminder was deleted.</p>
+  <p *ngIf="restored">Delete undone. The reminder is back.</p>
+
+  <sheet [open]="sheetOpen" (close)="closeSheet()">
+    <label>Repeat</label>
+    <radio-group [value]="repeat" (change)="onRepeat($event)">
+      <radio value="none">Never</radio>
+      <radio value="daily">Every day</radio>
+      <radio value="weekly">Every week</radio>
+    </radio-group>
+    <button (click)="closeSheet()">Done</button>
+  </sheet>
+
+  <dialog [open]="confirmOpen" (close)="closeConfirm()" title="Delete this reminder?">
+    <p>This cannot be kept in the list after deletion. You can undo it from the message that follows.</p>
+    <actions>
+      <button class="dialog-btn" (click)="closeConfirm()">Cancel</button>
+      <button class="dialog-btn" (click)="deleteReminder()">Delete</button>
+    </actions>
+  </dialog>
+</screen>

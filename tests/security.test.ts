@@ -195,3 +195,207 @@ test('security: CSS class selectors must be plain identifiers', () => {
   const good = parseCss('.card-note { color: red; }');
   assert.ok('card-note' in good.styles);
 });
+
+// --- Stage 12 re-audit fixtures (2026-11-12) ---------------------------------
+//
+// The Stage 6 to 12 attack surface, run through the same adversarial
+// method as the Stage 5 audit: icon names, routerLink strings, routes
+// file contents, form validator attributes, datetime values,
+// autocomplete options, badge values, custom pipe names, projection
+// children and scaffold paths. One fixture in this set was a live
+// hole when first run (the static minlength attribute); the rest
+// verified as data-safe and are pinned here as regressions.
+
+function compileSecProject(files: Record<string, string>, entryName = 'app.component.ts') {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rangular-sec12-'));
+  for (const [name, content] of Object.entries(files)) {
+    fs.writeFileSync(path.join(dir, name), content);
+  }
+  const entry = path.join(dir, entryName);
+  return compileComponent({
+    tsSource: fs.readFileSync(entry, 'utf8'),
+    fileName: entry,
+    resolveFile: (rel) => {
+      const p = path.join(dir, rel);
+      return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : undefined;
+    },
+    resolveImport: (spec, importer) => {
+      const base = path.resolve(path.dirname(importer), spec);
+      for (const cand of [base, `${base}.ts`]) {
+        if (fs.existsSync(cand)) return { source: fs.readFileSync(cand, 'utf8'), fileName: cand };
+      }
+      return undefined;
+    },
+  });
+}
+
+test('security: a static minlength attribute cannot inject into the generated validators call', () => {
+  const result = compileWithTemplate(
+    ENTRY,
+    '<screen><input [(ngModel)]="note" minlength="3); pwned();//"></screen>',
+  );
+  assert.ok(result.diagnostics.some((d) => d.code === 'GEN_VALIDATOR_ARG'),
+    JSON.stringify(result.diagnostics));
+  assert.ok(!result.code.includes('pwned'), result.code);
+  assert.ok(!result.code.includes('minLength(3)'), result.code);
+  const ok = compileWithTemplate(
+    ENTRY,
+    '<screen><input [(ngModel)]="note" minlength="3"></screen>',
+  );
+  assert.ok(ok.code.includes('minLength(3)'), ok.code);
+  assert.ok(!ok.diagnostics.some((d) => d.code === 'GEN_VALIDATOR_ARG'));
+});
+
+test('security: a pattern attribute with quotes stays a JSON string in generated code', () => {
+  const result = compileWithTemplate(
+    ENTRY,
+    `<screen><input [(ngModel)]="note" pattern='x" }); pwned();//'></screen>`,
+  );
+  assert.ok(!result.diagnostics.some((d) => d.severity === 'error'), JSON.stringify(result.diagnostics));
+  assert.ok(result.code.includes('pattern("x\\" }); pwned();//")'), result.code);
+  assert.ok(!result.code.includes('pattern("x" });'), result.code);
+});
+
+test('security: an icon name with a quote is an unknown icon, never emitted markup', () => {
+  const result = compileWithTemplate(
+    ENTRY,
+    `<screen><icon name='check" onPress="pwned'></icon></screen>`,
+  );
+  assert.ok(result.diagnostics.some((d) => d.code === 'GEN_ICON_UNKNOWN'),
+    JSON.stringify(result.diagnostics));
+  assert.ok(!result.code.includes('onPress="pwned'), result.code);
+});
+
+test('security: a routes file path and redirect with quotes stay JSON data in generated code', () => {
+  const result = compileSecProject({
+    'app.component.ts': `
+      import { Component } from '@angular/core';
+      import { InboxComponent } from './inbox.component';
+      @Component({ selector: 'app-x', template: '<screen><router-outlet></router-outlet></screen>' })
+      export class XComponent { note = 'n'; }
+    `,
+    'inbox.component.ts': `
+      import { Component } from '@angular/core';
+      @Component({ selector: 'app-inbox', template: '<screen><p>Inbox</p></screen>' })
+      export class InboxComponent {}
+    `,
+    'app.routes.ts': `
+      import { Routes } from '@angular/router';
+      import { InboxComponent } from './inbox.component';
+      export const routes: Routes = [
+        { path: "x'; pwned();//", component: InboxComponent },
+        { path: 'home', redirectTo: "y\\"}; pwned();//" },
+      ];
+    `,
+  });
+  assert.ok(result.code.includes('new RgNavigator(['), result.code);
+  const jsonText = result.code.slice(
+    result.code.indexOf('new RgNavigator([') + 'new RgNavigator('.length,
+    result.code.indexOf('])', result.code.indexOf('new RgNavigator([')) + 1,
+  );
+  const parsed = JSON.parse(jsonText) as { path: string; redirectTo?: string }[];
+  assert.equal(parsed[0].path, "x'; pwned();//", 'the hostile path round-trips as inert data');
+  assert.ok(!result.code.includes("navigate(\"x';"), result.code);
+});
+
+test('security: a routerLink string with quotes and braces stays a string argument', () => {
+  const result = compileSecProject({
+    'app.component.ts': `
+      import { Component } from '@angular/core';
+      @Component({ selector: 'app-x', template: '<screen><button routerLink="/x\\"}; pwned();//">Go</button><router-outlet></router-outlet></screen>' })
+      export class XComponent { note = 'n'; }
+    `,
+    'app.routes.ts': `
+      import { Routes } from '@angular/router';
+      export const routes: Routes = [{ path: 'x' }];
+    `,
+  });
+  assert.ok(!result.code.includes('pwned();//")'), result.code.split('\n').find((l) => l.includes('pwned')) ?? '');
+  assert.ok(!/onPress=\{\(\) => [^}]*pwned\(\)/.test(result.code.replace(/"[^"]*"/g, '""')),
+    'the payload survives only inside a quoted string');
+});
+
+test('security: a badge value with a quote stays data in generated code', () => {
+  const result = compileWithTemplate(
+    ENTRY,
+    `<screen><button badge='9" } pwned={1} x="'>B</button></screen>`,
+  );
+  // The payload survives only as inert text inside the entity-escaped
+  // attribute string, the Stage 5 attribute discipline.
+  assert.ok(result.code.includes('badge="9&quot; } pwned={1} x=&quot;"'), result.code);
+  assert.ok(!result.code.includes('badge="9" }'), result.code);
+});
+
+test('security: an autocomplete option cannot close the preview script block', () => {
+  const tsSource = `import { Component } from '@angular/core';
+@Component({ selector: 'app-x', templateUrl: './x.component.html' })
+export class XComponent { city = ''; cities = ['Oslo', '</script><script>alert(1)</script>']; }
+`;
+  const result = compileWithTemplate(
+    tsSource,
+    '<screen><input [(ngModel)]="city" [options]="cities"></screen>',
+  );
+  assert.ok(result.component && result.ast);
+  const html = renderPreview(result.component, result.ast, {
+    children: result.children, services: result.services,
+    pipes: result.pipes, directives: result.directives,
+  });
+  assert.equal((html.match(/<script>/g) ?? []).length, 1, 'exactly one script block');
+  assert.ok(!html.includes('</script><script>alert(1)</script>'), 'raw payload leaked into the page');
+  assert.ok(html.includes('\\u003c/script>'), 'the payload survives only in escaped form');
+});
+
+test('security: a custom pipe name with a script closer stays escaped in the preview', () => {
+  const result = compileSecProject({
+    'app.component.ts': `
+      import { Component } from '@angular/core';
+      import { WeirdPipe } from './weird.pipe';
+      @Component({ selector: 'app-x', template: '<screen><p>hi</p></screen>' })
+      export class XComponent { note = 'n'; }
+    `,
+    'weird.pipe.ts': `
+      import { Pipe } from '@angular/core';
+      @Pipe({ name: 'weird</script><script>alert(1)</script>' })
+      export class WeirdPipe { transform(value: string): string { return value; } }
+    `,
+  });
+  assert.ok(result.component && result.ast);
+  const html = renderPreview(result.component, result.ast, {
+    children: result.children, services: result.services,
+    pipes: result.pipes, directives: result.directives,
+  });
+  assert.equal((html.match(/<script>/g) ?? []).length, 1, 'exactly one script block');
+  assert.ok(!html.includes('weird</script><script>alert(1)</script>'), 'raw payload leaked into the page');
+});
+
+test('security: projected children with braces stay data, like any template text', () => {
+  const result = compileSecProject({
+    'app.component.ts': `
+      import { Component } from '@angular/core';
+      import { PanelComponent } from './panel.component';
+      @Component({ selector: 'app-x', template: '<screen><app-panel><p>Total: { not code }</p></app-panel></screen>' })
+      export class XComponent { note = 'n'; }
+    `,
+    'panel.component.ts': `
+      import { Component } from '@angular/core';
+      @Component({ selector: 'app-panel', template: '<card><ng-content></ng-content></card>' })
+      export class PanelComponent {}
+    `,
+  });
+  assert.ok(result.code.includes('{"Total: { not code }"}'), result.code);
+  assert.ok(!result.code.includes('>Total: { not code }'), result.code);
+  const html = renderPreview(result.component!, result.ast!, {
+    children: result.children, services: result.services,
+    pipes: result.pipes, directives: result.directives,
+  });
+  assert.ok(html.includes('Total: { not code }'), 'the paint shows the braces as text');
+});
+
+test('security: a datetime value with a quote cannot break out of its prop', () => {
+  const result = compileWithTemplate(
+    ENTRY,
+    `<screen><datetime-picker value='2024-01-01" } pwned={1}'></datetime-picker></screen>`,
+  );
+  assert.ok(result.code.includes('value="2024-01-01&quot; } pwned={1}"'), result.code);
+  assert.ok(!result.code.includes('value="2024-01-01" }'), result.code);
+});

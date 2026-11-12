@@ -1,0 +1,20 @@
+<screen>
+  <appbar title="Pipes"></appbar>
+  <h1>{{ name | uppercase }}</h1>
+  <card>
+    <h3>Dates</h3>
+    <p>Short: {{ day | date:'shortDate' }}</p>
+    <p>Custom: {{ day | date:'yyyy-MM-dd HH:mm' }}</p>
+    <h3>Numbers</h3>
+    <p>Amount: {{ amount | number:'1.2-2' }}</p>
+    <p>Done: {{ ratio | percent:'1.0-1' }}</p>
+    <p>Price: {{ price | currency:'USD' }}</p>
+    <p>Rupees: {{ price | currency:'NPR' }}</p>
+    <h3>Text and objects</h3>
+    <p>{{ phrase | slice:0:5 }}</p>
+    <p>{{ name | exclaim:3 }}</p>
+    <div *ngFor="let fact of facts | keyvalue">
+      <p>{{ fact.key }}: {{ fact.value }}</p>
+    </div>
+  </card>
+</screen>

@@ -1,7 +1,9 @@
 import {
   ClassFileInfo,
   ComponentInfo,
+  DirectiveInfo,
   parseClassFile,
+  PipeInfo,
   ServiceInfo,
 } from './class/parseComponent';
 import { parseRoutesFile, ResolvedRoute } from './class/parseRoutes';
@@ -68,6 +70,10 @@ export interface CompileResult {
   children: ChildUnitInput[];
   /** Every @Injectable class resolved through imports (M6). */
   services: ServiceInfo[];
+  /** Every custom @Pipe class resolved through imports (Stage 12). */
+  pipes: PipeInfo[];
+  /** Every attribute @Directive class resolved through imports (Stage 12). */
+  directives: DirectiveInfo[];
   /**
    * The resolved route table (Stage 9): the routes file's entries with
    * their component classes resolved against the registry. Empty when
@@ -159,7 +165,15 @@ function isTemplateDriven(code: string): boolean {
     || code === 'GEN_NGMODEL_EXPR'
     || code === 'GEN_FORM_CONTROL'
     || code === 'GEN_FORMGROUP_TYPE'
-    || code === 'GEN_ROUTE_UNSUPPORTED';
+    || code === 'GEN_ROUTE_UNSUPPORTED'
+    || code === 'GEN_PICKER_MODE'
+    || code === 'GEN_PICKER_INTERVAL'
+    || code === 'GEN_OVERLAY_OPEN'
+    || code === 'GEN_EVENT_ASSIGNMENT'
+    || code === 'PIPE_UNKNOWN'
+    || code === 'GEN_VALIDATOR_ARG'
+    || code === 'DIR_UNSUPPORTED'
+    || code === 'PROJECTION_SELECT_UNSUPPORTED';
 }
 
 function isStyleDriven(code: string): boolean {
@@ -216,6 +230,8 @@ export function compileComponent(options: CompileOptions): CompileResult {
   // is reported once as CMP_IMPORT_CYCLE.
   const componentsBySelector = new Map<string, { info: ComponentInfo; fileName: string }>();
   const servicesByName = new Map<string, ServiceInfo>();
+  const pipesByName = new Map<string, PipeInfo>();
+  const directivesByAttr = new Map<string, DirectiveInfo>();
   const visited = new Set<string>();
   const stack: string[] = [];
   /** Source text per visited file, kept for source map sourcesContent. */
@@ -255,6 +271,14 @@ export function compileComponent(options: CompileOptions): CompileResult {
     for (const svc of parsed.services) {
       if (!servicesByName.has(svc.className)) servicesByName.set(svc.className, svc);
     }
+    for (const pipe of parsed.pipes) {
+      if (!pipesByName.has(pipe.pipeName)) pipesByName.set(pipe.pipeName, pipe);
+    }
+    for (const directive of parsed.directives) {
+      if (directive.attrName && !directivesByAttr.has(directive.attrName)) {
+        directivesByAttr.set(directive.attrName, directive);
+      }
+    }
     for (const imp of parsed.imports) {
       if (!imp.from.startsWith('.')) continue;
       const resolved = readRelative(fileName, imp.from);
@@ -281,7 +305,7 @@ export function compileComponent(options: CompileOptions): CompileResult {
   const component = entryParsed?.components[0];
   if (!component) {
     diagnostics.push({ ...error('CLS_NO_COMPONENT', 'No @Component-decorated class found in the source', undefined, undefined, "Decorate the class: @Component({ selector: 'app-x', templateUrl: './x.component.html' }) export class XComponent { ... }, only @Component classes are compiled; @NgModule/@Injectable classes are not entry points"), file: entryKey });
-    return { code: '', diagnostics, children: [], services: [...servicesByName.values()], routes: [], files };
+    return { code: '', diagnostics, children: [], services: [...servicesByName.values()], pipes: [...pipesByName.values()], directives: [...directivesByAttr.values()], routes: [], files };
   }
 
   // --- Entry template --------------------------------------------------------
@@ -293,7 +317,7 @@ export function compileComponent(options: CompileOptions): CompileResult {
     : entryKey;
   if (component.templateUrl && escapesRoot(entryTemplateFile)) {
     diagnostics.push(pathEscape(`templateUrl '${component.templateUrl}'`, entryTemplateFile));
-    return { code: '', diagnostics, component, children: [], services: [...servicesByName.values()], routes: [], files };
+    return { code: '', diagnostics, component, children: [], services: [...servicesByName.values()], pipes: [...pipesByName.values()], directives: [...directivesByAttr.values()], routes: [], files };
   }
   if (component.templateUrl) files.push(entryTemplateFile);
   const entryStyleUrls = allowedStyleUrls(component, entryKey);
@@ -309,12 +333,12 @@ export function compileComponent(options: CompileOptions): CompileResult {
         undefined, undefined,
         'Check the path is relative to the component file and the template file exists, e.g. templateUrl: \'./x.component.html\'',
       ), file: entryKey });
-      return { code: '', diagnostics, component, children: [], services: [...servicesByName.values()], routes: [], files };
+      return { code: '', diagnostics, component, children: [], services: [...servicesByName.values()], pipes: [...pipesByName.values()], directives: [...directivesByAttr.values()], routes: [], files };
     }
   }
   if (!templateSource) {
     diagnostics.push({ ...error('CMP_TEMPLATE', 'Component has neither an inline template nor a templateUrl', undefined, undefined, "Add templateUrl: './x.component.html' (or an inline template: `...`) to the @Component decorator"), file: entryKey });
-    return { code: '', diagnostics, component, children: [], services: [...servicesByName.values()], routes: [], files };
+    return { code: '', diagnostics, component, children: [], services: [...servicesByName.values()], pipes: [...pipesByName.values()], directives: [...directivesByAttr.values()], routes: [], files };
   }
 
   const { root, diagnostics: tplDiags } = parseTemplate(templateSource);
@@ -533,9 +557,13 @@ export function compileComponent(options: CompileOptions): CompileResult {
     }
   }
   if (options.sourceMap) fileSources.set(entryTemplateFile, templateSource);
+  const pipes = [...pipesByName.values()];
+  const directives = [...directivesByAttr.values()];
   const { code, diagnostics: genDiags, sourceMap } = generateComponent(component, root, css, {
     children,
     services,
+    pipes,
+    directives,
     routes,
     ...(options.sourceMap
       ? { sourceMap: { entryTsFile: entryKey, entryTemplateFile, contents: fileSources } }
@@ -556,7 +584,7 @@ export function compileComponent(options: CompileOptions): CompileResult {
     else diagnostics.push({ ...d, file: entryKey });
   }
 
-  return { code, diagnostics, ast: root, component, css, children, services, routes: routes ?? [], files, sourceMap };
+  return { code, diagnostics, ast: root, component, css, children, services, pipes, directives, routes: routes ?? [], files, sourceMap };
 }
 
 export function hasErrors(diagnostics: Diagnostic[]): boolean {

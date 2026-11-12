@@ -79,7 +79,8 @@ export function parsePrimitives(source: string, fileName = 'primitives.tsx'): Ca
   const sf = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const primitives: CatalogPrimitive[] = [];
   const visit = (node: ts.Node): void => {
-    if (ts.isFunctionDeclaration(node) && node.name && /^Rg[A-Z]/.test(node.name.text)) {
+    if (ts.isFunctionDeclaration(node) && node.name && /^Rg[A-Z]/.test(node.name.text)
+      && node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) {
       const param = node.parameters[0];
       const props: { name: string; type: string }[] = [];
       if (param) {

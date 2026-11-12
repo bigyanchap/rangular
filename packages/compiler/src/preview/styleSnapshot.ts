@@ -81,6 +81,44 @@ function allRoles(mode: ThemeMode): Record<string, StyleRecord> {
       color: c.text, fontSize: ty.bodyLarge.fontSize,
     },
     inputError: { color: c.error, fontSize: ty.caption.fontSize },
+    sheet: { background: c.surface, borderRadius: t.radius.xl },
+    dialog: { background: c.surface, borderRadius: t.radius.xl },
+    picker: {
+      background: c.surface, borderColor: c.outline, borderRadius: t.radius.sm,
+      color: c.text, fontSize: ty.bodyLarge.fontSize,
+    },
+    wheel: { color: c.text, mutedColor: c.textMuted, borderColor: c.border },
+    // Data display (Stage 11): the badge dot role is badgeDot (the
+    // badge role above stays the showcase pill's).
+    tabs: {
+      borderColor: c.border, color: c.textMuted,
+      selectedColor: c.primary, indicatorBackground: c.primary, minHeight: 48,
+    },
+    panel: {
+      borderColor: c.border, titleColor: c.text, subtitleColor: c.textMuted,
+      fontSize: ty.body.fontSize, minHeight: 48,
+    },
+    table: {
+      borderColor: c.border, color: c.text,
+      headColor: c.textMuted, headFontSize: ty.label.fontSize, fontSize: ty.body.fontSize,
+    },
+    slider: {
+      trackBackground: c.surfaceVariant, fillBackground: c.primary,
+      thumbBackground: c.primary, borderRadius: t.radius.full, height: 4, thumbSize: 20,
+    },
+    progress: {
+      trackBackground: c.surfaceVariant, fillBackground: c.primary,
+      borderRadius: t.radius.full, height: 4,
+    },
+    spinner: { color: c.primary, size: 24 },
+    chip: {
+      background: c.surfaceVariant, borderColor: c.border, color: c.text,
+      borderRadius: t.radius.full, fontSize: ty.label.fontSize,
+    },
+    badgeDot: {
+      background: c.error, color: c.onError,
+      borderRadius: t.radius.full, fontSize: ty.caption.fontSize, fontWeight: 700, minWidth: 18, height: 18,
+    },
     textDisplay: { fontSize: ty.display.fontSize, lineHeight: ty.display.lineHeight, fontWeight: 700 },
     textHeading: { fontSize: ty.heading.fontSize, lineHeight: ty.heading.lineHeight, fontWeight: 700 },
     textTitle: { fontSize: ty.title.fontSize, lineHeight: ty.title.lineHeight, fontWeight: 600 },
@@ -110,6 +148,16 @@ function rolesForElement(el: ElementNode): string[] {
     case 'switcher': return ['switcher'];
     case 'radio-group': return ['radio'];
     case 'input': return ['input', 'inputError'];
+    case 'sheet': return ['sheet'];
+    case 'dialog': return ['dialog'];
+    case 'datetime-picker': return ['picker', 'wheel'];
+    case 'tabs': return ['tabs'];
+    case 'panel': return ['panel'];
+    case 'table': return ['table'];
+    case 'slider': return ['slider'];
+    case 'progress-bar': return ['progress'];
+    case 'spinner': return ['spinner'];
+    case 'chip': return ['chip'];
     case 'span': return el.attrs['class'] === 'badge' ? ['badge'] : [];
     default: return [];
   }
@@ -119,6 +167,11 @@ function collectRoles(nodes: TemplateNode[], into: Set<string>): void {
   for (const node of nodes) {
     if (node.type !== 'element') continue;
     for (const role of rolesForElement(node)) into.add(role);
+    // A badge on one of the three hosts (Stage 11) exercises the dot.
+    if ((node.tag === 'button' || node.tag === 'row' || node.tag === 'icon')
+      && (node.attrs['badge'] !== undefined || node.propBindings.some((b) => b.name === 'badge'))) {
+      into.add('badgeDot');
+    }
     collectRoles(node.children, into);
   }
 }

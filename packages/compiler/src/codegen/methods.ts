@@ -23,8 +23,12 @@ import { Diagnostic, warning } from '../diagnostics';
  * 'service', a service stays a real class, so `this.` survives verbatim;
  *             assignments to fields additionally emit `this.__notify()` so
  *             subscribed components re-render (Stage 3, M6).
+ * 'pipe',    a @Pipe class also stays a real class (Stage 12): `this.`
+ *             survives and assignments stay plain, but there is no
+ *             __notify, a pipe has no subscribers; the generated class
+ *             does not extend ReactiveService.
  */
-export type TranslateMode = 'react' | 'state' | 'service';
+export type TranslateMode = 'react' | 'state' | 'service' | 'pipe';
 
 export function setterName(field: string): string {
   return 'set' + field.charAt(0).toUpperCase() + field.slice(1);
@@ -174,7 +178,7 @@ class Translator {
         if (target) {
           const opText = node.operator === ts.SyntaxKind.PlusPlusToken ? '++' : '--';
           if (c.mode === 'state') return `${opText}state.${target.name}`;
-          if (c.mode === 'service') return `${opText}this.${target.name}`;
+          if (c.mode === 'service' || c.mode === 'pipe') return `${opText}this.${target.name}`;
           return this.fail(`'${opText}this.${target.name}' inside an expression`);
         }
         return `${node.operator === ts.SyntaxKind.PlusPlusToken ? '++' : '--'}${this.expr(node.operand)}`;
@@ -191,7 +195,7 @@ class Translator {
       const opText = node.operator === ts.SyntaxKind.PlusPlusToken ? '++' : '--';
       if (target) {
         if (c.mode === 'state') return `state.${target.name}${opText}`;
-        if (c.mode === 'service') return `this.${target.name}${opText}`;
+        if (c.mode === 'service' || c.mode === 'pipe') return `this.${target.name}${opText}`;
         return this.fail(`'this.${target.name}${opText}' inside an expression`);
       }
       return `${this.expr(node.operand)}${opText}`;
@@ -245,7 +249,7 @@ class Translator {
     const c = this.ctx;
     const callback = c.outputCallbacks?.get(name);
     if (callback) return callback;
-    if (c.mode === 'service') return `this.${name}`;
+    if (c.mode === 'service' || c.mode === 'pipe') return `this.${name}`;
     if (c.methodNames.has(name)) return c.mode === 'state' ? `methods.${name}` : name;
     // Stage 8: a reactive form instance is ref-held in generated code.
     if (c.mode === 'react' && c.formFields?.has(name)) return `${name}Ref.current`;
@@ -297,6 +301,9 @@ class Translator {
               `${indent}this.__notify();`,
             ];
           }
+          if (c.mode === 'pipe') {
+            return [`${indent}this.${target.name} ${op} ${rhs};`];
+          }
           const set = setterName(target.name);
           if (op === '=') return [`${indent}${set}(${rhs});`];
           const binOp = op.slice(0, -1);
@@ -327,6 +334,12 @@ class Translator {
                 : `${indent}${sym}this.${target.name};`,
               `${indent}this.__notify();`,
             ];
+          }
+          if (c.mode === 'pipe') {
+            const sym = delta.startsWith('+') ? '++' : '--';
+            return [ts.isPostfixUnaryExpression(e)
+              ? `${indent}this.${target.name}${sym};`
+              : `${indent}${sym}this.${target.name};`];
           }
           return [`${indent}${setterName(target.name)}(${target.name} ${delta});`];
         }

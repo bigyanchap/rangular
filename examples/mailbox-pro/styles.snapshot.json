@@ -1,0 +1,223 @@
+{
+  "example": "mailbox-pro",
+  "themes": {
+    "light": {
+      "roles": {
+        "appbar": {
+          "background": "#f0f4f9",
+          "borderRadius": 9999,
+          "gap": 12
+        },
+        "avatar": {
+          "background": "#7b1fa2",
+          "color": "#ffffff"
+        },
+        "badgeDot": {
+          "background": "#b3261e",
+          "color": "#ffffff",
+          "borderRadius": 9999,
+          "fontSize": 12,
+          "fontWeight": 700,
+          "minWidth": 18,
+          "height": 18
+        },
+        "button": {
+          "background": "#0b57d0",
+          "color": "#ffffff",
+          "borderRadius": 9999,
+          "minHeight": 48
+        },
+        "chip": {
+          "background": "#f0f4f9",
+          "borderColor": "#dadce0",
+          "color": "#1f1f1f",
+          "borderRadius": 9999,
+          "fontSize": 14
+        },
+        "input": {
+          "background": "#ffffff",
+          "borderColor": "#747775",
+          "borderRadius": 8,
+          "color": "#1f1f1f",
+          "fontSize": 16
+        },
+        "inputError": {
+          "color": "#b3261e",
+          "fontSize": 12
+        },
+        "list": {
+          "borderColor": "#dadce0"
+        },
+        "panel": {
+          "borderColor": "#dadce0",
+          "titleColor": "#1f1f1f",
+          "subtitleColor": "#5f6368",
+          "fontSize": 14,
+          "minHeight": 48
+        },
+        "progress": {
+          "trackBackground": "#f0f4f9",
+          "fillBackground": "#0b57d0",
+          "borderRadius": 9999,
+          "height": 4
+        },
+        "row": {
+          "borderColor": "#dadce0",
+          "gap": 12,
+          "paddingLeft": 16,
+          "paddingRight": 16
+        },
+        "screen": {
+          "background": "#ffffff",
+          "color": "#1f1f1f"
+        },
+        "slider": {
+          "trackBackground": "#f0f4f9",
+          "fillBackground": "#0b57d0",
+          "thumbBackground": "#0b57d0",
+          "borderRadius": 9999,
+          "height": 4,
+          "thumbSize": 20
+        },
+        "spinner": {
+          "color": "#0b57d0",
+          "size": 24
+        },
+        "table": {
+          "borderColor": "#dadce0",
+          "color": "#1f1f1f",
+          "headColor": "#5f6368",
+          "headFontSize": 14,
+          "fontSize": 14
+        },
+        "tabs": {
+          "borderColor": "#dadce0",
+          "color": "#5f6368",
+          "selectedColor": "#0b57d0",
+          "indicatorBackground": "#0b57d0",
+          "minHeight": 48
+        },
+        "textBody": {
+          "fontSize": 16,
+          "lineHeight": 24,
+          "color": "#5f6368"
+        },
+        "textLabel": {
+          "fontSize": 14,
+          "lineHeight": 20,
+          "fontWeight": 600
+        }
+      },
+      "styles": {}
+    },
+    "dark": {
+      "roles": {
+        "appbar": {
+          "background": "#282a2c",
+          "borderRadius": 9999,
+          "gap": 12
+        },
+        "avatar": {
+          "background": "#d0bcff",
+          "color": "#381e72"
+        },
+        "badgeDot": {
+          "background": "#f2b8b5",
+          "color": "#601410",
+          "borderRadius": 9999,
+          "fontSize": 12,
+          "fontWeight": 700,
+          "minWidth": 18,
+          "height": 18
+        },
+        "button": {
+          "background": "#a8c7fa",
+          "color": "#062e6f",
+          "borderRadius": 9999,
+          "minHeight": 48
+        },
+        "chip": {
+          "background": "#282a2c",
+          "borderColor": "#444746",
+          "color": "#e3e3e3",
+          "borderRadius": 9999,
+          "fontSize": 14
+        },
+        "input": {
+          "background": "#1e1f20",
+          "borderColor": "#8e918f",
+          "borderRadius": 8,
+          "color": "#e3e3e3",
+          "fontSize": 16
+        },
+        "inputError": {
+          "color": "#f2b8b5",
+          "fontSize": 12
+        },
+        "list": {
+          "borderColor": "#444746"
+        },
+        "panel": {
+          "borderColor": "#444746",
+          "titleColor": "#e3e3e3",
+          "subtitleColor": "#9aa0a6",
+          "fontSize": 14,
+          "minHeight": 48
+        },
+        "progress": {
+          "trackBackground": "#282a2c",
+          "fillBackground": "#a8c7fa",
+          "borderRadius": 9999,
+          "height": 4
+        },
+        "row": {
+          "borderColor": "#444746",
+          "gap": 12,
+          "paddingLeft": 16,
+          "paddingRight": 16
+        },
+        "screen": {
+          "background": "#131314",
+          "color": "#e3e3e3"
+        },
+        "slider": {
+          "trackBackground": "#282a2c",
+          "fillBackground": "#a8c7fa",
+          "thumbBackground": "#a8c7fa",
+          "borderRadius": 9999,
+          "height": 4,
+          "thumbSize": 20
+        },
+        "spinner": {
+          "color": "#a8c7fa",
+          "size": 24
+        },
+        "table": {
+          "borderColor": "#444746",
+          "color": "#e3e3e3",
+          "headColor": "#9aa0a6",
+          "headFontSize": 14,
+          "fontSize": 14
+        },
+        "tabs": {
+          "borderColor": "#444746",
+          "color": "#9aa0a6",
+          "selectedColor": "#a8c7fa",
+          "indicatorBackground": "#a8c7fa",
+          "minHeight": 48
+        },
+        "textBody": {
+          "fontSize": 16,
+          "lineHeight": 24,
+          "color": "#9aa0a6"
+        },
+        "textLabel": {
+          "fontSize": 14,
+          "lineHeight": 20,
+          "fontWeight": 600
+        }
+      },
+      "styles": {}
+    }
+  }
+}

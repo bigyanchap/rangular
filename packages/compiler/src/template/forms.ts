@@ -36,6 +36,14 @@ export interface ValidatorSpec {
    * for a [minlength]-style binding. Absent for argument-free validators.
    */
   argSource?: string;
+  /**
+   * True when a static minlength/maxlength attribute held text that is
+   * not a plain number (Stage 12 security re-audit). Static attribute
+   * text is data, never code: a value like `3); evil();//` must not be
+   * emitted into the generated validator call. Codegen reports
+   * GEN_VALIDATOR_ARG and drops the validator; the preview ignores it.
+   */
+  argInvalid?: boolean;
 }
 
 const VALIDATOR_ORDER: ValidatorName[] = ['required', 'minLength', 'maxLength', 'email', 'pattern'];
@@ -55,14 +63,30 @@ export function validatorsOf(el: ElementNode): ValidatorSpec[] {
     if (raw === undefined) return undefined;
     return binding === 'pattern' ? JSON.stringify(raw) : raw;
   };
+  /**
+   * A length validator from a static attribute or a binding. A binding
+   * is the author's own expression and passes through; a static
+   * attribute is text, so only a plain number may become generated
+   * code (Stage 12 re-audit: anything else is argInvalid, dropped).
+   */
+  const lengthArgOf = (attr: string, binding: string): ValidatorSpec | undefined => {
+    const b = el.propBindings.find((x) => x.name === binding);
+    if (b) return { fn: binding === 'minlength' ? 'minLength' : 'maxLength', argSource: b.expression };
+    const raw = el.attrs[attr];
+    if (raw === undefined) return undefined;
+    const fn: ValidatorName = binding === 'minlength' ? 'minLength' : 'maxLength';
+    return /^\d+$/.test(raw.trim())
+      ? { fn, argSource: raw.trim() }
+      : { fn, argInvalid: true };
+  };
   if (el.booleanAttrs.includes('required')
     || (el.attrs['required'] !== undefined && el.attrs['required'] !== 'false')) {
     specs.push({ fn: 'required' });
   }
-  const min = argOf('minlength', 'minlength');
-  if (min !== undefined) specs.push({ fn: 'minLength', argSource: min });
-  const max = argOf('maxlength', 'maxlength');
-  if (max !== undefined) specs.push({ fn: 'maxLength', argSource: max });
+  const min = lengthArgOf('minlength', 'minlength');
+  if (min) specs.push(min);
+  const max = lengthArgOf('maxlength', 'maxlength');
+  if (max) specs.push(max);
   if (el.booleanAttrs.includes('email')
     || (el.attrs['email'] !== undefined && el.attrs['email'] !== 'false')) {
     specs.push({ fn: 'email' });

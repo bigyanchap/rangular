@@ -1,11 +1,14 @@
 import { ICON_NAMES, ICON_PATHS, ICON_SIZES, DEFAULT_ICON_SIZE } from '../../../ui/src/icons';
-import { ComponentInfo, ServiceInfo } from '../class/parseComponent';
+import { PICKER_MODES } from '../../../ui/src/datetime';
+import { ComponentInfo, DirectiveInfo, PipeInfo, ServiceInfo } from '../class/parseComponent';
+import { DirectiveStyleAssign, directiveStyles } from '../class/parseDirective';
 import { ResolvedRoute } from '../class/parseRoutes';
 import { analyzeFormInitializer, FormFieldInfo, isFormInitializer } from '../class/formInit';
 import { Diagnostic, error, warning } from '../diagnostics';
 import { nearestOnScale, ParsedCss } from '../style/css';
 import { ElementNode, EventBinding, TemplateNode, TemplateRoot } from '../template/ast';
-import { exprToCode, parseExpression } from '../template/expr';
+import { Expr, exprAstToCode, exprToCode, parseExpression } from '../template/expr';
+import { BUILTIN_PIPES, isBuiltinPipe } from '../template/pipes';
 import {
   hasNgModelSurface,
   ngModelBindingOf,
@@ -40,6 +43,10 @@ export interface GenerateContext {
   children?: ChildUnitInput[];
   /** Every @Injectable class resolved through imports (Stage 3, M6). */
   services?: ServiceInfo[];
+  /** Every custom @Pipe class resolved through imports (Stage 12). */
+  pipes?: PipeInfo[];
+  /** Every attribute @Directive class resolved through imports (Stage 12). */
+  directives?: DirectiveInfo[];
   /**
    * The resolved route table (Stage 9), present when a routes file was
    * resolved for this compilation. When routing is also USED (an outlet,
@@ -98,6 +105,21 @@ export const TAG_MAP: Record<string, TagMapping> = {
   input: { component: 'RgInput', fromUi: true },
   form: { component: 'View', fromUi: false },
   'router-outlet': { component: 'RgOutlet', fromUi: true },
+  sheet: { component: 'RgSheet', fromUi: true },
+  dialog: { component: 'RgDialog', fromUi: true },
+  actions: { component: 'RgActions', fromUi: true },
+  'datetime-picker': { component: 'RgDateTimePicker', fromUi: true },
+  tabs: { component: 'RgTabs', fromUi: true },
+  tab: { component: 'RgTab', fromUi: true },
+  accordion: { component: 'RgAccordion', fromUi: true },
+  panel: { component: 'RgPanel', fromUi: true },
+  table: { component: 'RgTable', fromUi: true },
+  column: { component: 'RgColumn', fromUi: true },
+  slider: { component: 'RgSlider', fromUi: true },
+  'progress-bar': { component: 'RgProgressBar', fromUi: true },
+  spinner: { component: 'RgSpinner', fromUi: true },
+  chips: { component: 'RgChips', fromUi: true },
+  chip: { component: 'RgChip', fromUi: true },
 };
 
 /** True when an initializer source text is a plain literal we may hoist. */
@@ -158,6 +180,11 @@ export const EVENT_PROPS: Record<string, string> = {
   change: 'onChange',
   submit: 'onSubmit',
   blur: 'onBlur',
+  close: 'onClose',
+  focus: 'onFocus',
+  toggle: 'onToggle',
+  remove: 'onRemove',
+  optionSelected: 'onOptionSelected',
 };
 
 /** Map a template (event) to its React Native prop name. */
@@ -170,6 +197,32 @@ export function eventPropName(eventName: string, tag: string): { prop: string; k
   const known = EVENT_PROPS[eventName];
   if (known) return { prop: known, known: true };
   return { prop: 'on' + eventName.charAt(0).toUpperCase() + eventName.slice(1), known: false };
+}
+
+/**
+ * True when an event binding's expression is an assignment statement,
+ * e.g. `(close)="sheetOpen = false"` or `(click)="count += 1"`
+ * (Stage 10). Evidence from the code: the template expression grammar
+ * (template/expr.ts) has no assignment operator at all, its tokenizer
+ * does not even produce a bare `=` token, so such a binding cannot be
+ * translated; before Stage 10 codegen silently fell back to the raw
+ * source, emitting `onClose={() => sheetOpen = false}` against a
+ * const state binding, which compiles and then throws at runtime.
+ * Assignment bindings are therefore detected explicitly and dropped
+ * with a GEN_EVENT_ASSIGNMENT warning: authors write a method
+ * (`closeSheet() { this.sheetOpen = false; }`) and bind that instead,
+ * the pattern the Stage 6 controls already document.
+ */
+export function isAssignmentExpression(source: string): boolean {
+  const src = source.trim();
+  try {
+    parseExpression(src);
+    return false; // it parses as an expression: a call, a bare ref, a comparison
+  } catch {
+    // Did not parse. An assignment is the common cause; look for a
+    // bare `=` (not ==, <=, >=, !=) or a compound assignment operator.
+    return /(^|[^=!<>])=(?![=])/.test(src) || /[+\-*/%]+=(?![=])/.test(src);
+  }
 }
 
 const HTTP_CLIENT = 'HttpClient';
@@ -245,6 +298,26 @@ class Generator {
    * router emitted and the outlet and links wired to them.
    */
   private routingActive = false;
+  /**
+   * True when any component in the compilation injects SnackBar
+   * (Stage 10): only then is the module-level snackbar service
+   * emitted and the entry component given its host state.
+   */
+  private snackActive = false;
+  /** Custom @Pipe classes by pipe name (Stage 12), with their instance vars. */
+  private pipesByName = new Map<string, PipeInfo>();
+  private pipeInstances = new Map<string, string>();
+  /**
+   * Attribute directives by attribute name (Stage 12), with their
+   * extracted style assignments. A directive whose logic is outside
+   * the subset carries `unsupported` and applies no styles; generate()
+   * reports it once with DIR_UNSUPPORTED.
+   */
+  private directivesByAttr = new Map<string, {
+    info: DirectiveInfo;
+    assignments: DirectiveStyleAssign[];
+    unsupported?: string;
+  }>();
   private styles: StyleEntry[] = [];
   /** Source map bookkeeping (Stage 5): element records keyed by marker id. */
   private smConfig?: GenerateContext['sourceMap'];
@@ -262,6 +335,25 @@ class Generator {
     for (const svc of this.allServices) {
       if (svc.providedInRoot) this.rootServices.set(svc.className, svc);
     }
+    for (const pipe of context.pipes ?? []) {
+      if (this.pipesByName.has(pipe.pipeName)) continue;
+      this.pipesByName.set(pipe.pipeName, pipe);
+      this.pipeInstances.set(pipe.pipeName, `__pipe${pipe.className}`);
+    }
+    for (const directive of context.directives ?? []) {
+      if (!directive.attrName || this.directivesByAttr.has(directive.attrName)) continue;
+      const styles = directiveStyles(directive);
+      this.directivesByAttr.set(directive.attrName, {
+        info: directive,
+        assignments: styles.assignments,
+        unsupported: styles.unsupported,
+      });
+    }
+  }
+
+  /** The generated instance variable for a custom pipe class: `__pipe` + class name. */
+  private pipeInstanceVar(pipeName: string): string | undefined {
+    return this.pipeInstances.get(pipeName);
   }
 
   generate(entry: ComponentInfo, ast: TemplateRoot, css: ParsedCss, children: ChildUnitInput[]): string {
@@ -269,6 +361,24 @@ class Generator {
     for (const svc of this.allServices) {
       if (!svc.providedInRoot) continue;
       serviceBlocks.push(this.generateService(svc));
+    }
+    // Custom pipes (Stage 12): every resolved @Pipe class is emitted
+    // as a plain class plus one shared instance, next to the services.
+    // A directive outside the supported subset is reported once here,
+    // whether or not any template uses it: the class was resolved, so
+    // its author expects it to work.
+    const pipeBlocks: string[][] = [];
+    for (const pipe of this.pipesByName.values()) {
+      pipeBlocks.push(this.generatePipeClass(pipe));
+    }
+    for (const [attr, entry2] of this.directivesByAttr) {
+      if (!entry2.unsupported) continue;
+      this.diagnostics.push(warning(
+        'DIR_UNSUPPORTED',
+        `Directive '${entry2.info.className}' ([${attr}]) is outside the supported subset: ${entry2.unsupported}; it applies no styles`,
+        undefined, undefined,
+        'Keep the directive to @Input fields, an ElementRef, and ngOnInit or setter bodies made only of this.el.nativeElement.style.<prop> = <expr over inputs and literals> statements',
+      ));
     }
     const registrations = this.registrationLines(entry, children);
 
@@ -309,6 +419,19 @@ class Generator {
         : { path: r.path }));
       navLines.push(`const __navigator = new RgNavigator(${JSON.stringify(defs)});`);
       navLines.push('const __router = new Router(__navigator);');
+    }
+
+    // --- Snackbar activation (Stage 10) ------------------------------------
+    // One module-level SnackBar instance serves the whole app, like
+    // the navigator: components inject it and call open(); the entry
+    // component mirrors its state and renders the host pill. It is
+    // emitted only when some component actually injects the token.
+    this.snackActive = [entry, ...children.map((c) => c.info)]
+      .some((info) => (info.constructorDeps ?? []).some((d) => d.typeName === 'SnackBar'));
+    const snackModuleLines: string[] = [];
+    if (this.snackActive) {
+      this.usedRuntime.add('SnackBar');
+      snackModuleLines.push('const __snackBar = new SnackBar();');
     }
 
     const childBlocks: string[][] = [];
@@ -373,8 +496,10 @@ class Generator {
       '',
     ];
     for (const block of serviceBlocks) lines.push(...block, '');
+    for (const block of pipeBlocks) lines.push(...block, '');
     if (registrations.length) lines.push(...registrations, '');
     if (navLines.length) lines.push(...navLines, '');
+    if (snackModuleLines.length) lines.push(...snackModuleLines, '');
     for (const block of childBlocks) lines.push(...block, '');
     lines.push(...entryBlock, ...styleBlock, '');
     if (this.smConfig) this.finishSourceMap(lines);
@@ -455,15 +580,23 @@ class Generator {
 
   // --- Services (M6) --------------------------------------------------------
 
-  private validateDeps(owner: string, deps: { propertyName: string; typeName: string }[]): void {
+  private validateDeps(
+    owner: string,
+    deps: { propertyName: string; typeName: string }[],
+    allowSnackBar = false,
+  ): void {
     for (const dep of deps) {
       if (dep.typeName === HTTP_CLIENT || this.rootServices.has(dep.typeName)) continue;
       if (this.routingActive && (dep.typeName === 'Router' || dep.typeName === 'ActivatedRoute')) continue;
+      // SnackBar is a component-level built-in (Stage 10): components
+      // receive the module-level instance; a service injecting it has
+      // no host to render through, so it stays an unknown token there.
+      if (allowSnackBar && dep.typeName === 'SnackBar') continue;
       this.diagnostics.push(error(
         'DI_UNKNOWN_TOKEN',
         `${owner}: no provider for '${dep.typeName}' (injected as '${dep.propertyName}'), it is not an @Injectable({ providedIn: 'root' }) service in this compilation and not a built-in token`,
         undefined, undefined,
-        `Make '${dep.typeName}' an @Injectable({ providedIn: 'root' }) class and import it from the component file (imports are followed transitively), or inject a built-in: HttpClient, or Router / ActivatedRoute in a routed app`,
+        `Make '${dep.typeName}' an @Injectable({ providedIn: 'root' }) class and import it from the component file (imports are followed transitively), or inject a built-in: HttpClient, Router / ActivatedRoute in a routed app, or SnackBar in a component`,
       ));
     }
   }
@@ -513,6 +646,75 @@ class Generator {
       lines.push('  }');
     }
     lines.push('}');
+    return lines;
+  }
+
+  /**
+   * Emit one custom @Pipe class (Stage 12): a plain class (no
+   * ReactiveService base, no container), its literal fields, its
+   * constructor when it has one, and its methods translated in 'pipe'
+   * mode (this. survives, no notify). One shared instance follows:
+   * pipes are pure by convention, exactly Angular's assumption.
+   */
+  private generatePipeClass(pipe: PipeInfo): string[] {
+    const lines: string[] = [`export class ${pipe.className} {`];
+    for (const field of pipe.fields) {
+      if (field.initializer && isLiteralInitializer(field.initializer)) {
+        lines.push(`  ${field.name}${field.type ? `: ${field.type}` : ''} = ${field.initializer};`);
+      } else if (field.initializer) {
+        this.diagnostics.push(warning('GEN_FIELD', `Pipe '${pipe.className}': field '${field.name}' has a non-literal initializer; not hoisted`, undefined, undefined, `Initialise '${field.name}' with a literal (including arrays/objects of literals) or assign it in the constructor`));
+        lines.push(`  // TODO: field '${forLineComment(field.name)}' has a non-literal initializer (${forLineComment(field.initializer)}), not hoisted; wire it up manually for now.`);
+      } else if (field.type) {
+        lines.push(`  ${field.name}: ${field.type};`);
+      }
+    }
+    if (pipe.constructorDeps.length || pipe.constructorBody) {
+      const params = pipe.constructorDeps.map((d) => `private ${d.propertyName}: ${d.typeName}`).join(', ');
+      lines.push(`  constructor(${params}) {`);
+      if (pipe.constructorBody) {
+        const host = {
+          fields: pipe.fields,
+          methods: pipe.methods,
+          methodDetails: [{
+            name: 'constructor',
+            params: pipe.constructorDeps.map((d) => ({
+              name: d.propertyName,
+              text: `private ${d.propertyName}: ${d.typeName}`,
+            })),
+            body: pipe.constructorBody,
+          }],
+        };
+        const { methods, diagnostics } = translateMethods(host, 'pipe', new Set(pipe.fields.map((f) => f.name)));
+        this.diagnostics.push(...diagnostics);
+        for (const line of methods[0]?.lines ?? []) lines.push(line ? `    ${line}` : line);
+      }
+      lines.push('  }');
+    }
+    const { methods, diagnostics } = translateMethods(pipe, 'pipe', new Set(pipe.fields.map((f) => f.name)));
+    this.diagnostics.push(...diagnostics);
+    for (const m of methods) {
+      lines.push(`  ${m.name}(${m.paramTexts.join(', ')}) {`);
+      for (const line of m.lines) lines.push(line ? `    ${line}` : line);
+      lines.push('  }');
+    }
+    lines.push('}');
+    const instance = this.pipeInstanceVar(pipe.pipeName);
+    if (instance) {
+      if (pipe.constructorDeps.length) {
+        // A pipe with constructor dependencies cannot be instantiated
+        // honestly in this version (Angular would inject services);
+        // the error names it instead of emitting a silent wrong call.
+        this.diagnostics.push(error(
+          'DI_UNKNOWN_TOKEN',
+          `Pipe '${pipe.className}': constructor dependencies (${pipe.constructorDeps.map((d) => d.typeName).join(', ')}) are not wired for @Pipe classes in this version; the shared instance is created with no arguments`,
+          undefined, undefined,
+          'Keep @Pipe classes dependency-free (pure transforms of their arguments), or move the shared logic into an @Injectable service the component injects',
+        ));
+        lines.push(`const ${instance} = new ${pipe.className}(); // TODO(Rangular): pipe constructor dependencies are not wired, see DI_UNKNOWN_TOKEN`);
+      } else {
+        lines.push(`const ${instance} = new ${pipe.className}();`);
+      }
+    }
     return lines;
   }
 
@@ -619,10 +821,105 @@ class Generator {
             'Replace it with <radio value="...">Label</radio>, or move the element outside the radio group',
           ));
         }
+        // Data display declarations (Stage 11): tab belongs in tabs,
+        // column belongs in table, and tabs, table and accordion each
+        // accept only their own declaration element. A panel outside
+        // an accordion is fine (panels work standalone); a tab or a
+        // column outside its group declares nothing and renders
+        // nothing, so the author hears about it.
+        if (tag === 'tab' && parentTag !== 'tabs') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            '<tab> is outside <tabs>; it declares one tab page and has no meaning on its own',
+            node.pos.line, node.pos.column,
+            'Move the tab inside tabs: <tabs [index]="tabIndex" (change)="onTab($event)"><tab label="Overview">...</tab></tabs>',
+          ));
+        }
+        if (tag === 'column' && parentTag !== 'table') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            '<column> is outside <table>; it declares one table column and has no meaning on its own',
+            node.pos.line, node.pos.column,
+            'Move the column inside a table: <table [data]="rows"><column name="sender" header="From"></column></table>',
+          ));
+        }
+        if (parentTag === 'tabs' && tag !== 'tab') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            `<${node.tag}> is inside <tabs>; only <tab> declarations belong there`,
+            node.pos.line, node.pos.column,
+            'Replace it with <tab label="...">...</tab>, or move the element outside the tabs',
+          ));
+        }
+        if (parentTag === 'table' && tag !== 'column') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            `<${node.tag}> is inside <table>; only <column> declarations belong there`,
+            node.pos.line, node.pos.column,
+            'Replace it with <column name="..." header="..."></column>, or move the element outside the table',
+          ));
+        }
+        if (parentTag === 'accordion' && tag !== 'panel') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            `<${node.tag}> is inside <accordion>; only <panel> declarations belong there`,
+            node.pos.line, node.pos.column,
+            'Replace it with <panel title="...">...</panel>, or move the element outside the accordion',
+          ));
+        }
         validateControlNesting(node.children, tag);
       }
     };
     validateControlNesting(ast.children);
+
+    // Overlays (Stage 10): a <sheet> or <dialog> is driven by its
+    // [open] binding; without one it can only ever render statically
+    // open (the primitives treat a missing open as shown), so the
+    // author hears about it instead of wondering why it never closes.
+    const validateOverlays = (nodes: TemplateNode[]): void => {
+      for (const node of nodes) {
+        if (node.type !== 'element') continue;
+        const tag = node.tag.toLowerCase();
+        if ((tag === 'sheet' || tag === 'dialog')
+          && node.attrs['open'] === undefined
+          && !node.booleanAttrs.includes('open')
+          && !node.propBindings.some((b) => b.name === 'open')) {
+          diagnostics.push(warning(
+            'GEN_OVERLAY_OPEN',
+            `<${tag}> has no [open] binding; it renders statically open and cannot be opened or closed from the component`,
+            node.pos.line, node.pos.column,
+            `Bind it to a boolean field and flip the field in methods: <${tag} [open]="confirmOpen" (close)="closeConfirm()"> with closeConfirm() { this.confirmOpen = false; }`,
+          ));
+        }
+        validateOverlays(node.children);
+      }
+    };
+    validateOverlays(ast.children);
+
+    // Chips (Stage 11): a chip's leading icon names the Stage 7 icon
+    // set, so a static icon attribute is validated exactly like an
+    // <icon> name (GEN_ICON_UNKNOWN, the JSON form carries the valid
+    // list). A [icon] binding passes through unchecked, its value is
+    // only known at runtime.
+    const validateChipIcons = (nodes: TemplateNode[]): void => {
+      for (const node of nodes) {
+        if (node.type !== 'element') continue;
+        if (node.tag.toLowerCase() === 'chip' && node.attrs['icon'] !== undefined
+          && !(node.attrs['icon'] in ICON_PATHS)) {
+          diagnostics.push({
+            severity: 'error',
+            code: 'GEN_ICON_UNKNOWN',
+            message: `Unknown icon name '${node.attrs['icon']}' in a <chip> icon attribute: it is not in the Rangular icon set`,
+            line: node.pos.line,
+            column: node.pos.column,
+            fix: 'Use one of the names listed under Icons in catalog.md, e.g. <chip icon="star">Starred</chip>',
+            validIcons: ICON_NAMES,
+          });
+        }
+        validateChipIcons(node.children);
+      }
+    };
+    validateChipIcons(ast.children);
 
     // --- Forms analysis (Stage 8) --------------------------------------------
     // Reactive form fields: initialised with new FormGroup(...) or
@@ -830,10 +1127,196 @@ class Generator {
     for (const info of modelInfos) {
       if (info.refName) refBases.set(info.refName, `${info.key}Model`);
     }
+    // Pipes (Stage 12): one expression-options object per unit, shared
+    // by every codeExpr call below. customPipes rewrites a pipe use to
+    // the generated instance's transform; asyncVars rewrites a hoisted
+    // `expr | async` to its subscription hook variable. The scan that
+    // fills both runs before any rendering, so codegen sees the final
+    // maps everywhere.
+    const customPipes = new Map<string, string>();
+    for (const [name] of this.pipesByName) {
+      const instance = this.pipeInstanceVar(name);
+      if (instance) customPipes.set(name, instance);
+    }
+    const exprOptions: import('../template/expr').ExprToCodeOptions = {
+      renames: identRenames,
+      refBases,
+      customPipes,
+      asyncVars: new Map<string, string>(),
+    };
     const codeExpr = (source: string): string => {
-      const code = exprToCode(source, { renames: identRenames, refBases });
+      const code = exprToCode(source, exprOptions);
       if (code.includes("pipe('")) this.usedRuntime.add('pipe');
       return code;
+    };
+
+    // --- Pipe scan (Stage 12) ---------------------------------------------
+    // Walk every expression this unit will compile (interpolations,
+    // bindings, event handlers, structural conditions and sources) and
+    // collect its pipe uses: an unknown name is a PIPE_UNKNOWN error
+    // naming the element, and every distinct async input earns a
+    // subscription hook (asyncLines, assembled with the unit's lines).
+    const asyncInputs: { code: string; varName: string }[] = [];
+    {
+      const reportedUnknown = new Set<string>();
+      const knownList = [...BUILTIN_PIPES, ...this.pipesByName.keys()].join(', ');
+      const scanExpr = (source: string, el: ElementNode): void => {
+        let parsed: Expr;
+        try {
+          parsed = parseExpression(source);
+        } catch {
+          return; // a broken expression is reported by its own path
+        }
+        const walkExpr = (e: Expr): void => {
+          if (e.type === 'pipe') {
+            if (!isBuiltinPipe(e.name) && !this.pipesByName.has(e.name)) {
+              const key = `${e.name}@${el.pos.line}:${el.pos.column}`;
+              if (!reportedUnknown.has(key)) {
+                reportedUnknown.add(key);
+                diagnostics.push(error(
+                  'PIPE_UNKNOWN',
+                  `Unknown pipe '${e.name}' on <${el.tag}>; known pipes: ${knownList}`,
+                  el.pos.line, el.pos.column,
+                  `Use a built-in pipe (${BUILTIN_PIPES.join(', ')}), or define a @Pipe class with name '${e.name}' and import it from the component file`,
+                ));
+              }
+            }
+            if (e.name === 'async') {
+              const inputCode = exprAstToCode(e.input, exprOptions);
+              if (!exprOptions.asyncVars!.has(inputCode)) {
+                const varName = `__async${asyncInputs.length}`;
+                exprOptions.asyncVars!.set(inputCode, varName);
+                asyncInputs.push({ code: inputCode, varName });
+              }
+            }
+          }
+          switch (e.type) {
+            case 'member': walkExpr(e.object); break;
+            case 'index': walkExpr(e.object); walkExpr(e.index); break;
+            case 'call': walkExpr(e.callee); e.args.forEach(walkExpr); break;
+            case 'unary': walkExpr(e.argument); break;
+            case 'binary': walkExpr(e.left); walkExpr(e.right); break;
+            case 'conditional': walkExpr(e.test); walkExpr(e.consequent); walkExpr(e.alternate); break;
+            case 'array': e.elements.forEach(walkExpr); break;
+            case 'pipe': walkExpr(e.input); e.args.forEach(walkExpr); break;
+            default: break;
+          }
+        };
+        walkExpr(parsed);
+      };
+      const scanNodes = (nodes: TemplateNode[]): void => {
+        for (const node of nodes) {
+          if (node.type === 'text') {
+            for (const part of node.parts) {
+              if (part.type === 'expr') {
+                // A text node has no element position of its own here;
+                // attribute it to the enclosing scan through a dummy
+                // element anchored at the text position.
+                scanExpr(part.expression, {
+                  type: 'element', tag: '#text', attrs: {}, booleanAttrs: [],
+                  propBindings: [], twoWayBindings: [], eventBindings: [],
+                  children: [], pos: node.pos,
+                });
+              }
+            }
+            continue;
+          }
+          for (const b of node.propBindings) scanExpr(b.expression, node);
+          for (const b of node.twoWayBindings) scanExpr(b.expression, node);
+          for (const ev of node.eventBindings) scanExpr(ev.expression, node);
+          if (node.structural?.name === 'ngIf') {
+            scanExpr(parseNgIf(node.structural.expression).condition, node);
+          } else if (node.structural?.name === 'ngFor') {
+            const { parts } = parseNgFor(node.structural.expression);
+            if (parts) scanExpr(parts.source, node);
+          }
+          scanNodes(node.children);
+        }
+      };
+      scanNodes(ast.children);
+    }
+    const asyncLines: string[] = [];
+    if (asyncInputs.length) {
+      this.reactImports.add('useState');
+      this.reactImports.add('useEffect');
+      for (const input of asyncInputs) {
+        asyncLines.push(`  const [${input.varName}, ${setterName(input.varName)}] = useState<any>(null);`);
+        asyncLines.push('  useEffect(() => {');
+        asyncLines.push(`    const __obs = (${input.code}) as any;`);
+        asyncLines.push("    if (!__obs || typeof __obs.subscribe !== 'function') return;");
+        asyncLines.push(`    const __sub = __obs.subscribe((__v: any) => ${setterName(input.varName)}(__v));`);
+        asyncLines.push("    return () => { if (__sub && typeof __sub.unsubscribe === 'function') __sub.unsubscribe(); };");
+        asyncLines.push('  }, []);');
+      }
+    }
+
+    /**
+     * Assignment guard for event bindings (Stage 10): true (and a
+     * GEN_EVENT_ASSIGNMENT warning recorded) when the binding is an
+     * assignment statement. The binding is dropped by the caller; see
+     * isAssignmentExpression for why assignments cannot be translated.
+     */
+    const isAssignmentBinding = (el: ElementNode, ev: EventBinding): boolean => {
+      if (!isAssignmentExpression(ev.expression)) return false;
+      diagnostics.push(warning(
+        'GEN_EVENT_ASSIGNMENT',
+        `Event binding (${ev.name}) on <${el.tag}> holds an assignment ('${ev.expression.trim()}'); template event bindings take a method call, so the binding was dropped`,
+        el.pos.line, el.pos.column,
+        `Call a method instead and assign inside it: (${ev.name})="onEvent()" in the template, onEvent() { this.field = false; } in the class`,
+      ));
+      return true;
+    };
+
+    /**
+     * Attribute directives on one element (Stage 12): the directives
+     * whose attribute name the element carries, plus the attribute and
+     * input names they consume (those never become host props).
+     */
+    const directivesOn = (el: ElementNode) => {
+      const active: { attr: string; info: DirectiveInfo; assignments: DirectiveStyleAssign[]; unsupported?: string }[] = [];
+      for (const [attr, d] of this.directivesByAttr) {
+        if (el.attrs[attr] !== undefined
+          || el.propBindings.some((b) => b.name === attr)
+          || el.booleanAttrs.includes(attr)) {
+          active.push({ attr, info: d.info, assignments: d.assignments, unsupported: d.unsupported });
+        }
+      }
+      return active;
+    };
+    const directiveConsumedNames = (el: ElementNode): Set<string> => {
+      const names = new Set<string>();
+      for (const d of directivesOn(el)) {
+        names.add(d.attr);
+        for (const input of d.info.inputs) names.add(input.name);
+      }
+      return names;
+    };
+    /**
+     * The merged style object a host element's directives compute, as
+     * generated code: each assignment's right-hand side with the
+     * element's bound values substituted for the input names. Bound
+     * inputs win over static attributes, which win over the declared
+     * default; an unbound input with no default reads as undefined,
+     * exactly Angular's initial value.
+     */
+    const directiveStyleCode = (el: ElementNode): string | undefined => {
+      const entries: string[] = [];
+      for (const d of directivesOn(el)) {
+        if (d.unsupported) continue;
+        const renames = new Map<string, string>();
+        for (const input of d.info.inputs) {
+          const binding = el.propBindings.find((b) => b.name === input.name);
+          if (binding) renames.set(input.name, codeExpr(binding.expression));
+          else if (el.attrs[input.name] !== undefined) renames.set(input.name, JSON.stringify(el.attrs[input.name]));
+          else if (el.booleanAttrs.includes(input.name)) renames.set(input.name, 'true');
+          else if (input.initializer) renames.set(input.name, input.initializer);
+          else renames.set(input.name, 'undefined');
+        }
+        for (const a of d.assignments) {
+          entries.push(`${a.prop}: ${exprToCode(a.rhs, { renames })}`);
+        }
+      }
+      return entries.length ? `{ ${entries.join(', ')} }` : undefined;
     };
 
     const renderText = (node: TemplateNode & { type: 'text' }, indent: string): string => {
@@ -930,6 +1413,17 @@ class Generator {
         props.push(`color={${codeExpr(colorBinding.expression)}}`);
       }
 
+      // Badge (Stage 11): <icon> is one of the three badge hosts, so a
+      // badge attribute or [badge] binding becomes the badge prop the
+      // RgIcon primitive draws as a count dot (see renderCore for the
+      // other two hosts and the GEN_BADGE_HOST warning elsewhere).
+      if (el.attrs['badge'] !== undefined) {
+        props.push(`badge="${escapeJsxAttrValue(el.attrs['badge'])}"`);
+      } else {
+        const badgeBinding = el.propBindings.find((b) => b.name === 'badge');
+        if (badgeBinding) props.push(`badge={${codeExpr(badgeBinding.expression)}}`);
+      }
+
       return [`${indent}<RgIcon${props.length ? ' ' + props.join(' ') : ''} />`];
     };
 
@@ -984,6 +1478,7 @@ class Generator {
 
       const textCalls: string[] = [];
       const blurCalls: string[] = [];
+      const selectCalls: string[] = [];
       if (info?.mode === 'ngmodel' && info.field) {
         props.push(info.twoWay
           ? `value={${info.field}}`
@@ -1001,10 +1496,18 @@ class Generator {
         blurCalls.push('setFormVersion((v) => v + 1)');
       }
 
-      const consumedEvents = new Set(['input', 'change', 'blur', 'ngModelChange']);
+      const consumedEvents = new Set(['input', 'change', 'blur', 'ngModelChange', 'optionSelected']);
       for (const ev of el.eventBindings) {
+        if (isAssignmentBinding(el, ev)) {
+          lines.push(`${indent}{/* TODO(Rangular): (${ev.name}) assignment handler dropped, see GEN_EVENT_ASSIGNMENT */}`);
+          continue;
+        }
         if (ev.name === 'ngModelChange' && info?.mode !== 'reactive') {
           textCalls.push(callOf(ev.expression));
+        } else if (ev.name === 'optionSelected') {
+          // Autocomplete (Stage 11): the chosen option string is the
+          // $event, the Stage 6 control pattern, like (change).
+          selectCalls.push(callOf(ev.expression));
         } else if (ev.name === 'input' || ev.name === 'change') {
           textCalls.push(callOf(ev.expression));
         } else if (ev.name === 'blur') {
@@ -1024,8 +1527,18 @@ class Generator {
           ? `onBlur={() => ${blurCalls[0]}}`
           : `onBlur={() => { ${blurCalls.join('; ')}; }}`);
       }
+      if (selectCalls.length) {
+        props.push(selectCalls.length === 1
+          ? `onOptionSelected={($event) => ${selectCalls[0]}}`
+          : `onOptionSelected={($event) => { ${selectCalls.join('; ')}; }}`);
+      }
 
-      const consumedProps = new Set(['ngModel', 'ngModelOptions', 'formControlName']);
+      // [options] is autocomplete machinery (Stage 11), consumed by
+      // name here and emitted explicitly as the RgInput options prop;
+      // it stays in consumedProps so the generic loop never doubles it.
+      const consumedProps = new Set(['ngModel', 'ngModelOptions', 'formControlName', 'options']);
+      const optionsBinding = el.propBindings.find((b) => b.name === 'options');
+      if (optionsBinding) props.push(`options={${codeExpr(optionsBinding.expression)}}`);
       if (info && info.mode !== 'plain') consumedProps.add('value');
       for (const p of el.propBindings) {
         if (consumedProps.has(p.name)) continue;
@@ -1038,6 +1551,10 @@ class Generator {
       // Remaining events keep the generic mapping (e.g. (focus)).
       for (const ev of el.eventBindings) {
         if (consumedEvents.has(ev.name)) continue;
+        if (isAssignmentBinding(el, ev)) {
+          lines.push(`${indent}{/* TODO(Rangular): (${ev.name}) assignment handler dropped, see GEN_EVENT_ASSIGNMENT */}`);
+          continue;
+        }
         const src = ev.expression.trim();
         let isBareRef = false;
         try { isBareRef = parseExpression(src).type === 'identifier'; } catch { /* raw fallback */ }
@@ -1109,11 +1626,434 @@ class Generator {
       return lines;
     };
 
+    /**
+     * Render a <datetime-picker> (Stage 10). The picker is a dedicated
+     * block with a small validated surface: mode (date, time or
+     * datetime; a static value outside the three is a GEN_PICKER_MODE
+     * error, a [mode] binding passes through unchecked), label,
+     * minuteInterval (1 or 5; anything else warns GEN_PICKER_INTERVAL
+     * and snaps to the nearest, the icon size pattern), [value] in
+     * and (change) out with the ISO string as $event, wired like the
+     * Stage 6 controls. Children are meaningless on a picker and are
+     * ignored. The wheels and formatting live in the primitive and
+     * the shared helpers in @rangular/ui datetime.ts.
+     */
+    const renderDateTimePicker = (el: ElementNode, depth: number, extraProps: string[]): string[] => {
+      const indent = '  '.repeat(depth + 2);
+      this.usedUi.add('RgDateTimePicker');
+      const lines: string[] = [];
+      const props: string[] = [...extraProps];
+
+      const snapInterval = (raw: number): number => {
+        const snapped = nearestOnScale([1, 5], raw);
+        if (snapped !== raw) {
+          diagnostics.push(warning(
+            'GEN_PICKER_INTERVAL',
+            `minuteInterval ${raw} is not 1 or 5; the generated code uses ${snapped}`,
+            el.pos.line, el.pos.column,
+            `Use minuteInterval="1" or minuteInterval="5"`,
+          ));
+        }
+        return snapped;
+      };
+
+      const modeBinding = el.propBindings.find((b) => b.name === 'mode');
+      if (el.attrs['mode'] !== undefined) {
+        const mode = el.attrs['mode'];
+        if (!(PICKER_MODES as string[]).includes(mode)) {
+          diagnostics.push(error(
+            'GEN_PICKER_MODE',
+            `<datetime-picker> mode '${mode}' is not a picker mode; the picker treats it as datetime`,
+            el.pos.line, el.pos.column,
+            'Use mode="date", mode="time" or mode="datetime" (datetime is the default and can be omitted)',
+          ));
+        }
+        props.push(`mode="${escapeJsxAttrValue(mode)}"`);
+      } else if (modeBinding) {
+        props.push(`mode={${codeExpr(modeBinding.expression)}}`);
+      }
+
+      if (el.attrs['minuteInterval'] !== undefined) {
+        const raw = Number(el.attrs['minuteInterval']);
+        if (Number.isFinite(raw)) {
+          props.push(`minuteInterval={${snapInterval(raw)}}`);
+        } else {
+          diagnostics.push(warning(
+            'GEN_PICKER_INTERVAL',
+            `minuteInterval '${el.attrs['minuteInterval']}' is not a number; the generated code uses the default 1`,
+            el.pos.line, el.pos.column,
+            'Use minuteInterval="1" or minuteInterval="5"',
+          ));
+          props.push('minuteInterval={1}');
+        }
+      } else {
+        const intervalBinding = el.propBindings.find((b) => b.name === 'minuteInterval');
+        if (intervalBinding) {
+          const literal = /^-?\d+(\.\d+)?$/.test(intervalBinding.expression.trim())
+            ? Number(intervalBinding.expression.trim())
+            : undefined;
+          props.push(literal !== undefined
+            ? `minuteInterval={${snapInterval(literal)}}`
+            : `minuteInterval={${codeExpr(intervalBinding.expression)}}`);
+        }
+      }
+
+      const consumedAttrs = new Set(['class', 'mode', 'minuteInterval']);
+      for (const [name, value] of Object.entries(el.attrs)) {
+        if (consumedAttrs.has(name)) continue;
+        props.push(`${name}="${escapeJsxAttrValue(value)}"`);
+      }
+      for (const b of el.booleanAttrs) props.push(b);
+      const consumedProps = new Set(['mode', 'minuteInterval']);
+      for (const p of el.propBindings) {
+        if (consumedProps.has(p.name)) continue;
+        props.push(`${p.name}={${codeExpr(p.expression)}}`);
+      }
+      for (const ev of el.eventBindings) {
+        if (isAssignmentBinding(el, ev)) {
+          lines.push(`${indent}{/* TODO(Rangular): (${ev.name}) assignment handler dropped, see GEN_EVENT_ASSIGNMENT */}`);
+          continue;
+        }
+        const src = ev.expression.trim();
+        let isBareRef = false;
+        try { isBareRef = parseExpression(src).type === 'identifier'; } catch { /* raw fallback */ }
+        if (ev.name === 'change') {
+          // The picker emits the ISO string as $event (the Stage 6
+          // control pattern): the wrapper must receive it.
+          props.push(isBareRef ? `onChange={${src}}` : `onChange={($event) => ${codeExpr(src)}}`);
+          continue;
+        }
+        const { prop, known } = eventPropName(ev.name, el.tag);
+        if (!known) {
+          lines.push(`${indent}{/* (${ev.name}) has no standard RN prop, mapped to ${prop} */}`);
+        }
+        props.push(isBareRef ? `${prop}={${src}}` : `${prop}={() => ${codeExpr(src)}}`);
+      }
+      const style = styleFor(el);
+      if (style) props.push(`style={${style}}`);
+      if (el.ref) props.push(`ref={${el.ref}Ref}`);
+
+      lines.push(`${indent}<RgDateTimePicker${props.length ? ' ' + props.join(' ') : ''} />`);
+      return lines;
+    };
+
+    /**
+     * Render a <column> (Stage 11). A column is a declaration inside
+     * <table>: its `name` attribute names the row property it displays
+     * (the name of a matColumnDef in Angular Material's table) and
+     * `header` is the header cell text, defaulting to the name. React
+     * reserves the JSX `key` prop (it is extracted by React and never
+     * reaches the component), so `name` is the documented attribute; a
+     * `key` attribute is accepted as an alias and normalised to the
+     * same name prop. Children and other attributes are meaningless on
+     * a column and are ignored. A column with neither name nor key is
+     * a GEN_TABLE_COLUMN error: the table cannot read its cells.
+     */
+    const renderColumn = (el: ElementNode, depth: number, extraProps: string[]): string[] => {
+      const indent = '  '.repeat(depth + 2);
+      this.usedUi.add('RgColumn');
+      const props: string[] = [...extraProps];
+      const name = el.attrs['name'] ?? el.attrs['key'];
+      if (name === undefined) {
+        diagnostics.push(error(
+          'GEN_TABLE_COLUMN',
+          '<column> has no name attribute; a column declares which row property it displays by name',
+          el.pos.line, el.pos.column,
+          'Add the row property name: <column name="sender" header="From"></column> (key="sender" works as an alias)',
+        ));
+      } else {
+        props.push(`name="${escapeJsxAttrValue(name)}"`);
+      }
+      if (el.attrs['header'] !== undefined) {
+        props.push(`header="${escapeJsxAttrValue(el.attrs['header'])}"`);
+      }
+      return [`${indent}<RgColumn${props.length ? ' ' + props.join(' ') : ''} />`];
+    };
+
+    /**
+     * Render a <slider> (Stage 11), the mat-slider adaptation: [value]
+     * in, (change) out with the snapped number as $event (the Stage 6
+     * control pattern), plus min, max and step. Range validation runs
+     * here whenever values are statically known (static attributes or
+     * literal bindings): min at or above max is a GEN_SLIDER_RANGE
+     * error, a step at or below zero warns GEN_SLIDER_RANGE and the
+     * generated code uses 1, and a non-numeric static min, max or step
+     * warns and drops the attribute so the primitive default applies.
+     * Field bindings pass through unchecked; the primitive clamps and
+     * snaps at runtime. Children are meaningless and ignored.
+     */
+    const renderSlider = (el: ElementNode, depth: number, extraProps: string[]): string[] => {
+      const indent = '  '.repeat(depth + 2);
+      this.usedUi.add('RgSlider');
+      const lines: string[] = [];
+      const props: string[] = [...extraProps];
+
+      const staticNumber = (name: string): number | undefined => {
+        if (el.attrs[name] === undefined) return undefined;
+        const raw = Number(el.attrs[name]);
+        return Number.isFinite(raw) ? raw : undefined;
+      };
+      const literalNumber = (name: string): number | undefined => {
+        const b = el.propBindings.find((x) => x.name === name);
+        if (!b) return undefined;
+        const text = b.expression.trim();
+        return /^-?\d+(\.\d+)?$/.test(text) ? Number(text) : undefined;
+      };
+      const knownNumber = (name: string): number | undefined =>
+        staticNumber(name) ?? literalNumber(name);
+
+      const emitNumberProp = (name: string, forced?: number): void => {
+        if (forced !== undefined) {
+          props.push(`${name}={${forced}}`);
+          return;
+        }
+        if (el.attrs[name] !== undefined) {
+          const stat = staticNumber(name);
+          if (stat !== undefined) {
+            props.push(`${name}={${stat}}`);
+            return;
+          }
+          diagnostics.push(warning(
+            'GEN_SLIDER_RANGE',
+            `<slider> ${name}="${el.attrs[name]}" is not a number; the attribute is dropped and the primitive default applies`,
+            el.pos.line, el.pos.column,
+            `Use a number for ${name}, e.g. ${name}="0"`,
+          ));
+          return;
+        }
+        const b = el.propBindings.find((x) => x.name === name);
+        if (b) props.push(`${name}={${codeExpr(b.expression)}}`);
+      };
+
+      const minKnown = knownNumber('min');
+      const maxKnown = knownNumber('max');
+      if (minKnown !== undefined && maxKnown !== undefined && minKnown >= maxKnown) {
+        diagnostics.push(error(
+          'GEN_SLIDER_RANGE',
+          `<slider> min (${minKnown}) must be below max (${maxKnown}); the slider cannot move`,
+          el.pos.line, el.pos.column,
+          'Give the slider a range with room to move, e.g. min="0" max="100" step="1"',
+        ));
+      }
+      emitNumberProp('min');
+      emitNumberProp('max');
+      const stepKnown = knownNumber('step');
+      if (stepKnown !== undefined && stepKnown <= 0) {
+        diagnostics.push(warning(
+          'GEN_SLIDER_RANGE',
+          `<slider> step (${stepKnown}) must be above zero; the generated code uses step 1`,
+          el.pos.line, el.pos.column,
+          'Use a positive step, e.g. step="1"',
+        ));
+        emitNumberProp('step', 1);
+      } else {
+        emitNumberProp('step');
+      }
+
+      const consumedAttrs = new Set(['class', 'min', 'max', 'step']);
+      for (const [name, value] of Object.entries(el.attrs)) {
+        if (consumedAttrs.has(name)) continue;
+        props.push(`${name}="${escapeJsxAttrValue(value)}"`);
+      }
+      for (const b of el.booleanAttrs) props.push(b);
+      const consumedProps = new Set(['min', 'max', 'step']);
+      for (const p of el.propBindings) {
+        if (consumedProps.has(p.name)) continue;
+        props.push(`${p.name}={${codeExpr(p.expression)}}`);
+      }
+      for (const ev of el.eventBindings) {
+        if (isAssignmentBinding(el, ev)) {
+          lines.push(`${indent}{/* TODO(Rangular): (${ev.name}) assignment handler dropped, see GEN_EVENT_ASSIGNMENT */}`);
+          continue;
+        }
+        const src = ev.expression.trim();
+        let isBareRef = false;
+        try { isBareRef = parseExpression(src).type === 'identifier'; } catch { /* raw fallback */ }
+        if (ev.name === 'change') {
+          props.push(isBareRef ? `onChange={${src}}` : `onChange={($event) => ${codeExpr(src)}}`);
+          continue;
+        }
+        const { prop, known } = eventPropName(ev.name, el.tag);
+        if (!known) {
+          lines.push(`${indent}{/* (${ev.name}) has no standard RN prop, mapped to ${prop} */}`);
+        }
+        props.push(isBareRef ? `${prop}={${src}}` : `${prop}={() => ${codeExpr(src)}}`);
+      }
+      const style = styleFor(el);
+      if (style) props.push(`style={${style}}`);
+      if (el.ref) props.push(`ref={${el.ref}Ref}`);
+
+      lines.push(`${indent}<RgSlider${props.length ? ' ' + props.join(' ') : ''} />`);
+      return lines;
+    };
+
+    /**
+     * Render a <progress-bar> (Stage 11), the mat-progress-bar
+     * adaptation: [value] from 0 to 100 in determinate mode (the
+     * default), mode="indeterminate" for the animated form. A
+     * statically known value outside the range warns
+     * GEN_PROGRESS_RANGE and the generated code carries the clamped
+     * number; a field binding passes through and the primitive clamps
+     * at runtime. An unknown static mode is passed through and the
+     * primitive treats anything but indeterminate as determinate.
+     * Children are meaningless and ignored.
+     */
+    const renderProgressBar = (el: ElementNode, depth: number, extraProps: string[]): string[] => {
+      const indent = '  '.repeat(depth + 2);
+      this.usedUi.add('RgProgressBar');
+      const props: string[] = [...extraProps];
+
+      const clampValue = (raw: number): number => {
+        const clamped = Math.min(100, Math.max(0, raw));
+        if (clamped !== raw) {
+          diagnostics.push(warning(
+            'GEN_PROGRESS_RANGE',
+            `<progress-bar> value ${raw} is outside 0 to 100; the generated code uses ${clamped}`,
+            el.pos.line, el.pos.column,
+            'Bind [value] to a number from 0 to 100, e.g. [value]="82"',
+          ));
+        }
+        return clamped;
+      };
+
+      if (el.attrs['mode'] !== undefined) {
+        props.push(`mode="${escapeJsxAttrValue(el.attrs['mode'])}"`);
+      } else {
+        const modeBinding = el.propBindings.find((b) => b.name === 'mode');
+        if (modeBinding) props.push(`mode={${codeExpr(modeBinding.expression)}}`);
+      }
+      if (el.attrs['value'] !== undefined) {
+        const raw = Number(el.attrs['value']);
+        if (Number.isFinite(raw)) props.push(`value={${clampValue(raw)}}`);
+        else props.push(`value="${escapeJsxAttrValue(el.attrs['value'])}"`);
+      } else {
+        const valueBinding = el.propBindings.find((b) => b.name === 'value');
+        if (valueBinding) {
+          const text = valueBinding.expression.trim();
+          props.push(/^-?\d+(\.\d+)?$/.test(text)
+            ? `value={${clampValue(Number(text))}}`
+            : `value={${codeExpr(valueBinding.expression)}}`);
+        }
+      }
+      const consumedAttrs = new Set(['class', 'mode', 'value']);
+      for (const [name, value] of Object.entries(el.attrs)) {
+        if (consumedAttrs.has(name)) continue;
+        props.push(`${name}="${escapeJsxAttrValue(value)}"`);
+      }
+      for (const b of el.booleanAttrs) props.push(b);
+      for (const p of el.propBindings) {
+        if (p.name === 'mode' || p.name === 'value') continue;
+        props.push(`${p.name}={${codeExpr(p.expression)}}`);
+      }
+      const style = styleFor(el);
+      if (style) props.push(`style={${style}}`);
+      if (el.ref) props.push(`ref={${el.ref}Ref}`);
+      return [`${indent}<RgProgressBar${props.length ? ' ' + props.join(' ') : ''} />`];
+    };
+
+    /**
+     * Render a <spinner> (Stage 11), the mat-progress-spinner
+     * adaptation: a small rotating arc drawn from one SVG path, the
+     * same drawing in the app (react-native-svg, like the icons) and
+     * in the preview (inline SVG, static there). The size sits on the
+     * icon size scale (20, 24, 28) and an off-scale size warns
+     * GEN_SPINNER_SIZE and snaps, the icon rule; color names a theme
+     * colour role and defaults to the primary role in the primitive.
+     * Children are meaningless and ignored.
+     */
+    const renderSpinner = (el: ElementNode, depth: number, extraProps: string[]): string[] => {
+      const indent = '  '.repeat(depth + 2);
+      this.usedUi.add('RgSpinner');
+      const props: string[] = [...extraProps];
+
+      const snapSpinnerSize = (raw: number): number => {
+        const snapped = nearestOnScale(ICON_SIZES, raw);
+        if (snapped !== raw) {
+          diagnostics.push(warning(
+            'GEN_SPINNER_SIZE',
+            `Spinner size ${raw} is off the icon size scale (${ICON_SIZES.join(', ')}); the generated code uses ${snapped}`,
+            el.pos.line, el.pos.column,
+            `Use size="${snapped}" (the icon size scale is ${ICON_SIZES.join(', ')})`,
+          ));
+        }
+        return snapped;
+      };
+      if (el.attrs['size'] !== undefined) {
+        const raw = Number(el.attrs['size']);
+        if (Number.isFinite(raw)) {
+          props.push(`size={${snapSpinnerSize(raw)}}`);
+        } else {
+          diagnostics.push(warning(
+            'GEN_SPINNER_SIZE',
+            `Spinner size '${el.attrs['size']}' is not a number; the generated code uses the default size ${DEFAULT_ICON_SIZE}`,
+            el.pos.line, el.pos.column,
+            'Use size="20", size="24" or size="28"',
+          ));
+          props.push(`size={${DEFAULT_ICON_SIZE}}`);
+        }
+      } else {
+        const sizeBinding = el.propBindings.find((b) => b.name === 'size');
+        if (sizeBinding) {
+          const literal = /^-?\d+(\.\d+)?$/.test(sizeBinding.expression.trim())
+            ? Number(sizeBinding.expression.trim())
+            : undefined;
+          props.push(literal !== undefined
+            ? `size={${snapSpinnerSize(literal)}}`
+            : `size={${codeExpr(sizeBinding.expression)}}`);
+        }
+      }
+      if (el.attrs['color'] !== undefined) {
+        props.push(`color="${escapeJsxAttrValue(el.attrs['color'])}"`);
+      } else {
+        const colorBinding = el.propBindings.find((b) => b.name === 'color');
+        if (colorBinding) props.push(`color={${codeExpr(colorBinding.expression)}}`);
+      }
+      const style = styleFor(el);
+      if (style) props.push(`style={${style}}`);
+      if (el.ref) props.push(`ref={${el.ref}Ref}`);
+      return [`${indent}<RgSpinner${props.length ? ' ' + props.join(' ') : ''} />`];
+    };
+
     /** Render one element without its structural directive (handled by renderElement). */
     const renderCore = (el: ElementNode, depth: number, extraProps: string[], formCtx?: FormInfo): string[] => {
+      // Content projection (Stage 12): <ng-content> in a child
+      // component's template is where the children written inside the
+      // child's tag in the host template land; they arrive as the
+      // generated function's React children prop. A select attribute
+      // (multi-slot projection) is not supported: it warns and the
+      // element behaves as the default slot.
+      if (el.tag.toLowerCase() === 'ng-content') {
+        const indent = '  '.repeat(depth + 2);
+        if (el.attrs['select'] !== undefined) {
+          diagnostics.push(warning(
+            'PROJECTION_SELECT_UNSUPPORTED',
+            `<ng-content select="${el.attrs['select']}"> uses multi-slot projection, which is not supported yet; the element behaves as the default slot and receives all projected children`,
+            el.pos.line, el.pos.column,
+            'Use a single <ng-content></ng-content> with no select attribute; every child written inside the component tag lands there',
+          ));
+        }
+        return [`${indent}{children}`];
+      }
+      // Dedicated renderers have no style merge point, so a directive
+      // on one of their hosts warns instead of silently doing nothing.
+      if (['icon', 'input', 'datetime-picker'].includes(el.tag.toLowerCase())) {
+        for (const d of directivesOn(el)) {
+          diagnostics.push(warning(
+            'DIR_UNSUPPORTED',
+            `Directive [${d.attr}] sits on <${el.tag}>, which has a dedicated renderer with no host style to merge into; it applied no styles`,
+            el.pos.line, el.pos.column,
+            `Move [${d.attr}] onto a plain element (a <p>, <div>, <span> or <card>)`,
+          ));
+        }
+      }
       if (el.tag.toLowerCase() === 'router-outlet') return renderOutlet(el, depth);
       if (el.tag.toLowerCase() === 'icon') return renderIcon(el, depth, extraProps);
       if (el.tag.toLowerCase() === 'input') return renderInput(el, depth, extraProps);
+      if (el.tag.toLowerCase() === 'datetime-picker') return renderDateTimePicker(el, depth, extraProps);
+      if (el.tag.toLowerCase() === 'column') return renderColumn(el, depth, extraProps);
+      if (el.tag.toLowerCase() === 'slider') return renderSlider(el, depth, extraProps);
+      if (el.tag.toLowerCase() === 'progress-bar') return renderProgressBar(el, depth, extraProps);
+      if (el.tag.toLowerCase() === 'spinner') return renderSpinner(el, depth, extraProps);
       const indent = '  '.repeat(depth + 2);
       const lines: string[] = [];
       const mapping = TAG_MAP[el.tag.toLowerCase()];
@@ -1132,7 +2072,7 @@ class Generator {
           'GEN_UNKNOWN_TAG',
           `Unknown tag <${el.tag}>, emitted as <View>. Use a known block or a component tag.`,
           el.pos.line, el.pos.column,
-          'Known blocks: screen, appbar, card, list, row, fab, button, input, form, switch, switcher, checkbox, radio-group, h1, h2, h3, p, span, label, div, section, header, or use a Capitalised component tag',
+          'Known blocks: screen, appbar, card, list, row, fab, button, input, form, switch, switcher, checkbox, radio-group, tabs, accordion, panel, table, slider, progress-bar, spinner, chips, chip, sheet, dialog, datetime-picker, h1, h2, h3, p, span, label, div, section, header, or use a Capitalised component tag',
         ));
         componentName = 'View';
         this.usedRn.add('View');
@@ -1180,6 +2120,43 @@ class Generator {
         }
       }
 
+      // Badge (Stage 11): matBadge as an attribute. <button> and <row>
+      // are hosts (the third host, <icon>, is handled in renderIcon);
+      // on them the generic attribute and binding loops below emit
+      // badge as a prop untouched, and the primitives draw the dot.
+      // On any other element the badge has nowhere to sit: warn
+      // GEN_BADGE_HOST and strip it from both loops so no stray badge
+      // prop reaches the output.
+      const badgeUsed = el.attrs['badge'] !== undefined
+        || el.propBindings.some((b) => b.name === 'badge');
+      const badgeHost = el.tag.toLowerCase() === 'button' || el.tag.toLowerCase() === 'row';
+      const dropBadge = badgeUsed && !badgeHost;
+      if (dropBadge) {
+        diagnostics.push(warning(
+          'GEN_BADGE_HOST',
+          `badge on <${el.tag}> cannot render; badges sit on <button>, <row> and <icon> in this version, so the badge was dropped`,
+          el.pos.line, el.pos.column,
+          'Move the badge to a button, row or icon: <button badge="3">Inbox</button>, or bind it: <row [badge]="unread"></row>',
+        ));
+      }
+
+      // Attribute directives (Stage 12): a directive's attribute and
+      // its input attributes are consumed by the directive (they feed
+      // the merged style below), never emitted as host props. On a
+      // child component tag there is no host element to style, so a
+      // directive there warns DIR_UNSUPPORTED and applies nothing.
+      const consumedByDirective = directiveConsumedNames(el);
+      if (childInfo && consumedByDirective.size) {
+        for (const d of directivesOn(el)) {
+          diagnostics.push(warning(
+            'DIR_UNSUPPORTED',
+            `Directive [${d.attr}] sits on the component tag <${el.tag}>; attribute directives style plain host elements in this version, so it applied no styles`,
+            el.pos.line, el.pos.column,
+            `Move [${d.attr}] onto a plain element inside the component's template (a <p>, <div>, <span> or <card>), or style the component through its @Input props`,
+          ));
+        }
+      }
+
       const props: string[] = [...extraProps];
       if (mapping?.variant) props.push(`variant="${mapping.variant}"`);
       const isFormEl = el.tag.toLowerCase() === 'form';
@@ -1187,16 +2164,23 @@ class Generator {
       for (const [name, value] of Object.entries(el.attrs)) {
         if (name === 'class') continue;
         if (name === 'routerLink') continue;
+        if (consumedByDirective.has(name)) continue;
+        if (name === 'badge' && dropBadge) continue;
         // A button's type is forms machinery (Stage 8): type="submit"
         // is consumed by the submit rewrite below, never a prop.
         if (isButtonEl && name === 'type') continue;
         props.push(`${name}="${escapeJsxAttrValue(value)}"`);
       }
-      for (const b of el.booleanAttrs) props.push(b);
+      for (const b of el.booleanAttrs) {
+        if (consumedByDirective.has(b)) continue;
+        props.push(b);
+      }
       for (const p of el.propBindings) {
         // [formGroup] is the reactive binding mechanism, not a View prop.
         if (isFormEl && p.name === 'formGroup') continue;
         if (p.name === 'routerLink') continue;
+        if (consumedByDirective.has(p.name)) continue;
+        if (p.name === 'badge' && dropBadge) continue;
         props.push(`${p.name}={${codeExpr(p.expression)}}`);
       }
       // Form submit (Stage 8): a <button type="submit"> statically
@@ -1230,6 +2214,13 @@ class Generator {
         // A form's own (submit)/(ngSubmit) is consumed by the rewrite
         // above; it is not a prop on the generated View.
         if (isFormEl && (ev.name === 'submit' || ev.name === 'ngSubmit')) continue;
+        // Assignment handlers (Stage 10) are dropped with a warning:
+        // the expression grammar has no assignment operator, and the
+        // raw fallback used to emit an assignment against a const.
+        if (isAssignmentBinding(el, ev)) {
+          lines.push(`${indent}{/* TODO(Rangular): (${ev.name}) assignment handler dropped, see GEN_EVENT_ASSIGNMENT */}`);
+          continue;
+        }
         const src = ev.expression.trim();
         let isBareRef = false;
         try { isBareRef = parseExpression(src).type === 'identifier'; } catch { /* raw fallback below */ }
@@ -1238,12 +2229,20 @@ class Generator {
           props.push(isBareRef ? `${cb}={${src}}` : `${cb}={($event) => ${codeExpr(src)}}`);
           continue;
         }
-        const controlTag = ['switch', 'checkbox', 'switcher', 'radio-group'].includes(el.tag.toLowerCase());
+        const controlTag = ['switch', 'checkbox', 'switcher', 'radio-group', 'tabs'].includes(el.tag.toLowerCase());
         if (controlTag && ev.name === 'change') {
           // Controls emit their next value as $event (Stage 6). Unlike
           // the generic event path, the generated wrapper must receive
           // that value and pass it to the Angular style handler call.
+          // Tabs joined the contract in Stage 11: (change) emits the
+          // newly selected tab index.
           props.push(isBareRef ? `onChange={${src}}` : `onChange={($event) => ${codeExpr(src)}}`);
+          continue;
+        }
+        if (el.tag.toLowerCase() === 'panel' && ev.name === 'toggle') {
+          // Panels emit their next open state as $event (Stage 11),
+          // the same control pattern as (change) above.
+          props.push(isBareRef ? `onToggle={${src}}` : `onToggle={($event) => ${codeExpr(src)}}`);
           continue;
         }
         if (ev.name === 'click' && navCall) {
@@ -1269,7 +2268,13 @@ class Generator {
         props.push(`onPress={() => ${navCall}}`);
       }
       const style = styleFor(el);
-      if (style) props.push(`style={${style}}`);
+      // Directive styles merge after the element's own style, so a
+      // directive wins over the class style for the same property,
+      // the way a directive's inline style beats a stylesheet rule.
+      const dirStyle = childInfo ? undefined : directiveStyleCode(el);
+      if (style && dirStyle) props.push(`style={[${style}, ${dirStyle}]}`);
+      else if (dirStyle) props.push(`style={${dirStyle}}`);
+      else if (style) props.push(`style={${style}}`);
       if (el.ref) props.push(`ref={${el.ref}Ref}`);
 
       const open = `${indent}<${componentName}${props.length ? ' ' + props.join(' ') : ''}`;
@@ -1389,6 +2394,21 @@ class Generator {
     const fnName = componentFunctionName(component.className);
     const inputs = component.fields.filter((f) => f.isInput);
     const outputs = component.fields.filter((f) => f.isOutput);
+    // Content projection (Stage 12): a template that places
+    // <ng-content> receives the host's children as the React children
+    // prop; without one the generated signature stays exactly as before.
+    const usesProjection = ((): boolean => {
+      let found = false;
+      const walk = (nodes: TemplateNode[]): void => {
+        for (const n of nodes) {
+          if (n.type !== 'element') continue;
+          if (n.tag.toLowerCase() === 'ng-content') found = true;
+          walk(n.children);
+        }
+      };
+      walk(ast.children);
+      return found;
+    })();
     // Routing (Stage 9): a component injecting ActivatedRoute receives
     // its instance through a compiler-owned prop, __rgRoute, which the
     // outlet supplies per mount. It is not an @Input and never appears
@@ -1396,9 +2416,13 @@ class Generator {
     const injectsRoute = this.routingActive
       && (component.constructorDeps ?? []).some((d) => d.typeName === 'ActivatedRoute');
     let propsDecl = '';
-    if (inputs.length || outputs.length || injectsRoute) {
+    if (inputs.length || outputs.length || injectsRoute || usesProjection) {
       const destructured: string[] = [];
       const types: string[] = [];
+      if (usesProjection) {
+        destructured.push('children');
+        types.push('children?: any');
+      }
       for (const f of inputs) {
         const def = f.initializer && isLiteralInitializer(f.initializer) ? ` = ${f.initializer}` : '';
         destructured.push(`${f.name}${def}`);
@@ -1426,13 +2450,15 @@ class Generator {
         depLines.push(`  const ${dep.propertyName} = __router;`);
       } else if (this.routingActive && dep.typeName === 'ActivatedRoute') {
         depLines.push(`  const ${dep.propertyName} = __rgRoute;`);
+      } else if (dep.typeName === 'SnackBar') {
+        depLines.push(`  const ${dep.propertyName} = __snackBar;`);
       } else if (this.rootServices.has(dep.typeName)) {
         this.usedRuntime.add('Container');
         this.reactImports.add('useSyncExternalStore');
         depLines.push(`  const ${dep.propertyName} = __container.get<${dep.typeName}>(${dep.typeName});`);
         depLines.push(`  useSyncExternalStore((cb) => ${dep.propertyName}.__subscribe(cb), () => ${dep.propertyName}.__getVersion());`);
       } else {
-        this.validateDeps(`Component ${component.className}`, [dep]);
+        this.validateDeps(`Component ${component.className}`, [dep], true);
         depLines.push(`  // TODO(Rangular DI): no provider for '${forLineComment(dep.typeName)}', '${forLineComment(dep.propertyName)}' is unavailable.`);
       }
     }
@@ -1509,10 +2535,20 @@ class Generator {
       const field = info.field!;
       this.reactImports.add('useState');
       modelLines.push(`  const [${key}Touched, ${setterName(`${key}Touched`)}] = useState(false);`);
-      if (info.validators.length) {
+      const validSpecs = info.validators.filter((v) => !v.argInvalid);
+      for (const v of info.validators) {
+        if (!v.argInvalid) continue;
+        diagnostics.push(warning(
+          'GEN_VALIDATOR_ARG',
+          `The ${v.fn} validator on the '${field}' input has a static attribute value that is not a plain number; the validator was dropped (static attribute text is never emitted into generated code)`,
+          undefined, undefined,
+          `Write the length as a plain number, e.g. minlength="3", or bind it: [minlength]="3"`,
+        ));
+      }
+      if (validSpecs.length) {
         this.usedRuntime.add('Validators');
         this.usedRuntime.add('validateValue');
-        const calls = info.validators
+        const calls = validSpecs
           .map((v) => (v.argSource !== undefined ? `Validators.${v.fn}(${v.argSource})` : `Validators.${v.fn}`))
           .join(', ');
         modelLines.push(`  const ${key}Errors = validateValue(${field}, [${calls}]);`);
@@ -1554,12 +2590,20 @@ class Generator {
       lifecycleLines.push('  }, []);');
     }
 
+    // Snackbar host (Stage 10): only the entry component renders it,
+    // as the last sibling inside the returned tree, so an app with a
+    // snackbar always returns a fragment even for a single root.
+    if (opts.entry && this.snackActive) {
+      this.usedUi.add('RgSnackbar');
+      bodyLines.push('    {__snack && (<RgSnackbar message={__snack.message} actionLabel={__snack.actionLabel} onAction={() => __snackBar.pressAction()} />)}');
+    }
+
     // A template whose root is a structural directive (or several roots)
     // cannot be returned bare, `{cond && (...)}` alone is not valid JSX,
     // so it is wrapped in a fragment. A single plain element root (the
     // common <screen> shape) is returned as-is, exactly as in Stage 2.
     const only = ast.children.length === 1 ? ast.children[0] : undefined;
-    const bareRoot = !!only && (only.type === 'text' || !only.structural);
+    const bareRoot = !!only && (only.type === 'text' || !only.structural) && !(opts.entry && this.snackActive);
     const returnLines = bareRoot
       ? ['  return (', ...bodyLines, '  );']
       : [
@@ -1583,14 +2627,28 @@ class Generator {
       navLines.push('  useEffect(() => __navigator.subscribe(() => __setRoute(__navigator.current)), []);');
     }
 
+    // Snackbar state (Stage 10): the entry component mirrors the
+    // module-level service's current bar in React state. The service
+    // owns timing and action callbacks; this bridge only renders the
+    // host while a bar is open.
+    const snackLines: string[] = [];
+    if (opts.entry && this.snackActive) {
+      this.reactImports.add('useState');
+      this.reactImports.add('useEffect');
+      snackLines.push('  const [__snack, __setSnack] = useState(__snackBar.current);');
+      snackLines.push('  useEffect(() => __snackBar.subscribe(() => __setSnack(__snackBar.current)), []);');
+    }
+
     const exportKw = opts.entry ? 'export default function' : 'export function';
     return [
       `${exportKw} ${fnName}(${propsDecl}) {`,
       ...depLines,
       ...navLines,
+      ...snackLines,
       ...fieldLines,
       ...formLines,
       ...modelLines,
+      ...asyncLines,
       ...methodLines,
       ...lifecycleLines,
       ...returnLines,

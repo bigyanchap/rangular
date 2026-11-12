@@ -1,0 +1,10 @@
+<screen>
+  <appbar title="Projection"></appbar>
+  <h1>Panels</h1>
+  <app-panel>
+    <h3>Inside the panel</h3>
+    <p>This content was written in the parent and projected into the child's card.</p>
+    <button (click)="note()">Note it</button>
+  </app-panel>
+  <p *ngIf="noted > 0">Noted {{ noted }} times</p>
+</screen>

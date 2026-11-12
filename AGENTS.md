@@ -16,14 +16,17 @@ everything you may use is [catalog.md](catalog.md) / `catalog.json`.
 | Path | What lives there |
 |---|---|
 | `packages/compiler/src/` | The compiler: template parser (`template/`), `@Component` extractor (`class/`), CSS subset (`style/`), RN code generator (`codegen/`), HTML preview renderer (`preview/`), catalog generator (`catalog.ts`), pipeline (`compile.ts`) |
-| `packages/cli/src/cli.ts` | The `rangular` CLI: `build` (with `--json`, `--source-map`), `ast`, `preview`, `catalog`, `watch`, `init`, `doctor` (the polish linter lives in `packages/compiler/src/doctor.ts`) |
-| `packages/runtime/src/index.ts` | Pure-TS helpers for generated apps: `EventEmitter`, `signal()`, `Container`, `ReactiveService` (base class generated services extend), `HttpClient` (Observable-lite over fetch), `pipe()`, the forms classes (Stage 8): `Validators`, `validateValue`, `FormControl`, `FormGroup`, and the routing classes (Stage 9): `matchRoute`, `RgNavigator`, `Router`, `ActivatedRoute` |
+| `packages/cli/src/cli.ts` | The `rangular` CLI: `build` (with `--json`, `--source-map`), `ast`, `preview`, `catalog`, `watch`, `init` (with `--app` for the Expo scaffold), `doctor` (the polish linter lives in `packages/compiler/src/doctor.ts`) |
+| `packages/runtime/src/index.ts` | Pure-TS helpers for generated apps: `EventEmitter`, `signal()`, `Container`, `ReactiveService` (base class generated services extend), `HttpClient` (Observable-lite over fetch), `pipe()`, the forms classes (Stage 8): `Validators`, `validateValue`, `FormControl`, `FormGroup`, the routing classes (Stage 9): `matchRoute`, `RgNavigator`, `Router`, `ActivatedRoute`, and the snackbar service (Stage 10): `SnackBar`, `SnackBarRef` |
 | `packages/ui/src/tokens.ts` | Rangular Material design tokens (pure TS, part of the build) |
 | `packages/ui/src/icons.ts` | The curated icon set (Stage 7): name to SVG path data (24 by 24 viewBox), the size scale and the default size; the single source the compiler validates against, the catalog generates from, and both renderers draw |
-| `packages/ui/src/primitives.tsx` | RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`, `RgSwitch`, `RgCheckbox`, `RgSwitcher`, `RgOption`, `RgRadioGroup`, `RgRadio`, `RgIcon`, `RgInput`, `RgOutlet`) plus the theme context (`RgThemeProvider`, `useRgTheme`); all colours come from the active theme, shipped source for generated apps, deliberately excluded from this repo's `tsc` build |
+| `packages/ui/src/datetime.ts` | Date and time helpers for the picker (Stage 10): ISO parsing and composition, leap correct month lengths, wheel specifications and display formatting; pure TS, part of the build, mirrored by the preview page runtime and parity-tested against it |
+| `packages/ui/src/primitives.tsx` | RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`, `RgSwitch`, `RgCheckbox`, `RgSwitcher`, `RgOption`, `RgRadioGroup`, `RgRadio`, `RgIcon`, `RgInput`, `RgOutlet`, `RgSheet`, `RgDialog`, `RgActions`, `RgSnackbar`, `RgDateTimePicker`, and Stage 11: `RgTabs`, `RgTab`, `RgAccordion`, `RgPanel`, `RgTable`, `RgColumn`, `RgSlider`, `RgProgressBar`, `RgSpinner`, `RgChips`, `RgChip`) plus the theme context (`RgThemeProvider`, `useRgTheme`); all colours come from the active theme, shipped source for generated apps, deliberately excluded from this repo's `tsc` build |
 | `packages/compiler/src/class/parseRoutes.ts` | The Stage 9 routes file reader: finds the exported `Routes` array literal and turns each entry into a route definition, with `GEN_ROUTE_UNSUPPORTED` for guards, resolvers, lazy loading and child routes |
-| `examples/hello/`, `examples/counter/`, `examples/inbox/`, `examples/profile/`, `examples/favourite/`, `examples/shared-inbox/`, `examples/showcase/`, `examples/dinacharya-row/`, `examples/settings/`, `examples/icons/`, `examples/signup-form/`, `examples/profile-form/`, `examples/mini-mail/` | Tiny single-capability examples, each with a recipe-card `README.md`, golden generated `.tsx`, `preview.html` and a `styles.snapshot.json` style golden (profile is the Stage 2.5 proof-test example: written from these docs alone; favourite = child components, shared-inbox = services/DI/lifecycle, showcase = tokens/theming/snapping, dinacharya-row = the Stage 5 dogfood example: one real Awaken Me row, settings = Stage 6 controls: switch, checkbox, switcher, radio group, icons = Stage 7 icon set: the full set with labels, sizes and colour roles, signup-form = Stage 8 template-driven forms: ngModel, validators, refs, submit, profile-form = Stage 8 reactive forms: FormGroup, formControlName, mini-mail = Stage 9 routing: shell, outlet, routes file, routerLink, ActivatedRoute params) |
-| `tests/` | `node:test` suites, parser, expressions, codegen, methods, runtime, tokens, catalog/vibe layer, Stage 3 (children, services, HttpClient, preview behaviour via a DOM shim), Stage 4 (token completeness, primitives hex guard, CSS snapping, preview theme toggle, no-em-dash guard), Stage 5 (per-file diagnostics, source maps, watch, init, doctor, style snapshot goldens, preview parity guard, dogfood behaviour), Stage 6 (controls codegen and nesting, settings example, preview behaviour for switch, checkbox, switcher and radio group, switch motion rule), Stage 7 (icon set and validation, icons example, preview parity of the drawn paths, RgIcon primitive), Stage 8 (runtime Validators and form classes, ngModel and refs codegen, reactive ref-held groups, forms diagnostics, signup-form and profile-form examples, preview text entry behaviour via the DOM shim), Stage 9 (runtime matcher and navigator, array literal expressions, routes file parsing, routing diagnostics, CLI --routes, mini-mail example, preview navigation behaviour via the DOM shim, preview/runtime matcher parity) |
+| `packages/compiler/src/template/pipes.ts` | The Stage 12 canonical built-in pipe implementations (date, number, percent, currency, slice, keyvalue, async snapshot), shared by the template evaluator; the runtime `pipe()` and the preview page mirror them and are parity-tested against this file |
+| `packages/compiler/src/class/parseDirective.ts` | The Stage 12 attribute directive extractor: reads a `@Directive` class's `ngOnInit` or setter body and extracts the supported `this.el.nativeElement.style.<prop> = <expr>` assignments, or reports why the body is outside the subset (`DIR_UNSUPPORTED`) |
+| `examples/hello/`, `examples/counter/`, `examples/inbox/`, `examples/profile/`, `examples/favourite/`, `examples/shared-inbox/`, `examples/showcase/`, `examples/dinacharya-row/`, `examples/settings/`, `examples/icons/`, `examples/signup-form/`, `examples/profile-form/`, `examples/mini-mail/`, `examples/reminder/`, `examples/mailbox-pro/`, `examples/pipes-demo/`, `examples/directives-demo/`, `examples/projection-demo/` | Tiny single-capability examples, each with a recipe-card `README.md`, golden generated `.tsx`, `preview.html` and a `styles.snapshot.json` style golden (profile is the Stage 2.5 proof-test example: written from these docs alone; favourite = child components, shared-inbox = services/DI/lifecycle, showcase = tokens/theming/snapping, dinacharya-row = the Stage 5 dogfood example: one real Awaken Me row, settings = Stage 6 controls: switch, checkbox, switcher, radio group, icons = Stage 7 icon set: the full set with labels, sizes and colour roles, signup-form = Stage 8 template-driven forms: ngModel, validators, refs, submit, profile-form = Stage 8 reactive forms: FormGroup, formControlName, mini-mail = Stage 9 routing: shell, outlet, routes file, routerLink, ActivatedRoute params, reminder = Stage 10 pickers and overlays: iOS wheel datetime picker, bottom sheet, dialog, SnackBar with Undo, mailbox-pro = Stage 11 data display: tabs, accordion and panels, table, autocomplete, slider, progress bar and spinner, chips, badges, pipes-demo = Stage 12 pipes: built-ins tour plus a custom @Pipe, directives-demo = Stage 12 attribute directives: the highlight directive, static and bound, projection-demo = Stage 12 content projection: a panel child with an ng-content slot) |
+| `tests/` | `node:test` suites, parser, expressions, codegen, methods, runtime, tokens, catalog/vibe layer, Stage 3 (children, services, HttpClient, preview behaviour via a DOM shim), Stage 4 (token completeness, primitives hex guard, CSS snapping, preview theme toggle, no-em-dash guard), Stage 5 (per-file diagnostics, source maps, watch, init, doctor, style snapshot goldens, preview parity guard, dogfood behaviour), Stage 6 (controls codegen and nesting, settings example, preview behaviour for switch, checkbox, switcher and radio group, switch motion rule), Stage 7 (icon set and validation, icons example, preview parity of the drawn paths, RgIcon primitive), Stage 8 (runtime Validators and form classes, ngModel and refs codegen, reactive ref-held groups, forms diagnostics, signup-form and profile-form examples, preview text entry behaviour via the DOM shim), Stage 9 (runtime matcher and navigator, array literal expressions, routes file parsing, routing diagnostics, CLI --routes, mini-mail example, preview navigation behaviour via the DOM shim, preview/runtime matcher parity), Stage 10 (runtime SnackBar, date and time helpers, picker and overlay codegen, event assignment guard, reminder example, preview picker, sheet, dialog and snackbar behaviour via the DOM shim, preview/runtime date helper parity), Stage 11 (data display codegen and diagnostics, mailbox-pro example, spinner arc and badge text parity, preview tabs, accordion, autocomplete, slider, chips and badge behaviour via the DOM shim), Stage 12 (built-in pipe parity across the evaluator, the runtime and the preview page, custom pipes, the async pipe in codegen and preview, attribute directives, content projection, the Expo app scaffold, and the Stage 12 security fixtures in tests/security.test.ts) |
 | `docs/` | `PINPOINT_MAP.md` (design map), `LEARNING_LIST.md` (the 77 things), `BLOCK_DIAGRAM.md` (architecture), `UI_POLISH.md` (polish system), `VIBE_CODING.md` (AI-facing layer + delta tables), `ROADMAP.md` (the approved Stages 6 to 12 plan) |
 | `catalog.json`, `catalog.md` | GENERATED from the code by `rangular catalog`, never hand-edit |
 | `llms.txt` | AI-readable index of the whole repo |
@@ -100,6 +103,94 @@ node dist/packages/cli/src/cli.js doctor examples/showcase/showcase.component.ts
   Guards, resolvers, lazy loading, child routes and
   `routerLinkActive` are not supported; full detail in the Routing
   section of docs/VIBE_CODING.md.
+
+## Pickers and overlays (Stage 10), the short version
+
+- **The picker is the iOS wheel picker on both platforms.** This is
+  Bigyan's product rule: `<datetime-picker>` opens a bottom sheet
+  with wheels, never a calendar grid and never an Android style
+  dialog. Modes are `date`, `time` and `datetime` (the default);
+  Done emits the ISO string through `(change)`, Cancel discards.
+  Unknown modes are `GEN_PICKER_MODE`; a `minuteInterval` other
+  than 1 or 5 warns `GEN_PICKER_INTERVAL` and snaps.
+- **MatBottomSheet and MatDialog are declarative here.** Write
+  `<sheet [open]="x" (close)="closeSheet()">` and
+  `<dialog [open]="x" (close)="closeDialog()" title="...">`;
+  children render inside the panel, dialog buttons usually sit in
+  an `<actions>` row, and a backdrop tap emits `(close)`. No
+  `[open]` means statically open plus a `GEN_OVERLAY_OPEN` warning.
+- **Event bindings never hold assignments.** `(close)="x = false"`
+  is not supported anywhere: the expression grammar has no
+  assignment operator. Codegen warns `GEN_EVENT_ASSIGNMENT` and
+  drops the binding. Call a method and assign inside it.
+- **SnackBar is a component built-in.** Inject `SnackBar` in a
+  component and call `open(message, actionLabel?, durationMs?)`
+  (default 4000). The statement form is the supported action
+  subscription: `const ref = this.snack.open('Deleted', 'Undo');`
+  then `ref.onAction(() => { ... });`. A service injecting
+  `SnackBar` gets `DI_UNKNOWN_TOKEN`. Full detail in the Pickers
+  and overlays section of docs/VIBE_CODING.md.
+
+## Data display (Stage 11), the short version
+
+- **Tabs own content, the switcher does not.** `<tabs [index]
+  (change)>` with `<tab label="...">` children follows the Stage 6
+  controls contract; each tab's children render only while it is
+  selected. Reach for `<switcher>` when the swap is yours to write
+  with `*ngIf`. Misplaced declarations warn `GEN_CONTROL_NESTING`.
+- **Panels are self-managed; `[expanded]` is a seed.** Tap toggles,
+  `(toggle)` emits the next boolean. `<accordion>` around direct
+  panels is single-open (the first seeded open panel starts open);
+  the coordination is injected by the group primitive, templates
+  stay plain panels.
+- **Table columns are names, not templates.** `<table [data]>` with
+  `<column name="count" header="Messages">`; `name` matches
+  matColumnDef and React reserves `key` (accepted as an alias).
+  Missing name is `GEN_TABLE_COLUMN`. Empty data shows nothing
+  unless the table carries `emptyText`. No sorting or pagination.
+- **Autocomplete is `[options]` plus `(optionSelected)` on
+  `<input>`.** String options only, filtered by case-insensitive
+  substring while focused; a pick writes back through ngModel and
+  emits the chosen string. No object options, no `displayWith`.
+- **Slider, progress, spinner.** Slider snaps to `step` and clamps
+  to `min`/`max`, emitting on release and on tap; static
+  `min >= max` errors `GEN_SLIDER_RANGE`, `step <= 0` warns and
+  uses 1. Progress values clamp (`GEN_PROGRESS_RANGE` when
+  statically out of range); `mode="indeterminate"` is a static 40
+  percent bar in the preview. The spinner draws one shared SVG arc
+  and its `size` rides the icon scale (`GEN_SPINNER_SIZE`).
+- **Chips and badge.** `<chip icon removable (remove)>` in a
+  `<chips>` row; remove a chip with a filter assignment in a
+  method (`this.filters = this.filters.filter(...)` compiles).
+  `badge` is an attribute on `<button>`, `<row>` and `<icon>`
+  only; 0 or empty renders nothing, above 99 renders `99+`, other
+  hosts warn `GEN_BADGE_HOST`. Full detail in the Data display
+  section of docs/VIBE_CODING.md.
+
+## Pipes, directives, projection and the app scaffold (Stage 12), the short version
+
+- **Pipes are three-way identical.** Built-ins live canonically in
+  `packages/compiler/src/template/pipes.ts`; the runtime `pipe()` and
+  the preview page mirror them, and a parity test runs one table
+  through all three. Change one, change all three, or the test fails.
+  A custom `@Pipe` class resolves through imports like a child or a
+  service; an unregistered name is a `PIPE_UNKNOWN` error. The
+  `async` pipe in generated code is a state slot plus an effect per
+  distinct streamed expression (captured at mount).
+- **Directives are compile time only.** The subset is `@Input`
+  fields, an injected `ElementRef`, and `ngOnInit` or setter bodies
+  of `this.el.nativeElement.style.<prop> = <expr>` assignments,
+  extracted by `class/parseDirective.ts` and folded into the host's
+  style. Anything else warns `DIR_UNSUPPORTED`. There is no runtime
+  directive object; do not invent one.
+- **Projection is one default slot.** `<ng-content>` compiles to the
+  React `children` prop; projected content keeps the parent's scope.
+  A `select` attribute warns `PROJECTION_SELECT_UNSUPPORTED`.
+- **`init --app` scaffolds a real Expo app**: bare names land in
+  `<repoRoot>/apps/`, explicit paths are used as given, `file:` deps
+  are computed relative to the checkout's packages, the starter is
+  compiled into `src/AppRoot.tsx` during init, and the docs state
+  plainly that no device run was verified. Plain `init` is unchanged.
 
 ## Golden rules
 

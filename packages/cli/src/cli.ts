@@ -6,7 +6,7 @@
  *   rangular preview <component.ts> --out <file.html> [--json] [--routes <file>]
  *   rangular catalog [--out <dir>]
  *   rangular watch <component.ts> --out <file.tsx> [--routes <file>]
- *   rangular init <dir>
+ *   rangular init <dir> [--app]
  *   rangular doctor <component.ts> [--json] [--routes <file>]
  *
  * --routes names the routes file (Stage 9); without it the compiler
@@ -118,7 +118,7 @@ const USAGE = [
   '  rangular preview <component.ts> --out <file.html> [--json] [--routes <file>]',
   '  rangular catalog [--out <dir>]',
   '  rangular watch <component.ts> --out <file.tsx> [--routes <file>]',
-  '  rangular init <dir>',
+  '  rangular init <dir> [--app]',
   '  rangular doctor <component.ts> [--json] [--routes <file>]',
 ].join('\n');
 
@@ -135,6 +135,279 @@ function routesSpecifierFor(entryAbs: string, routesArg: string | undefined): st
   let rel = path.relative(path.dirname(entryAbs), routesAbs).split(path.sep).join('/');
   if (!rel.startsWith('.')) rel = `./${rel}`;
   return rel;
+}
+
+/**
+ * The Rangular repo root as seen from this CLI (Stage 12): the CLI
+ * runs from <root>/dist/packages/cli/src, so the root is four levels
+ * up. The Expo scaffold needs it to compute the file: dependencies
+ * that point at the repo's packages, and to place a bare-named app
+ * under <root>/apps.
+ */
+function rangularRepoRoot(): string {
+  return path.resolve(__dirname, '..', '..', '..', '..');
+}
+
+const STARTER_TS = `import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-root',
+  templateUrl: './app.component.html',
+  styles: [\`
+    h1 { color: #0b57d0; margin-bottom: 8px; }
+  \`],
+})
+export class AppComponent {
+  title = 'Welcome to Rangular';
+  taps = 0;
+
+  start() {
+    this.taps++;
+  }
+}
+`;
+
+const STARTER_HTML = `<screen>
+  <appbar title="Rangular" search="Search"></appbar>
+  <h1>{{ title }}</h1>
+  <card>
+    <h3>Your first screen</h3>
+    <p>You wrote Angular. This screen is React Native.</p>
+    <button (click)="start()">Get started</button>
+    <p *ngIf="taps > 0">Started {{ taps }} times</p>
+  </card>
+</screen>
+`;
+
+/** A package.json name from a directory name: lowercase, npm-safe. */
+function packageNameOf(dirName: string): string {
+  const cleaned = dirName.toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^[.-]+/, '');
+  return cleaned || 'rangular-app';
+}
+
+/** A path as a file: dependency specifier, relative and forward-slashed. */
+function fileDepOf(fromDir: string, toDir: string): string {
+  const rel = path.relative(fromDir, toDir).split(path.sep).join('/');
+  return `file:${rel.startsWith('.') ? rel : `./${rel}`}`;
+}
+
+/**
+ * `rangular init <dir> --app`: scaffold a real Expo app (Stage 12).
+ *
+ * A bare name (no path separators) creates the app at
+ * <repoRoot>/apps/<name>; an explicit path (absolute, or containing a
+ * separator) is used as given. Either way the generated package.json
+ * depends on @rangular/ui and @rangular/runtime through file:
+ * specifiers computed relative from the app directory to this repo's
+ * packages, so the app always builds against the checkout it was
+ * scaffolded from. Every file is written under the app directory;
+ * the starter component is compiled at init time into src/AppRoot.tsx
+ * by the real compiler, so what App.tsx imports is genuine compiler
+ * output, not a stored sample.
+ *
+ * The dependency pins are the Expo SDK 54 set (expo ~54, react 19.1,
+ * react-native 0.81, react-native-svg 15.12, babel-preset-expo ~54),
+ * chosen for mutual compatibility per the SDK 54 release; they were
+ * not re-verified against a live registry from this environment, and
+ * the app README says so.
+ */
+function initApp(dirArg: string): void {
+  const repoRoot = rangularRepoRoot();
+  const isBareName = !path.isAbsolute(dirArg) && !dirArg.includes('/') && !dirArg.includes('\\');
+  let appDir: string;
+  if (isBareName) {
+    if (!/^[A-Za-z0-9._-]+$/.test(dirArg) || dirArg === '.' || dirArg === '..') {
+      console.error(formatDiagnostic({
+        severity: 'error',
+        code: 'CLI_INIT_UNSAFE',
+        message: `Cannot init an app named '${dirArg}': a bare app name may only use letters, digits, dot, underscore and hyphen, and may not be . or ..`,
+        fix: 'Use a simple name, e.g. rangular init my-app --app, or pass an explicit path',
+      }));
+      process.exit(1);
+    }
+    appDir = path.join(repoRoot, 'apps', dirArg);
+  } else {
+    appDir = path.resolve(dirArg);
+  }
+  if (fs.existsSync(appDir) && fs.readdirSync(appDir).length > 0) {
+    console.error(formatDiagnostic({
+      severity: 'error',
+      code: 'CLI_INIT_NOT_EMPTY',
+      message: `Cannot init an app into '${appDir}': the directory is not empty`,
+      fix: 'Pick a new directory name, or empty the directory first, e.g. rangular init my-app --app',
+    }));
+    process.exit(1);
+  }
+  const appName = packageNameOf(path.basename(appDir));
+  const relToRepo = path.relative(appDir, repoRoot).split(path.sep).join('/') || '.';
+  const srcDir = path.join(appDir, 'src');
+  fs.mkdirSync(srcDir, { recursive: true });
+  const write = (rel: string, content: string): void => {
+    const target = path.join(appDir, rel);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, content);
+  };
+
+  write('package.json', JSON.stringify({
+    name: appName,
+    version: '1.0.0',
+    private: true,
+    main: 'node_modules/expo/AppEntry.js',
+    scripts: {
+      start: 'expo start',
+      android: 'expo start --android',
+      ios: 'expo start --ios',
+      web: 'expo start --web',
+    },
+    dependencies: {
+      '@rangular/runtime': fileDepOf(appDir, path.join(repoRoot, 'packages', 'runtime')),
+      '@rangular/ui': fileDepOf(appDir, path.join(repoRoot, 'packages', 'ui')),
+      expo: '~54.0.0',
+      react: '19.1.0',
+      'react-native': '0.81.4',
+      'react-native-svg': '15.12.1',
+    },
+    devDependencies: {
+      '@babel/core': '^7.25.2',
+      'babel-preset-expo': '~54.0.0',
+      typescript: '~5.9.2',
+    },
+  }, null, 2) + '\n');
+  write('app.json', JSON.stringify({
+    expo: {
+      name: appName,
+      slug: appName,
+      version: '1.0.0',
+      scheme: appName,
+      orientation: 'portrait',
+      platforms: ['ios', 'android'],
+    },
+  }, null, 2) + '\n');
+  write('babel.config.js', `module.exports = function (api) {
+  api.cache(true);
+  return {
+    presets: ['babel-preset-expo'],
+  };
+};
+`);
+  write('metro.config.js', `const path = require('path');
+const { getDefaultConfig } = require('expo/metro-config');
+
+// Monorepo layout: this app lives outside the Rangular repo's package
+// directories but depends on them through file: specifiers, so Metro
+// must watch the repo root and resolve modules from both node_modules.
+const projectRoot = __dirname;
+const workspaceRoot = path.resolve(projectRoot, '${relToRepo}');
+
+const config = getDefaultConfig(projectRoot);
+config.watchFolders = [workspaceRoot];
+config.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, 'node_modules'),
+  path.resolve(workspaceRoot, 'node_modules'),
+];
+
+module.exports = config;
+`);
+  write('tsconfig.json', JSON.stringify({
+    extends: 'expo/tsconfig.base',
+    compilerOptions: { strict: true },
+  }, null, 2) + '\n');
+  write('App.tsx', `import React from 'react';
+import AppRoot from './src/AppRoot';
+
+// Hardware back (Android) and Rangular routing: the compiled root
+// module keeps its navigator private, so App.tsx cannot call back()
+// on it yet. In-app back navigation is a template concern today (a
+// button that navigates where the user came from); the app README's
+// "Back behaviour" section states exactly what works and what does
+// not. Nothing is wired here that is not real.
+export default function App() {
+  return <AppRoot />;
+}
+`);
+  write(path.join('src', 'app.component.ts'), STARTER_TS);
+  write(path.join('src', 'app.component.html'), STARTER_HTML);
+  write('.gitignore', 'node_modules\n.expo\ndist\n');
+
+  // Compile the starter now, with the real compiler, so src/AppRoot.tsx
+  // is genuine output for the starter source.
+  const entryAbs = path.join(srcDir, 'app.component.ts');
+  const { tsSource, resolveFile, resolveImport, rootDir } = readComponent(entryAbs);
+  const result = compileComponent({ tsSource, fileName: entryAbs, resolveFile, resolveImport, rootDir });
+  for (const d of result.diagnostics) console.error(formatDiagnostic(d, entryAbs));
+  if (hasErrors(result.diagnostics) || !result.code) {
+    console.error('rangular: the starter component did not compile; the scaffold is incomplete');
+    process.exit(1);
+  }
+  write(path.join('src', 'AppRoot.tsx'), result.code);
+
+  write('README.md', `# ${appName}
+
+A real Expo app scaffolded by Rangular (Stage 12). You write
+Angular-style components in \`src/\`; the Rangular compiler turns them
+into React Native code, and Expo runs the result.
+
+## Run it on a phone
+
+    npm install
+    npx expo start
+
+Then scan the QR code with Expo Go. Your component is
+\`src/app.component.ts\` (with its template
+\`src/app.component.html\`); the compiled output Expo loads is
+\`src/AppRoot.tsx\`, generated from it at scaffold time.
+
+## Recompile after editing the component
+
+From the Rangular repo root (the folder you cloned):
+
+    node dist/packages/cli/src/cli.js build ${path.relative(process.cwd(), entryAbs).split(path.sep).join('/')} --out ${path.relative(process.cwd(), path.join(srcDir, 'AppRoot.tsx')).split(path.sep).join('/')}
+
+Or run the same command with \`watch\` instead of \`build\` and it
+recompiles on every save.
+
+## How the pieces fit
+
+- \`package.json\` depends on \`@rangular/ui\` and
+  \`@rangular/runtime\` through \`file:\` specifiers that point at the
+  Rangular checkout this app was scaffolded from, so the app always
+  builds against that checkout. Move the app and those paths move
+  with it only if the relative layout is kept; edit them if you
+  relocate the app on its own.
+- The Expo pins (expo ~54, react 19.1, react-native 0.81,
+  react-native-svg 15.12, babel-preset-expo ~54) are the Expo SDK 54
+  set, chosen for mutual compatibility. They were selected from the
+  SDK's published compatibility, not re-verified against a live
+  registry when this scaffold was written.
+- \`metro.config.js\` is the standard monorepo config: it watches the
+  Rangular repo root (so the file: packages resolve) and looks for
+  node_modules in both the app and the repo root.
+
+## Back behaviour
+
+The starter has one screen, so there is nothing to go back to. When
+an app grows a router (see the routing section of the repo's
+docs/VIBE_CODING.md), navigation inside the app is complete:
+routerLink and the Router service work. The Android hardware back
+button is not wired to the Rangular navigator in this version: the
+compiled root module keeps its navigator private, so App.tsx cannot
+call back() on it honestly, and this scaffold does not pretend
+otherwise. In-app back affordances (a Back button that navigates to
+the previous screen explicitly) work today; exporting the navigator
+for hardware back is future work.
+
+## What was verified
+
+The scaffold's structure and the starter's compilation are covered
+by the Rangular test suite. An actual Expo Go launch on a device was
+not run in the environment that wrote this scaffold; your first
+\`npx expo start\` is the device proof.
+`);
+  console.log(`Created an Expo app in ${appDir}`);
+  if (isBareName && !process.cwd().startsWith(repoRoot)) {
+    console.log(`Note: a bare name places the app under the Rangular repo's apps folder (${appDir}), not the current directory.`);
+  }
+  console.log(`Run it: cd ${appDir} && npm install && npx expo start`);
 }
 
 /** `rangular init <dir>`: scaffold a starter project (Stage 5). */
@@ -306,9 +579,10 @@ function main(): void {
   }
 
   if (command === 'init') {
-    const dir = args[1];
-    if (!dir) fail('usage: rangular init <dir>');
-    initProject(dir);
+    const dir = args.slice(1).find((a) => !a.startsWith('--'));
+    if (!dir) fail('usage: rangular init <dir> [--app]');
+    if (args.includes('--app')) initApp(dir);
+    else initProject(dir);
     return;
   }
 
@@ -420,6 +694,8 @@ function main(): void {
       children: compiled.children,
       services: compiled.services,
       routes: compiled.routes,
+      pipes: compiled.pipes,
+      directives: compiled.directives,
     });
     if (json) {
       fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });

@@ -6,10 +6,12 @@
  * forms core (Stage 8): Validators, FormControl and FormGroup, mirroring
  * @angular/forms semantics (Stage 8), and the routing core (Stage 9):
  * matchRoute, RgNavigator, Router and ActivatedRoute, mirroring
- * @angular/router. No react or react-native imports live in this
- * file: generated components bridge services to React themselves
- * (useSyncExternalStore over __subscribe / __getVersion), so this package
- * stays environment-free and unit-testable.
+ * @angular/router, and the snackbar service (Stage 10): SnackBar and
+ * SnackBarRef, mirroring @angular/material's MatSnackBar. No react or
+ * react-native imports live in this file: generated components bridge
+ * services to React themselves (useSyncExternalStore over
+ * __subscribe / __getVersion), so this package stays environment-free
+ * and unit-testable.
  */
 
 export type Listener<T> = (value: T) => void;
@@ -75,17 +77,158 @@ export function signal<T>(initial: T): Signal<T> {
 
 /**
  * Pipe helper referenced by generated code for `expr | pipeName` template
- * expressions. Only identity-safe built-ins are implemented in Stage 0+1;
- * unknown pipes return the value unchanged.
+ * expressions: the full Stage 12 built-in set (uppercase, lowercase,
+ * titlecase, json, date, number, percent, currency, slice, keyvalue,
+ * async). The semantics are the compiler's canonical ones
+ * (packages/compiler/src/template/pipes.ts); a parity test runs one
+ * case table through both. Unknown pipes return the value unchanged:
+ * generated code only reaches this helper for pipes the compiler has
+ * already validated, so an unknown name here means a hand-edited file.
+ *
+ * The `async` case is only a fallback: codegen replaces every
+ * template `| async` with a live subscription hook, so this helper
+ * sees an observable only from hand-written calls. Its behaviour is
+ * the pure snapshot: subscribe, keep what arrives synchronously,
+ * unsubscribe, return the latest value (null before any emission).
  */
 export function pipe<T>(name: string, value: T, ...args: unknown[]): unknown {
   switch (name) {
     case 'uppercase': return typeof value === 'string' ? value.toUpperCase() : value;
     case 'lowercase': return typeof value === 'string' ? value.toLowerCase() : value;
+    case 'titlecase':
+      return typeof value === 'string'
+        ? value.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        : value;
     case 'json': return JSON.stringify(value);
-    case 'async': return value; // Stage 3 will bridge Observables to state.
-    default: void args; return value;
+    case 'date': return pipeDate(value, args[0]);
+    case 'number':
+      return typeof value === 'number'
+        ? formatPipeNumber(value, parsePipeDigits(args[0], { minInt: 1, minFrac: 0, maxFrac: 3 }))
+        : value;
+    case 'percent':
+      return typeof value === 'number'
+        ? formatPipeNumber(value * 100, parsePipeDigits(args[0], { minInt: 1, minFrac: 0, maxFrac: 3 })) + '%'
+        : value;
+    case 'currency': return pipeCurrency(value, args);
+    case 'slice': {
+      if (typeof value !== 'string' && !Array.isArray(value)) return value;
+      const start = typeof args[0] === 'number' ? args[0] : 0;
+      const end = typeof args[1] === 'number' ? args[1] : undefined;
+      return (value as unknown as string).slice(start, end);
+    }
+    case 'keyvalue': {
+      if (value === null || typeof value !== 'object' || Array.isArray(value)) return value;
+      const rec = value as Record<string, unknown>;
+      return Object.keys(rec)
+        .map((key) => ({ key, value: rec[key] }))
+        .sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+    }
+    case 'async': return pipeAsyncSnapshot(value);
+    default: throw new Error(`Unknown pipe '${name}'`);
   }
+}
+
+interface PipeDigits { minInt: number; minFrac: number; maxFrac: number }
+
+function parsePipeDigits(info: unknown, fallback: PipeDigits): PipeDigits {
+  if (typeof info !== 'string') return fallback;
+  const m = /^(\d+)\.(\d+)-(\d+)$/.exec(info.trim());
+  if (!m) return fallback;
+  const parsed = { minInt: Number(m[1]), minFrac: Number(m[2]), maxFrac: Number(m[3]) };
+  return parsed.maxFrac < parsed.minFrac ? fallback : parsed;
+}
+
+function formatPipeNumber(value: number, digits: PipeDigits): string {
+  if (!Number.isFinite(value)) return String(value);
+  const negative = value < 0;
+  const fixed = Math.abs(value).toFixed(digits.maxFrac);
+  const dot = fixed.indexOf('.');
+  let intPart = dot >= 0 ? fixed.slice(0, dot) : fixed;
+  let fracPart = dot >= 0 ? fixed.slice(dot + 1) : '';
+  while (fracPart.length > digits.minFrac && fracPart.endsWith('0')) fracPart = fracPart.slice(0, -1);
+  while (fracPart.length < digits.minFrac) fracPart += '0';
+  while (intPart.length < digits.minInt) intPart = '0' + intPart;
+  const grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return (negative ? '-' : '') + grouped + (fracPart ? '.' + fracPart : '');
+}
+
+const PIPE_MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const PIPE_DATE_FORMATS: Record<string, string> = {
+  shortDate: 'M/d/yy',
+  mediumDate: 'MMM d, yyyy',
+  shortTime: 'h:mm a',
+  medium: 'MMM d, yyyy, h:mm:ss a',
+  short: 'M/d/yy, h:mm a',
+};
+
+function pipeDate(value: unknown, formatArg: unknown): unknown {
+  let d: Date | undefined;
+  if (value instanceof Date) d = Number.isNaN(value.getTime()) ? undefined : value;
+  else if (typeof value === 'number' && Number.isFinite(value)) d = new Date(value);
+  else if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = new Date(value);
+    d = Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  }
+  if (!d) return value;
+  const named = typeof formatArg === 'string' ? formatArg : 'mediumDate';
+  const format = PIPE_DATE_FORMATS[named] ?? named;
+  const pad = (n: number): string => String(n).padStart(2, '0');
+  const hours = d.getHours();
+  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+  const tokens: [string, string][] = [
+    ['yyyy', String(d.getFullYear())],
+    ['MMM', PIPE_MONTH_SHORT[d.getMonth()]],
+    ['yy', pad(d.getFullYear() % 100)],
+    ['MM', pad(d.getMonth() + 1)],
+    ['dd', pad(d.getDate())],
+    ['HH', pad(hours)],
+    ['hh', pad(hour12)],
+    ['mm', pad(d.getMinutes())],
+    ['ss', pad(d.getSeconds())],
+    ['M', String(d.getMonth() + 1)],
+    ['d', String(d.getDate())],
+    ['H', String(hours)],
+    ['h', String(hour12)],
+    ['a', hours < 12 ? 'AM' : 'PM'],
+  ];
+  let out = '';
+  let i = 0;
+  while (i < format.length) {
+    const hit = tokens.find(([tok]) => format.startsWith(tok, i));
+    if (hit) { out += hit[1]; i += hit[0].length; } else { out += format[i]; i++; }
+  }
+  return out;
+}
+
+const PIPE_CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$', EUR: '€', GBP: '£', INR: '₹', NPR: 'Rs',
+};
+
+function pipeCurrency(value: unknown, args: unknown[]): unknown {
+  if (typeof value !== 'number') return value;
+  const code = typeof args[0] === 'string' && args[0] !== '' ? args[0] : 'USD';
+  const display = typeof args[1] === 'string' ? args[1] : 'symbol';
+  const digits = parsePipeDigits(args[2], { minInt: 1, minFrac: 2, maxFrac: 2 });
+  const symbol = display === 'code' ? undefined : PIPE_CURRENCY_SYMBOLS[code];
+  const formatted = formatPipeNumber(Math.abs(value), digits);
+  const sign = value < 0 ? '-' : '';
+  return symbol !== undefined ? `${sign}${symbol}${formatted}` : `${sign}${code} ${formatted}`;
+}
+
+function pipeAsyncSnapshot(value: unknown): unknown {
+  if (value === null || value === undefined) return null;
+  const sub = value as { subscribe?: unknown };
+  if (typeof sub.subscribe !== 'function') return value;
+  let latest: unknown = null;
+  try {
+    const handle = (sub.subscribe as (next: (v: unknown) => void) => { unsubscribe(): void } | void)(
+      (v) => { latest = v; },
+    );
+    if (handle && typeof handle.unsubscribe === 'function') handle.unsubscribe();
+  } catch {
+    return latest;
+  }
+  return latest;
 }
 
 /**
@@ -576,5 +719,120 @@ export class ActivatedRoute {
    */
   get snapshot(): { params: Record<string, string> } {
     return { params: this.navigatorRef ? this.navigatorRef.current.params : this.initialParams };
+  }
+}
+
+// --- Snackbar (Stage 10) -----------------------------------------------------
+//
+// The @angular/material snack bar, at the size a phone app needs.
+// Angular authors inject MatSnackBar and call
+// `open(message, action, { duration })`; Rangular authors inject the
+// runtime class `SnackBar` and call `open(message, actionLabel,
+// durationMs)` with the same meaning. Opening a bar replaces any bar
+// currently showing, as in Material. The bar dismisses itself after
+// its duration (4000 ms by default), when its action is pressed, or
+// when dismiss() is called.
+//
+// The class holds only state and subscribers; rendering belongs to
+// the generated root component, which mirrors `current` in React
+// state and renders the RgSnackbar primitive. The preview page
+// runtime mirrors this class in plain JavaScript.
+
+/** What the generated host renders for the currently open bar. */
+export interface SnackBarState {
+  message: string;
+  actionLabel?: string;
+  durationMs: number;
+}
+
+/**
+ * The handle `SnackBar.open` returns, mirroring MatSnackBarRef.
+ * `onAction(callback)` registers what runs when the bar's action is
+ * pressed (the Undo pattern); `dismiss()` closes the bar early.
+ */
+export class SnackBarRef {
+  private actionCallbacks: Array<() => void> = [];
+
+  constructor(private readonly bar: SnackBar) {}
+
+  onAction(callback: () => void): void {
+    this.actionCallbacks.push(callback);
+  }
+
+  dismiss(): void {
+    this.bar.dismiss();
+  }
+
+  /** Fired by the owning SnackBar when the action is pressed. Hosts never call this. */
+  __fireAction(): void {
+    for (const callback of [...this.actionCallbacks]) callback();
+  }
+}
+
+export class SnackBar {
+  private state: SnackBarState | null = null;
+  private currentRef: SnackBarRef | null = null;
+  private listeners = new Set<() => void>();
+  private timer: ReturnType<typeof setTimeout> | undefined;
+
+  /** The bar currently showing, or null. The generated host renders this. */
+  get current(): SnackBarState | null {
+    return this.state;
+  }
+
+  /** Subscribe to open/dismiss changes; returns an unsubscribe function. */
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => { this.listeners.delete(listener); };
+  }
+
+  /**
+   * Open a bar, replacing any bar currently showing (its action
+   * callbacks do not fire). Returns the bar's ref.
+   */
+  open(message: string, actionLabel?: string, durationMs = 4000): SnackBarRef {
+    this.clearTimer();
+    const ref = new SnackBarRef(this);
+    this.currentRef = ref;
+    this.state = { message, actionLabel, durationMs };
+    if (typeof setTimeout === 'function' && durationMs > 0) {
+      this.timer = setTimeout(() => this.dismiss(), durationMs);
+      // In Node (tests, tooling) a pending auto-dismiss must not hold
+      // the process open; in React Native the timer has no unref.
+      (this.timer as unknown as { unref?: () => void }).unref?.();
+    }
+    this.emit();
+    return ref;
+  }
+
+  /** Close the current bar without firing its action callbacks. */
+  dismiss(): void {
+    if (this.state === null) return;
+    this.clearTimer();
+    this.state = null;
+    this.currentRef = null;
+    this.emit();
+  }
+
+  /**
+   * The action was pressed: the bar dismisses and the current ref's
+   * onAction callbacks fire, in that order. Called by the generated
+   * snackbar host; authors use SnackBarRef.onAction instead.
+   */
+  pressAction(): void {
+    const ref = this.currentRef;
+    this.dismiss();
+    ref?.__fireAction();
+  }
+
+  private clearTimer(): void {
+    if (this.timer !== undefined && typeof clearTimeout === 'function') {
+      clearTimeout(this.timer);
+    }
+    this.timer = undefined;
+  }
+
+  private emit(): void {
+    for (const listener of [...this.listeners]) listener();
   }
 }

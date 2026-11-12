@@ -47,7 +47,7 @@ lookup table. This layer removes each failure mode.
 AIs already know Angular and React from training. Rangular source *looks*
 like Angular, so the main job of these docs is enumerating the **delta**:
 where Rangular is the same, and where it is not (yet). Both tables state
-the repo's actual behaviour today (Stage 3), not aspirations.
+the repo's actual behaviour today (through Stage 12), not aspirations.
 
 ### Rangular source vs Angular
 
@@ -60,7 +60,10 @@ the repo's actual behaviour today (Stage 3), not aspirations.
 | Child components (a tag matching another component's selector) | Same, with import-based resolution: the compiler follows the entry file's relative imports and any imported `@Component` class is a usable child, no module/declarations list |
 | Templates in separate `.html` files | Same |
 | `{{ interpolation }}`, `[prop]` binding, `(event)` binding, `*ngIf`, `*ngFor` syntax | Same syntax, same meaning |
-| Pipes in expressions (`expr \| uppercase`) | Parsed; built-ins `uppercase`, `lowercase`, `titlecase`, `json` evaluate in preview/runtime |
+| Pipes in expressions (`expr \| uppercase`) | Wired (Stage 12): the full built-in set (`uppercase`, `lowercase`, `titlecase`, `json`, `date`, `number`, `percent`, `currency`, `slice`, `keyvalue`, `async`) evaluates identically in generated code, the preview and the compiler's evaluator; project pipes come from `@Pipe` classes (next rows). See the Pipes section below |
+| Custom pipes (`@Pipe({ name })` classes with a `transform` method) | Wired (Stage 12): the component imports the pipe class like a child or a service; the compiler compiles `transform` (the `this.` of the pipe survives, pipes are plain classes) and registers the name. An unregistered name is a `PIPE_UNKNOWN` error listing every known pipe. See the Pipes section below |
+| Attribute directives (`@Directive({ selector: '[name]' })`) | Wired subset (Stage 12): `@Input()` fields, an injected `ElementRef`, and style assignments of the shape `this.el.nativeElement.style.<prop> = <expr>` inside `ngOnInit` or a setter for one input. The compiler folds them into the host element's style. Anything else in the body warns `DIR_UNSUPPORTED`. See the Attribute directives section below |
+| Content projection (`<ng-content></ng-content>` in a child template) | Wired (Stage 12) for the single default slot: children written inside a child component's tag render where the child places `<ng-content>`. A `select` attribute warns `PROJECTION_SELECT_UNSUPPORTED` and behaves as the default slot. See the Content projection section below |
 | Class fields as state, methods as actions | Same. This is the core model |
 | `@Injectable({ providedIn: 'root' })` services + constructor injection | Wired (Stage 3): services are reactive singletons in a generated container; constructor *parameter properties* (`constructor(private mail: MailService)`) are the injection form; services may inject services |
 | Lifecycle hooks (`ngOnInit`, `ngOnDestroy`) | Wired (Stage 3): `ngOnInit` runs once after first render, `ngOnDestroy` on unmount, `useEffect(..., [])` and its cleanup in generated code |
@@ -70,6 +73,8 @@ the repo's actual behaviour today (Stage 3), not aspirations.
 | Reactive forms (`FormGroup`, `FormControl`, `Validators` from `@angular/forms`) | Wired (Stage 8): the classes are runtime classes, a group field is a stable ref-held instance, `[formGroup]` plus `formControlName` binds controls, and `profileForm.get('email')` evaluates in template expressions. See the Forms section below |
 | `<form (submit)="save()">` | Wired (Stage 8) as a lightweight form element: a `<button type="submit">` inside calls the handler after marking every ngModel input touched (and `markAllAsTouched()` on a reactive group). There is no NgForm object |
 | Routing (`Routes` array, `<router-outlet>`, `routerLink`, `ActivatedRoute`, `Router`) | Wired (Stage 9) in the modern standalone form: the compiler mirrors the `export const routes: Routes = [...]` array that `provideRouter(routes)` consumes, not the historical `RouterModule.forRoot` module form. The root component hosts one `<router-outlet>`; route components are ordinary components imported by the routes file; `routerLink` (string or array form) on a `<button>` or `<row>` compiles to a navigation press; `ActivatedRoute.snapshot.params` and its `paramMap` Observable-lite, and `Router.navigate` / `navigateByUrl`, are runtime classes. See the Routing section below for the exact limits |
+| Date picker, bottom sheet, dialog and snack bar (`<datetime-picker>`, `<sheet>`, `<dialog>`, `<actions>`, `SnackBar`) | Wired (Stage 10) as documented native adaptations of the Angular Material surface: the picker is one block with iOS style wheels in a bottom sheet on every platform; MatBottomSheet and MatDialog become declarative `[open]` plus `(close)` blocks whose children render inside the panel; MatSnackBar keeps the service form through the built-in `SnackBar` injection, `open(message, actionLabel, durationMs)` and a returned ref with `onAction`. Event bindings never hold assignments. See the Pickers and overlays section below for the exact limits |
+| Data display (`<tabs>`, `<accordion>`, `<panel>`, `<table>`, `<slider>`, `<progress-bar>`, `<spinner>`, `<chips>`, `<chip>`, badge) | Wired (Stage 11) as adaptations of the Angular Material surface: mat-tab-group becomes `<tabs [index] (change)>` with `<tab label>` children that own their content; mat-expansion-panel becomes a self-managed `<panel>` and mat-accordion a single-open `<accordion>`; mat-table becomes `<table [data]>` with `<column name header>` declarations (identifier columns only, no templates, sorting or pagination); mat-autocomplete becomes `[options]` plus `(optionSelected)` on `<input>` (string options only, no `displayWith`); mat-slider, mat-progress-bar and mat-progress-spinner keep their shapes with snap, clamp and size rules; mat-chip becomes `<chip>` in a `<chips>` row; matBadge becomes a `badge` attribute on `<button>`, `<row>` and `<icon>` only. See the Data display section below for the exact limits |
 
 **Not supported yet**: do not use these in Rangular source today:
 
@@ -80,8 +85,7 @@ the repo's actual behaviour today (Stage 3), not aspirations.
 | Component constructor *bodies* | Not translated, only constructor parameter properties are read (they are the DI declarations). Do one-time setup in `ngOnInit` instead | Not planned |
 | Animations (`@angular/animations`, `:enter`/`:leave`) | Not supported anywhere in the compiler | Post-v1 |
 | SSR / hydration | Not supported, output is a React Native app, there is no server rendering | Not planned |
-| Full RxJS surface (operators, Subjects, Observables from other sources) | Not supported. Only HttpClient's Observable-lite exists (`subscribe(next?, error?)`, no operators, no unsubscribe-driven teardown beyond a cancellation flag); the runtime `async` pipe is still a pass-through stub | Later stage |
-| Custom pipes (`@Pipe` classes) | Not read. Only the built-in pipes above exist | Stage 12 |
+| Full RxJS surface (operators, Subjects, Observables from other sources) | Not supported. Only the Observable-lite exists (`subscribe(next?, error?)`, no operators). The `async` pipe is wired (Stage 12): generated code subscribes in an effect and renders the latest value; the streamed expression is captured at mount, so stream a stable field or service property, not a fresh method call | Later stage |
 | `*ngIf` with `else` / `then` | Detected, warns `GEN_NGIF_ELSE_TODO`, element emitted unconditionally. Workaround: two elements, `*ngIf="cond"` and `*ngIf="!(cond)"` | Later stage |
 | Full CSS (cascade, inheritance, descendant/id/pseudo selectors, unsupported properties) | Subset only: element and `.class` selectors, a fixed property list; anything else warns (`CSS_SELECTOR` / `CSS_UNSUPPORTED`) and is dropped. Styles apply per element, no cascade | Subset may grow per stage |
 
@@ -115,8 +119,10 @@ method bodies is a defined subset: do not assume all of TypeScript:
 - Ternary: `following ? 'Following' : 'Follow'`, supported in interpolation
   and bindings; you do not need two `*ngIf` elements for a two-state label
 - Method calls: `increment()`, `save($event)`; calls on members of fields
-- Pipes: `uppercase`, `lowercase`, `titlecase`, `json`, an unknown pipe is
-  an error, not a silent pass-through
+- Pipes: the full built-in set (`uppercase`, `lowercase`, `titlecase`,
+  `json`, `date`, `number`, `percent`, `currency`, `slice`, `keyvalue`,
+  `async`) plus any `@Pipe` class the component imports; an unknown pipe
+  is a `PIPE_UNKNOWN` error, not a silent pass-through
 
 ## Block semantics and composition
 
@@ -415,6 +421,456 @@ Angular.
 
 See `examples/mini-mail/` and its recipe card.
 
+## Pickers and overlays (Stage 10)
+
+**Product rule, from Bigyan: the date-time picker looks and behaves
+like the iOS wheel picker on every platform.** It never renders a
+calendar grid, a clock face or an Android style material date or
+time dialog. The field row opens a bottom sheet of wheels, the
+selected value sits in the middle row, rows above and below are
+muted, and Done and Cancel are accent coloured text buttons in the
+sheet header.
+
+### The picker
+
+Angular Material's datepicker is an input plus a toggle plus a
+calendar popup. A phone has no calendar popup culture, so the
+Rangular adaptation is one dedicated block:
+
+```html
+<datetime-picker label="When" mode="datetime" [value]="when"
+  (change)="onWhen($event)"></datetime-picker>
+```
+
+- **Modes.** `mode="date"` shows month, day and year wheels.
+  `mode="time"` shows hour 1 to 12, minute and AM/PM wheels, the
+  iOS en-US form. `mode="datetime"` is the default and shows one
+  combined date wheel plus hour, minute and AM/PM wheels. The date
+  wheel labels days like `Nov 13 2026`, the way the iOS combined
+  date and time picker lists them.
+- **Value contract.** `[value]` accepts an ISO string or a `Date`.
+  The picker keeps a pending value while the sheet is open. Done
+  emits `(change)` once, with the composed local ISO string
+  `YYYY-MM-DDTHH:mm:00` as `$event`; Cancel discards the pending
+  value and emits nothing. An unparseable value falls back to the
+  current local date and time in the primitive. Children of the
+  block are ignored.
+- **Ranges.** Date mode years run from the value year minus 25 to
+  the value year plus 25. The datetime date wheel is a finite
+  window of 183 days before and after the value, standing in for
+  the endless iOS list. Day selections clamp into their month, so
+  January 31 followed by February becomes February 28 or 29, with
+  leap years handled correctly.
+- **Minute interval.** `minuteInterval` is 1 or 5, default 1. A
+  static value or a literal binding outside the two warns
+  `GEN_PICKER_INTERVAL` and the generated code uses the nearest of
+  the two. A field binding passes through unchecked, and the
+  primitive treats any value other than 5 as 1. A minute value
+  between steps opens on the nearest step in the wheel, and Done
+  emits that step even if the minute wheel is never touched.
+- **Mode validation.** A static mode outside `date`, `time` and
+  `datetime` is a `GEN_PICKER_MODE` error whose fix lists the
+  three modes; the value is still emitted and the primitive treats
+  it as `datetime`. A `[mode]` binding passes through unchecked.
+- **Preview.** The wheels are clickable lists in the preview:
+  clicking a value selects it, with the same selected value
+  outcome as scrolling a wheel to rest on it. The generated app
+  uses a snapping scroll column. This is the one stated preview
+  simplification for the picker.
+
+### Sheet and dialog
+
+MatBottomSheet and MatDialog are service driven in Angular
+Material: code opens a component and receives a ref. Rangular v1
+keeps the visual and behavioural contract and makes the surface
+declarative, because Rangular templates are declarative:
+
+```html
+<sheet [open]="sheetOpen" (close)="closeSheet()">...</sheet>
+<dialog [open]="confirmOpen" (close)="closeConfirm()" title="Delete?">
+  <p>...</p>
+  <actions><button (click)="closeConfirm()">Cancel</button></actions>
+</dialog>
+```
+
+- `<sheet>` compiles to `RgSheet`: a drag handle, rounded top
+  corners and the theme surface, sliding up over a dimmed backdrop
+  with a plain timing animation, never a spring. `<dialog>`
+  compiles to `RgDialog`: a centred themed card over a dimmed
+  backdrop, with a quick fade and settle. Both are Modal-free
+  absolute overlays inside the screen.
+- **Children render inside the panel**, the way card children
+  render inside a card. A dialog takes its heading from the
+  `title` attribute. Ordinary `<button>` children stay ordinary
+  buttons; wrap them in `<actions>` for the right aligned action
+  row that compiles to `RgActions`. Buttons close an overlay by
+  calling author methods that set the bound field to false.
+- **Backdrop taps emit `(close)`.** The handler is a method call,
+  never an assignment (see the event rule below). With no `[open]`
+  binding, no bare `open` attribute and no `open` attribute, the
+  overlay renders statically open and the compiler warns
+  `GEN_OVERLAY_OPEN`, because it cannot be opened or closed from
+  the component.
+- Doctor treats `sheet` and `dialog` as containers: loose text
+  directly inside either warns `DOC_RAW_TEXT`. Wrap words in
+  `<p>` or `<label>`.
+
+### Event bindings never hold assignments
+
+This rule is repo wide, and Stage 10 settled it from the code:
+the template expression grammar has no assignment operator, so a
+binding like `(close)="sheetOpen = false"` cannot be translated.
+Codegen detects assignment statements in event bindings, warns
+`GEN_EVENT_ASSIGNMENT`, drops the binding and leaves a TODO
+comment, instead of emitting an assignment against a const state
+binding. The pattern is always a method:
+`(close)="closeSheet()"` in the template and
+`closeSheet() { this.sheetOpen = false; }` in the class.
+
+### SnackBar
+
+MatSnackBar keeps its service shape. Inject the built-in token in
+a component, by type name:
+
+```ts
+constructor(private snack: SnackBar) {}
+save() { this.snack.open('Reminder saved'); }
+```
+
+- `open(message, actionLabel?, durationMs = 4000)` returns a
+  `SnackBarRef`. Opening a bar replaces the current bar, as in
+  Material, and the replaced bar's action callbacks do not fire.
+  A positive duration auto-dismisses; a duration of 0 or less
+  leaves the bar up until it is dismissed, replaced or its action
+  is pressed.
+- The generated module holds one `__snackBar` instance when any
+  component in the compilation injects `SnackBar`, including a
+  child component. The entry component mirrors its current bar in
+  state and renders the `RgSnackbar` host: a dark floating pill at
+  the bottom with the message and the action label uppercased.
+  Pressing the action dismisses the bar first, then fires the
+  ref's `onAction` callbacks.
+- **The supported action form is the statement form**, decided
+  from the method translator: a const holding the `open(...)`
+  result, then a block body arrow subscription.
+
+  ```ts
+  const ref = this.snack.open('Reminder deleted', 'Undo');
+  ref.onAction(() => { this.deleted = false; this.restored = true; });
+  ```
+
+  The chained one line form
+  `this.snack.open(...).onAction(() => this.restore())` is not the
+  documented form in this version. `ref.dismiss()` also works.
+- `SnackBar` is a component level built-in. A service injecting
+  it gets `DI_UNKNOWN_TOKEN`, because a service has no root host
+  to render through.
+- **Preview.** The page runtime mirrors the service: a bar opened
+  by a tap appears in the screen, pressing its action dismisses
+  it and fires the callbacks, and timers use the real duration
+  from the call when the host provides timers.
+
+See `examples/reminder/` and its recipe card.
+
+## Data display (Stage 11)
+
+Seven components, all declaration driven in the Stage 6 pattern: a
+group primitive reads its declaration children, and the children
+render nothing on their own. All of it is exercised by
+`examples/mailbox-pro/` and its recipe card.
+
+- **Tabs own content panels; the switcher does not.** That is the
+  one distinction to keep straight. `<tabs>` follows the Stage 6
+  controls contract: `[index]="tabIndex"` in, `(change)` out with
+  the new index as `$event`. Each `<tab label="Overview">` carries
+  real template children, rendered only while its tab is selected,
+  like `*ngIf`. The header is a row of labels with the selected
+  label in the primary colour over a 3px indicator bar. Use
+  `<switcher>` when the choices are a bare value and the content
+  swap is yours to write with `*ngIf`; use `<tabs>` when each
+  choice is a page of its own. Without `[index]`, the group holds
+  its own selection. A `<tab>` outside `<tabs>` (and anything but a
+  `<tab>` inside one) warns `GEN_CONTROL_NESTING`.
+- **Panels manage their own state; `[expanded]` is a seed.**
+  `<panel title="..." subtitle="...">` toggles when its header is
+  tapped; the header chevron rotates down when closed and up when
+  open. `[expanded]` sets the state the panel starts in. It is not
+  a controlled binding, deliberately: a tap always works even when
+  nobody handles `(toggle)`. `(toggle)` emits the next open
+  boolean as `$event`, so a handler that writes a field gives you
+  observation, and writing the seed field back gives effective
+  control. The same no-assignment rule as everywhere applies:
+  `(toggle)="open = $event"` warns `GEN_EVENT_ASSIGNMENT`; call a
+  method.
+- **Accordion is single-open, and it fits the declaration
+  pattern.** `<accordion>` groups its direct `<panel>` children so
+  only one is open at a time, mat-accordion with `multi` false.
+  The coordination lives in the group primitive, which injects
+  internal props into its panel children (the `__rgRoute` pattern
+  from Stage 9), so templates stay plain panels. The first panel
+  whose `[expanded]` seed is open starts open. Anything but a
+  `<panel>` inside `<accordion>` warns `GEN_CONTROL_NESTING`;
+  panels outside an accordion stand alone.
+- **Table columns are names, never templates.** This is a
+  deliberate simplification of mat-table, whose real API (column
+  definitions, `displayedColumns`, a data source) compresses to:
+
+  ```html
+  <table [data]="folders">
+    <column name="count" header="Messages"></column>
+  </table>
+  ```
+
+  `name` reads that property of each row object; the cell text is
+  `String(value)`. The attribute is `name`, matching Material's
+  matColumnDef name, and not `key`: React reserves `key` and never
+  passes it to the component, so a key based column could not work
+  in the generated app. `key` is accepted as an alias and compiles
+  to the same prop. A column with neither is a `GEN_TABLE_COLUMN`
+  error; anything but a `<column>` inside `<table>` warns
+  `GEN_CONTROL_NESTING`. The header row is label styled over a
+  hairline, rows are hairline separated, there is no zebra
+  striping (Material has none by default). Empty data paints just
+  the header, plus one muted row carrying the table's `emptyText`
+  attribute when that attribute is present; without it, nothing,
+  which is what Material shows. Sorting and pagination are not in
+  this version; order the array in the component. They are roadmap
+  items, not attributes: writing a sort attribute does nothing.
+- **Autocomplete is an input with options, strings only.** An
+  `<input>` gains `[options]` bound to a string array field and an
+  `(optionSelected)` event:
+
+  ```html
+  <input [(ngModel)]="city" [options]="cities" (optionSelected)="onCity($event)">
+  ```
+
+  While the field is focused and its text is non-empty, a panel
+  under the field lists the options containing the text, matched
+  case-insensitively by substring (Material's example filter is a
+  lowercase `indexOf >= 0`; this follows it exactly). Choosing one
+  writes it back through the ngModel write-back path, exactly as
+  if typed, and emits `(optionSelected)` with the chosen string.
+  It also works on a plain `[ngModel]` input and next to a reactive
+  control. Object options with a `displayWith` function are not in
+  this version: map objects to display strings in the component.
+  `(focus)` maps to `onFocus` for inputs that need it.
+- **Slider snaps, clamps and reports once.** `<slider min max step
+  [value] (change)>`: in the app the track takes taps and
+  PanResponder drags at any position; the thumb follows the finger
+  while dragging and `(change)` emits the snapped, clamped value
+  once, on release (a tap is a press and a release, so taps emit
+  too). A statically known `min` at or above `max` is a
+  `GEN_SLIDER_RANGE` error with a fix; a statically known `step`
+  at or below zero warns with the same code and generates 1.
+  Preview simplification, stated plainly: when the range holds at
+  most 20 steps, the preview track also renders one tappable tick
+  per step value, because a DOM harness cannot click at an x
+  fraction reliably; with more steps the preview slider paints but
+  its ticks do not render.
+- **Progress clamps; the spinner rides the icon size scale.** A
+  determinate `<progress-bar [value]>` paints a fill of value
+  percent; a statically known value outside 0 to 100 warns
+  `GEN_PROGRESS_RANGE` and the generated value is clamped (a bound
+  value clamps inside the primitive and the preview instead).
+  `mode="indeterminate"` sweeps a 40 percent bar in the app on a
+  looping linear timing; the preview paints that bar statically
+  at 40 percent, a stated simplification. `<spinner>` rotates a
+  270 degree SVG arc in the app (react-native-svg, the Stage 7
+  dependency); the preview draws the identical arc statically, no
+  rotation. The arc is one constant shared by the primitive, the
+  server paint and the page runtime, pinned by a test. `size`
+  takes the icon size scale (20, 24, 28) with warn-and-snap
+  (`GEN_SPINNER_SIZE`); `color` names a theme colour role, primary
+  by default.
+- **Chips are pills; removal is an array rewrite.** `<chip>` is a
+  static label pill inside a `<chips>` wrapping row. `icon="..."`
+  leads with a Stage 7 icon (an unknown name is the usual
+  `GEN_ICON_UNKNOWN` error). `removable` adds a close control;
+  tapping it fires `(remove)`. The honest way to remove a chip
+  from a list is a filter assignment in a method:
+
+  ```ts
+  removeFilter(name: string) {
+    this.filters = this.filters.filter((f: string) => f !== name);
+  }
+  ```
+
+  The method translator carries it: an assignment whose value is a
+  call on a member of the same field compiles to the field's state
+  setter with the filtered array, in the app and in the preview.
+- **Badge is an attribute, on three hosts only.** matBadge becomes
+  `badge="3"` or `[badge]="unread"` on `<button>`, `<row>` and
+  `<icon>`: a small error coloured count dot at the host's top end
+  corner. A value of 0 or an empty value renders nothing
+  (Material's hide-zero default, kept); a number above 99 renders
+  `99+`; a non-numeric string renders as itself. There is no
+  `badgeVisible` escape hatch in this version. On any other
+  element the compiler warns `GEN_BADGE_HOST`, with a fix naming
+  the three hosts, and drops the badge from the output.
+
+See `examples/mailbox-pro/` and its recipe card.
+
+## Pipes (Stage 12)
+
+- **The built-in set is complete**: `uppercase`, `lowercase`,
+  `titlecase`, `json`, `date`, `number`, `percent`, `currency`,
+  `slice`, `keyvalue`, `async`. All three evaluators agree exactly:
+  the compiler's evaluator (server paint and tests), the generated
+  code's runtime `pipe()` from `@rangular/runtime`, and the preview
+  page. A parity test runs one table through all three.
+- **date**: the value may be a `Date`, an ISO string or epoch
+  milliseconds; anything else passes through unchanged. Named formats:
+  `shortDate` = `M/d/yy`, `mediumDate` = `MMM d, yyyy` (the default),
+  `shortTime` = `h:mm a`, `medium` = `MMM d, yyyy, h:mm:ss a`,
+  `short` = `M/d/yy, h:mm a`. Any other string is a custom format
+  using the tokens `yyyy`, `yy`, `MMM`, `MM`, `M`, `dd`, `d`, `HH`,
+  `H`, `hh`, `h`, `mm`, `ss`, `a`. Formatting is local time; there is
+  no timezone or locale argument in v1.
+- **number / percent**: `number:'1.2-2'` is a digitsInfo: minimum
+  integer digits, minimum fraction digits, maximum fraction digits.
+  The value rounds to the maximum, pads to the minimums, and groups
+  the integer part with commas. `percent` multiplies by 100 first and
+  appends `%`. An unreadable digitsInfo falls back to the default
+  (`1.0-3` for number and percent, `1.2-2` for currency) instead of
+  throwing, the same in all three evaluators.
+- **currency**: `currency:'USD'` prefixes the symbol and defaults to
+  two fraction digits. Symbol table: USD `$`, EUR `€`, GBP `£`,
+  INR `₹`, NPR `Rs`. An unknown code prints the code itself
+  (`XYZ 49.50`); the second argument `'code'` forces the code form;
+  the third argument is a digitsInfo.
+- **slice** works on strings and arrays, with JavaScript slice
+  semantics including negative indexes; anything else passes through.
+- **keyvalue** turns an object into `{ key, value }` entries sorted
+  by key (plain string ordering), which is what makes it usable as a
+  `*ngFor` source: `*ngFor="let fact of facts | keyvalue"`.
+- **async**: `{{ stream$ | async }}` renders the latest emitted
+  value, starting from `null`. Generated code gives each distinct
+  streamed expression a state slot plus an effect that subscribes on
+  mount and unsubscribes on unmount; the expression is captured at
+  mount, so stream a stable field or a service property assigned in
+  the service's constructor (the supported shape), not an expression
+  that builds a new observable per render. There are no RxJS
+  operators; the value must be an Observable-lite (an object with
+  `subscribe`), which is what `HttpClient` returns and what a service
+  can hold. In the preview the page keeps one subscription per
+  observable object and re-renders on emission; the preview's
+  HttpClient stub never emits, so an HttpClient stream reads as
+  `null` there (the app is where the data arrives). The runtime
+  `pipe('async', value)` used outside templates subscribes, captures
+  synchronous emissions, unsubscribes and returns the latest, which
+  is what the tests pin.
+- **Custom pipes**: a `@Pipe({ name: 'exclaim' })` class whose
+  `transform(value, ...args)` method is ordinary TypeScript. The
+  component file imports the class exactly like a child component or
+  a service; the compiler registers the name from the import.
+  `transform` compiles with the service-mode translator: `this.`
+  survives, literal fields become plain class fields, and unsupported
+  constructs degrade with `METHOD_UNSUPPORTED` and a TODO comment
+  like any method. A pipe class with constructor dependencies is not
+  supported (the instance is created with no arguments and a
+  `DI_UNKNOWN_TOKEN` error explains). An unregistered pipe name in a
+  template is a `PIPE_UNKNOWN` error listing the built-ins and the
+  project's registered pipes.
+- **Preview boundary for custom pipes**: the preview's static first
+  paint evaluates a custom pipe only when `transform` is a single
+  `return` of one expression written in the template expression
+  subset (so `||`, not `??`); richer bodies render empty in the
+  static paint. The interactive preview page runs the full translated
+  body, as does the app. Example: `examples/pipes-demo`.
+
+## Attribute directives (Stage 12)
+
+- **The supported shape is the canonical beginner directive**: an
+  `@Directive({ selector: '[appHighlight]' })` class with `@Input()`
+  fields and an injected `ElementRef` (`constructor(private el:
+  ElementRef)`), whose styling logic lives in `ngOnInit` or in a
+  setter for one input (`@Input() set appTint(value) { ... }`).
+- **The body subset is exact**: local `const` / `let` declarations
+  plus assignments of the shape
+  `this.el.nativeElement.style.<prop> = <expr>;`, where the
+  expression may use the inputs (as `this.<input>` or, in a setter,
+  the parameter), literals, locals, arithmetic, comparisons, logic
+  and ternaries, member access and method calls on those values.
+  There is no directive instance at runtime: the compiler extracts
+  the assignments and folds them into a style object computed at each
+  host element, so a directive costs nothing at runtime.
+- **Host usage is Angular's**: `<p appHighlight="yellow">` (static),
+  `<p [appHighlight]="color" defaultColor="violet">` (bound). Input
+  resolution is binding, then static attribute, then boolean
+  attribute (`true`), then the declared field initializer, then
+  `undefined`. Directive attributes are consumed and never emitted
+  as props. When the host has styles of its own, the directive's
+  styles merge last and win per property.
+- **Outside the subset warns `DIR_UNSUPPORTED`** with the offending
+  statement quoted: event listeners (`@HostListener`), `Renderer2`,
+  class or attribute writes, reading element properties, and
+  directives placed on child component tags or on dedicated elements
+  (`<input>`, `<icon>`, `<datetime-picker>`) all warn and apply no
+  styles; the host still renders. A directive with no styling logic
+  at all warns too. The preview computes the same merged styles in
+  the static paint and the interactive page. Example:
+  `examples/directives-demo`.
+
+## Content projection (Stage 12)
+
+- **One default slot.** A child template places
+  `<ng-content></ng-content>`; everything written between the child
+  component's tags in the parent renders there, in order. In
+  generated code the child function receives a `children` prop and
+  `<ng-content>` compiles to `{children}`.
+- **Scope stays with the writer.** Projected content evaluates in the
+  parent's fields and methods, not the child's, in generated code and
+  in the preview alike: a button inside the projected content calls
+  the parent's handler.
+- **No slot, no render.** If the child template has no `<ng-content>`,
+  children written in the parent go nowhere, the same as Angular.
+- **Multi-slot projection is not in v1.** An
+  `<ng-content select="...">` warns `PROJECTION_SELECT_UNSUPPORTED`
+  and behaves as the default slot. Example:
+  `examples/projection-demo`.
+
+## The Expo app scaffold (Stage 12)
+
+- **`rangular init <dir>` is unchanged** (a loose starter component).
+  **`rangular init <name> --app`** scaffolds a real Expo app. A bare
+  name (no path separators) creates the app at
+  `<repoRoot>/apps/<name>` inside the Rangular checkout the CLI
+  belongs to; an explicit path is used as given. Bare names may only
+  use letters, digits, dot, underscore and hyphen (`.` and `..` are
+  refused with `CLI_INIT_UNSAFE`); a non-empty target is refused.
+- **The app resolves the repo's packages** through `file:` dependency
+  specifiers in its `package.json`, computed relative from the app
+  directory to the checkout's `packages/ui` and `packages/runtime`,
+  and its `metro.config.js` is the standard monorepo config
+  (`watchFolders` on the repo root, `nodeModulesPaths` for both
+  roots), so the app always builds against the checkout it was
+  scaffolded from.
+- **The pins are the Expo SDK 54 set**: `expo ~54.0.0`,
+  `react 19.1.0`, `react-native 0.81.4`, `react-native-svg 15.12.1`,
+  `babel-preset-expo ~54.0.0` (dev). They were chosen for mutual
+  compatibility from the SDK's published set, not re-verified against
+  a live registry from the build environment.
+- **The starter is compiled at scaffold time**: `src/app.component.ts`
+  and its template are the usual starter source, and `src/AppRoot.tsx`
+  is the real compiler output for it, generated during `init`, not a
+  stored sample. `App.tsx` renders `AppRoot`. After editing the
+  component, recompile it with `rangular build` (or `watch`) from the
+  repo root, pointed at the app's `src/AppRoot.tsx`, as the app
+  README spells out.
+- **Run it**: `cd apps/<name>`, `npm install`, `npx expo start`, scan
+  the QR code in Expo Go.
+- **Back behaviour, stated plainly**: with routing, in-app navigation
+  is complete, but the Android hardware back button is not wired to
+  the Rangular navigator in this version: the compiled root module
+  keeps its navigator private, so `App.tsx` cannot call `back()` on
+  it, and the scaffold does not pretend otherwise. In-app back
+  affordances (a button that navigates explicitly) work today.
+- **What was verified**: the scaffold's structure and the starter's
+  compilation are covered by the test suite, including a rebuild
+  inside the scaffolded app. An actual Expo Go launch on a device was
+  not run in the environment that built the scaffold; the first
+  `npx expo start` on a real machine is the device proof.
+
 ## Child components (Stage 3, M5)
 
 - **Resolution is by import.** The compiler follows the entry component's
@@ -432,8 +888,11 @@ See `examples/mini-mail/` and its recipe card.
 - **Inputs:** `[name]="expr"` passes the evaluated expression, a plain
   attribute passes a string, a bare attribute passes `true`. If the
   parent omits an input, the child's literal initializer is the default,
-  visible in the generated signature (`{ quote = '' }`). There is no
-  content projection: children written inside a child tag are ignored.
+  visible in the generated signature (`{ quote = '' }`). Content
+  projection is wired (Stage 12): children written inside a child tag
+  render where the child's template places `<ng-content></ng-content>`,
+  still evaluated in the parent's scope. See the Content projection
+  section below.
 - **Outputs:** the field must be initialised with `new EventEmitter<T>()`.
   `this.saved.emit(x)` inside the child → `onSaved?.(x)` in generated
   code (prop name = `on` + Capitalised field name; unbound outputs are
@@ -536,6 +995,7 @@ The CLI is complete in v1. One line per command:
 | `rangular catalog [--out <dir>]` | Regenerate catalog.json and catalog.md from the code |
 | `rangular watch <component.ts> --out <file.tsx>` | Compile now, then recompile on every change to the component, its template or its imports; the watch set re-resolves after each compile; Ctrl+C stops cleanly |
 | `rangular init <dir>` | Scaffold a starter project (welcome screen, README, .gitignore); refuses a non-empty directory |
+| `rangular init <name> --app` | Scaffold a real Expo app (Stage 12): a bare name lands in the checkout's `apps/` folder, an explicit path is used as given; the starter component is compiled into `src/AppRoot.tsx` at scaffold time. See the Expo app scaffold section above |
 | `rangular doctor <component.ts> [--json]` | The polish linter below |
 
 **Per-file diagnostics.** Every diagnostic may carry a `file`: template

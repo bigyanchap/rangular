@@ -58,6 +58,36 @@ child components render and emit, services are shared live. The committed
 are the golden outputs of the commands above; the golden-file tests keep
 them honest.
 
+## Make an app
+
+With the compiler built (`npm install && npm test` in the clone),
+scaffold a real Expo app:
+
+```sh
+node dist/packages/cli/src/cli.js init my-app --app
+cd apps/my-app
+npm install
+npx expo start
+```
+
+Scan the QR code with Expo Go. A bare name creates the app in the
+checkout's `apps/` folder; an explicit path (`init ../my-app --app`)
+is used as given. The app depends on `@rangular/ui` and
+`@rangular/runtime` through `file:` specifiers pointing at this
+checkout, carries the Expo SDK 54 pin set, and its starter component
+(`src/app.component.ts`) is already compiled into `src/AppRoot.tsx`
+by the real compiler. Edit the component, recompile it with
+`rangular build` as the app README spells out, and Expo reloads.
+
+Two honest notes. The scaffold's structure and compilation are
+covered by the test suite; an actual Expo Go launch on a device was
+not run in the environment that built the scaffold, so your first
+`npx expo start` is the device proof. And with routing, in-app
+navigation is complete, but the Android hardware back button is not
+wired to the Rangular navigator in this version: the compiled root
+module keeps its navigator private, so nothing outside it can call
+`back()` honestly, and the scaffold does not pretend otherwise.
+
 ## Block diagram
 
 ```mermaid
@@ -100,15 +130,17 @@ flowchart TB
 | - | **Stage 7: Icons**, one `<icon>` block over a curated set of 27 Material style icons, compile time name validation, icons example | ✅ Done |
 | - | **Stage 8: Forms**, the `<input>` block (`RgInput`), `[(ngModel)]` two-way binding with attribute validators and template refs, a lightweight `<form (submit)>` element, reactive `FormGroup` / `FormControl` / `Validators`, signup-form and profile-form examples | ✅ Done |
 | - | **Stage 9: Routing**, a `Routes` array in `app.routes.ts` (or `--routes`), `<router-outlet>` in the root component, `routerLink` in string and array forms, `ActivatedRoute` params (`snapshot` + `paramMap`), `Router.navigate` / `navigateByUrl`, runtime `RgNavigator` + `matchRoute`, mini-mail example | ✅ Done |
-| - | Stages 10 to 12: pickers and overlays, data display, language completeness and app readiness | Planned, see [docs/ROADMAP.md](docs/ROADMAP.md) |
+| - | **Stage 10: Pickers and overlays**, an iOS wheel `<datetime-picker>` (date, time and datetime modes), declarative `<sheet>` and `<dialog>` blocks with an `<actions>` row, a built-in `SnackBar` service with `onAction` refs, the event assignment guard, reminder example | ✅ Done |
+| - | **Stage 11: Data display**, `<tabs>` with content-owning `<tab>` children, single-open `<accordion>` with self-managed `<panel>` blocks, `<table>` with `<column name>` declarations, autocomplete on `<input>` (`[options]` + `(optionSelected)`), `<slider>`, `<progress-bar>`, `<spinner>`, `<chips>` / `<chip>`, and `badge` as an attribute on button, row and icon, mailbox-pro example | ✅ Done |
+| - | **Stage 12: Language completeness and app readiness**, the full built-in pipe set plus custom `@Pipe` classes, attribute directives (style subset), content projection (single slot), the `rangular init --app` Expo scaffold, and the closing security re-audit, pipes-demo, directives-demo and projection-demo examples | ✅ Done |
 
 ## Packages
 
 | Package | What it is |
 |---|---|
 | `@rangular/compiler` | Template parser + expression (Pratt) parser, `@Component` extractor (TypeScript compiler API), CSS-subset parser, RN code generator, HTML preview renderer |
-| `@rangular/runtime` | Pure-TypeScript helpers for generated apps: `EventEmitter`, `signal()`, DI `Container`, `ReactiveService` (service reactivity base), `HttpClient` (Observable-lite over fetch), `pipe()`, forms classes (`Validators`, `validateValue`, `FormControl`, `FormGroup`), routing classes (`RgNavigator`, `matchRoute`, `Router`, `ActivatedRoute`) |
-| `@rangular/ui` | Rangular Material: `tokens.ts` (pure TS), `icons.ts` (the curated icon set as SVG path data) + shipped-source RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`, `RgSwitch`, `RgCheckbox`, `RgSwitcher`, `RgOption`, `RgRadioGroup`, `RgRadio`, `RgIcon`, `RgInput`, `RgOutlet`) |
+| `@rangular/runtime` | Pure-TypeScript helpers for generated apps: `EventEmitter`, `signal()`, DI `Container`, `ReactiveService` (service reactivity base), `HttpClient` (Observable-lite over fetch), `pipe()`, forms classes (`Validators`, `validateValue`, `FormControl`, `FormGroup`), routing classes (`RgNavigator`, `matchRoute`, `Router`, `ActivatedRoute`), snackbar service (`SnackBar`, `SnackBarRef`) |
+| `@rangular/ui` | Rangular Material: `tokens.ts` (pure TS), `icons.ts` (the curated icon set as SVG path data), `datetime.ts` (the picker's value model and wheel specifications, pure TS) + shipped-source RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`, `RgSwitch`, `RgCheckbox`, `RgSwitcher`, `RgOption`, `RgRadioGroup`, `RgRadio`, `RgIcon`, `RgInput`, `RgOutlet`, `RgSheet`, `RgDialog`, `RgActions`, `RgSnackbar`, `RgDateTimePicker`, `RgTabs`, `RgTab`, `RgAccordion`, `RgPanel`, `RgTable`, `RgColumn`, `RgSlider`, `RgProgressBar`, `RgSpinner`, `RgChips`, `RgChip`) |
 | `@rangular/cli` | `rangular build`, `rangular ast`, `rangular preview`, `rangular catalog`, `rangular watch`, `rangular init`, `rangular doctor` (build/preview/doctor accept `--json`; build accepts `--source-map`) |
 
 > Note: `@rangular/ui` primitives and other shipped-source files for generated
@@ -537,23 +569,173 @@ component class is `GEN_ROUTE_COMPONENT`; a repeated path warns
 `GEN_ROUTE_DUPLICATE`. The preview runs the whole flow and shows a
 dashed "Preview navigation" Back bar at depth 2 or more: preview
 chrome only, standing in for the phone's back affordance
-(`RgNavigator.back()` is the app-side API; the hardware button
-wiring lands with the Stage 12 Expo scaffold). The
+(`RgNavigator.back()` is the app-side API; the Stage 12 Expo
+scaffold states the hardware button boundary plainly, see
+Make an app below). The
 [mini-mail example](examples/mini-mail/) proves it end to end:
 shell, inbox, a `mail/:id` detail reading its param over the
 shared MailService, and a wildcard page reached through a
 deliberately stale link. The full boundary list is the Routing
 section of [docs/VIBE_CODING.md](docs/VIBE_CODING.md).
 
+## Stage 10: pickers and overlays
+
+**The date-time picker is the iOS wheel picker on every platform.**
+That is a product rule, not a styling preference: no calendar
+grid, no Android style date or time dialog. A
+`<datetime-picker label="When" mode="datetime" [value]="when"
+(change)="onWhen($event)">` field shows the formatted value;
+tapping it opens a bottom sheet with wheels (date mode: month,
+day, year; time mode: hour 1 to 12, minute, AM/PM; datetime mode:
+one combined date wheel plus hour, minute and AM/PM). Done and
+Cancel sit in the sheet header as accent text buttons: Done emits
+the composed ISO string through `(change)`, Cancel discards.
+`minuteInterval` is 1 or 5 and anything else warns and snaps
+(`GEN_PICKER_INTERVAL`); an unknown mode is a `GEN_PICKER_MODE`
+error. The value model (ISO parsing, leap correct months, wheel
+specifications) lives in `@rangular/ui` `datetime.ts`, shared by
+the primitive and parity-tested against the preview mirrors.
+
+Angular Material opens its overlays from services; Rangular v1
+makes the same surfaces declarative, because its templates are
+declarative. `<sheet [open]="sheetOpen" (close)="closeSheet()">`
+is MatBottomSheet as a block: children render inside a themed
+panel that slides up over a dimmed backdrop, and a backdrop tap
+emits `(close)`. `<dialog [open]="confirmOpen"
+(close)="closeConfirm()" title="Delete this reminder?">` is
+MatDialog the same way, a centred card whose buttons usually sit
+in an `<actions>` row. Without `[open]` an overlay renders
+statically and warns `GEN_OVERLAY_OPEN`. Stage 10 also settled a
+repo wide rule from the code: template event bindings never hold
+assignments, because the expression grammar has no assignment
+operator. `(close)="sheetOpen = false"` warns
+`GEN_EVENT_ASSIGNMENT` and is dropped; the pattern is a method
+that assigns inside the class.
+
+The snack bar keeps the Material service shape: inject the
+built-in `SnackBar` in a component and call
+`this.snack.open('Reminder saved')` or
+`open(message, actionLabel, durationMs)` (4000 ms by default).
+`open` returns a ref; the supported action form is the statement
+form, `const ref = this.snack.open('Reminder deleted', 'Undo');`
+followed by `ref.onAction(() => { ... });` with a block body,
+which the method translator carries honestly. The generated root
+renders the `RgSnackbar` host while a bar is open, opening a bar
+replaces the current one, and pressing the action dismisses the
+bar and then fires the callbacks. The
+[reminder example](examples/reminder/) proves all four pieces
+together: a form with the picker, a sheet holding a repeat radio
+group, a confirm dialog, and Undo on the deleted snackbar. The
+full boundary list is the Pickers and overlays section of
+[docs/VIBE_CODING.md](docs/VIBE_CODING.md).
+
+## Stage 11: data display
+
+Seven components, all in the Stage 6 declaration pattern: a group
+primitive reads its declaration children, and the children render
+nothing alone. **Tabs** follow the controls contract:
+`<tabs [index]="tabIndex" (change)="onTab($event)">` with
+`<tab label="Inbox">` children whose template children are real
+content, rendered only while the tab is selected. That is the
+difference from the Stage 6 switcher, which is a bare control
+emitting a value and owns no panels. **Expansion panels** manage
+their own open state: `<panel title="Storage" subtitle="...">`
+toggles on a header tap, `[expanded]` seeds the starting state,
+and `(toggle)` emits the next boolean. Wrapped in `<accordion>`,
+direct panels coordinate single-open, like mat-accordion with
+`multi` false. **Tables** compress mat-table to
+`<table [data]="folders">` with `<column name="count"
+header="Messages">` declarations: the name (Material's
+matColumnDef name; `key` is an alias, because React reserves
+`key`) reads that property of each row object. No column
+templates, sorting or pagination in this version, and empty data
+shows nothing unless the table carries `emptyText`.
+
+**Autocomplete** is an `<input>` with `[options]` bound to a
+string array and `(optionSelected)`: while focused, options
+containing the typed text (case-insensitive substring, the
+Material example filter) list under the field, and a pick writes
+back through ngModel and emits the chosen string. **Slider**
+takes taps and drags, snapping to `step` and clamping to
+`min`/`max`, emitting on release. **Progress** is a determinate
+`<progress-bar>` (out of range values clamp, with a warning when
+statically known) plus `mode="indeterminate"`, and a `<spinner>`
+rotating one SVG arc whose size rides the icon scale. **Chips**
+are label pills in a `<chips>` row, with an optional leading icon
+and a `removable` close control firing `(remove)`; removing one
+from a list is a filter assignment in a method, which the method
+translator carries. **Badge** is matBadge as an attribute:
+`badge="3"` or `[badge]="unread"` on `<button>`, `<row>` and
+`<icon>` only, an error coloured count dot that hides at 0 and
+caps at `99+`. The [mailbox-pro example](examples/mailbox-pro/)
+exercises all seven on one screen. The full boundary list is the
+Data display section of [docs/VIBE_CODING.md](docs/VIBE_CODING.md).
+
+## Stage 12: language completeness and app readiness
+
+**Pipes are complete.** The built-in set is `uppercase`, `lowercase`,
+`titlecase`, `json`, `date` (named formats `shortDate`, `mediumDate`,
+`shortTime`, `medium`, `short`, or a custom token string), `number`
+and `percent` (with digitsInfo like `'1.2-2'`), `currency` (USD, EUR,
+GBP, INR and NPR symbols; an unknown code prints itself), `slice`
+(strings and arrays, negative indexes included), `keyvalue` (an
+object to `{ key, value }` entries sorted by key, built for
+`*ngFor`), and `async`. One table of cases runs through the
+compiler's evaluator, the generated code's runtime `pipe()` and the
+preview page, and all three agree, leap dates and rounding included.
+**Custom pipes** are `@Pipe` classes the component imports like a
+child or a service: `transform` compiles onto a plain class with one
+shared instance, and an unregistered name is a `PIPE_UNKNOWN` error
+listing every known pipe. The **async pipe** subscribes for real:
+generated code gives each distinct streamed expression a state slot
+and an effect that unsubscribes on unmount (the expression is
+captured at mount, so stream a stable field or service property),
+and the preview page keeps one subscription per observable and
+re-renders on emission.
+
+**Attribute directives** ship as the canonical beginner shape: the
+HighlightDirective pattern (`@Input()` fields, an injected
+`ElementRef`, styling logic in `ngOnInit` or a setter) whose body is
+only `this.el.nativeElement.style.<prop> = <expr>` assignments. The
+compiler folds those into the host element's style at compile time,
+in generated code and in the preview; anything richer warns
+`DIR_UNSUPPORTED` with the offending statement quoted. **Content
+projection** is the single default slot: `<ng-content>` in a child
+compiles to the React `children` prop, projected content keeps the
+parent's scope, and a `select` attribute warns
+`PROJECTION_SELECT_UNSUPPORTED` and behaves as the default slot.
+The [pipes-demo](examples/pipes-demo/),
+[directives-demo](examples/directives-demo/) and
+[projection-demo](examples/projection-demo/) examples prove each
+piece in generated code and in the interactive preview.
+
+**App readiness** is the `init --app` scaffold above, verified
+structurally and by compilation in the test suite. The **closing
+security re-audit** re-ran the Stage 5 adversarial method over the
+Stage 6 to 12 surface: one High found and fixed (a static
+`minlength` / `maxlength` attribute was emitted raw into the
+generated validators call and could inject code; static validator
+arguments are now digits-only data, with `GEN_VALIDATOR_ARG` for
+anything else), and icon names, routerLink strings, routes file
+contents, pattern attributes, datetime values, autocomplete options,
+badge values, custom pipe names, projection children and scaffold
+paths each fixture-tested clean. The full record is in
+[SECURITY.md](SECURITY.md). The exact limits of everything in this
+stage are the Pipes, Attribute directives, Content projection and
+Expo app scaffold sections of [docs/VIBE_CODING.md](docs/VIBE_CODING.md).
+
 ## v1 is complete
 
 What v1 is: an Angular-style component, template, service and DI
 subset compiling to readable React Native TSX, with a Material token
 system in light and dark, an interactive preview that behaves like the
-app, machine-readable diagnostics with fixes, a full CLI, and a recipe
-card proving every capability on a tiny example.
+app, machine-readable diagnostics with fixes, a full CLI, a runnable
+Expo app scaffold, and a recipe card proving every capability on a
+tiny example.
 
-Deliberately post-v1: animations, the full RxJS surface, content projection
-(Stage 12), per-expression source maps, device screenshot goldens,
-and following the OS dark mode setting by default. The full
-sequence is in [docs/ROADMAP.md](docs/ROADMAP.md).
+Deliberately post-v1: animations, the full RxJS surface (operators,
+Subjects), multi-slot projection, `*ngIf` else/then, routing guards,
+resolvers and lazy loading, hardware back wiring for the navigator,
+per-expression source maps, device screenshot goldens, and following
+the OS dark mode setting by default. The full sequence is in
+[docs/ROADMAP.md](docs/ROADMAP.md).

@@ -99,7 +99,7 @@ test('Stage 7: TAG_MAP, diagnostics and catalog register the icon capability', (
   assert.deepEqual(catalog.icons, ICON_NAMES);
   assert.ok(catalog.tags.some((t) => t.tag === 'icon' && t.component === 'RgIcon'));
   assert.ok(catalog.primitives.some((p) => p.name === 'RgIcon'
-    && p.props.map((x) => x.name).join(',') === 'name,size,color,style'));
+    && p.props.map((x) => x.name).join(',') === 'name,size,color,badge,style'));
   const md = renderCatalogMarkdown(catalog);
   assert.ok(md.includes('## Icons'));
   for (const name of ICON_NAMES) assert.ok(md.includes(`- \`${name}\``), `catalog.md missing ${name}`);

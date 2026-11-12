@@ -1,14 +1,17 @@
 import { colours, theme } from '../../../ui/src/tokens';
 import { ICON_PATHS, ICON_SIZES, DEFAULT_ICON_SIZE } from '../../../ui/src/icons';
+import { formatDateTimeValue, parseDateTimeValue } from '../../../ui/src/datetime';
+import type { PickerMode } from '../../../ui/src/datetime';
 import { ActivatedRoute, FormGroup, matchRoute, RouteMatch, ValidatorFn, Validators, validateValue } from '../../../runtime/src/index';
-import { ComponentField, ComponentInfo, ServiceInfo } from '../class/parseComponent';
+import { ComponentField, ComponentInfo, DirectiveInfo, PipeInfo, ServiceInfo } from '../class/parseComponent';
+import { DirectiveStyleAssign, directiveStyles } from '../class/parseDirective';
 import { ResolvedRoute } from '../class/parseRoutes';
 import { evaluateFormInitializer, isFormInitializer } from '../class/formInit';
 import { ChildUnitInput, outputPropName } from '../codegen/generate';
 import { translateMethods } from '../codegen/methods';
 import { nearestOnScale } from '../style/css';
 import { ElementNode, TemplateNode, TemplateRoot } from '../template/ast';
-import { evaluateExpression, Scope } from '../template/evaluate';
+import { evaluateExpression, PipeFunctions, Scope } from '../template/evaluate';
 import { ngModelBindingOf, plainFieldOf, ValidatorSpec, validatorsOf } from '../template/forms';
 import { literalValue } from '../template/literal';
 import { parseNgFor, parseNgIf } from '../template/structural';
@@ -29,6 +32,10 @@ export interface PreviewData {
    * into the shell's <router-outlet>; the page runtime navigates.
    */
   routes?: ResolvedRoute[];
+  /** Custom @Pipe classes resolved in this compilation (Stage 12). */
+  pipes?: PipeInfo[];
+  /** Attribute @Directive classes resolved in this compilation (Stage 12). */
+  directives?: DirectiveInfo[];
 }
 
 /**
@@ -120,6 +127,11 @@ const ROUTER_STUB = {
   navigateByUrl: () => true,
 };
 
+/** Preview stand-in for SnackBar in the static paint: page runtime owns live bars. */
+const SNACK_STUB = {
+  open: () => ({ onAction: () => undefined, dismiss: () => undefined }),
+};
+
 /**
  * Singleton service objects for the server-side paint. Fields hold their
  * literal values (the SAME object is shared by every component that
@@ -172,21 +184,109 @@ export function iconSvg(name: string, size: number, colorRole?: string): string 
   return `<span class="icon"${style}><svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${body}</svg></span>`;
 }
 
+/**
+ * The spinner arc path (Stage 11): a 270 degree arc in the 24 by 24
+ * icon box. This is the same constant RgSpinner exports as
+ * SPINNER_ARC in @rangular/ui and the page runtime draws, so all
+ * three renderers show the identical arc; a test pins the three
+ * copies together.
+ */
+export const SPINNER_ARC_PATH = 'M 12 3 A 9 9 0 1 1 3 12';
+
+/**
+ * The badge display text (Stage 11), mirroring badgeTextOf in
+ * @rangular/ui: 0 or empty hides the badge, a number above 99 shows
+ * as 99+, a non-numeric string shows as itself; null means no badge.
+ */
+export function badgeTextOf(value: unknown): string | null {
+  if (value === undefined || value === null || value === '') return null;
+  const n = Number(value);
+  if (Number.isFinite(n)) {
+    if (n <= 0) return null;
+    return n > 99 ? '99+' : String(Math.trunc(n));
+  }
+  return String(value);
+}
+
 const UNSET = Symbol('unset');
 
 /** Evaluate an expression against a scope; UNSET on any failure. */
-function evalSafe(source: string, scope: Scope, refs?: Scope): unknown {
+function evalSafeModule(source: string, scope: Scope, refs?: Scope, pipes?: PipeFunctions): unknown {
   try {
-    const v = evaluateExpression(source, scope, refs);
+    const v = evaluateExpression(source, scope, refs, pipes);
     return v === undefined ? UNSET : v;
   } catch {
     return UNSET;
   }
 }
 
+/**
+ * The server paint's custom pipe functions (Stage 12). A transform
+ * whose body is a single return statement is evaluated with the safe
+ * expression evaluator: the return expression runs against the
+ * transform's parameters and a `this` holding the pipe's literal
+ * fields. Richer bodies cannot run in a pure paint (no eval, ever),
+ * so their function returns undefined and the interpolation paints
+ * empty; the interactive page below runs the full translated body,
+ * and the generated app runs the real class. That boundary is stated
+ * in docs/VIBE_CODING.md.
+ */
+function buildPipeFunctions(pipes: PipeInfo[] | undefined): PipeFunctions {
+  const fns: PipeFunctions = {};
+  for (const pipe of pipes ?? []) {
+    if (!pipe.transformReturn || !pipe.transformParams.length) {
+      fns[pipe.pipeName] = () => undefined;
+      continue;
+    }
+    const fieldsObj: Record<string, unknown> = {};
+    for (const f of pipe.fields) {
+      if (!f.initializer) continue;
+      const v = evaluateLiteral(f.initializer);
+      if (v !== undefined) fieldsObj[f.name] = v;
+    }
+    const returnSource = pipe.transformReturn;
+    const params = pipe.transformParams;
+    fns[pipe.pipeName] = (value: unknown, ...args: unknown[]) => {
+      const scope: Scope = { this: fieldsObj };
+      params.forEach((name, i) => {
+        scope[name] = i === 0 ? value : args[i - 1];
+      });
+      try {
+        return evaluateExpression(returnSource, scope, undefined, fns);
+      } catch {
+        return undefined;
+      }
+    };
+  }
+  return fns;
+}
+
+/** One resolved directive for the painters: extraction shared with codegen. */
+export interface PreviewDirective {
+  attr: string;
+  info: DirectiveInfo;
+  assignments: DirectiveStyleAssign[];
+  unsupported?: string;
+}
+
+export function previewDirectives(directives: DirectiveInfo[] | undefined): PreviewDirective[] {
+  const out: PreviewDirective[] = [];
+  for (const info of directives ?? []) {
+    if (!info.attrName) continue;
+    const styles = directiveStyles(info);
+    out.push({
+      attr: info.attrName,
+      info,
+      assignments: styles.assignments,
+      unsupported: styles.unsupported,
+    });
+  }
+  return out;
+}
+
 /** One validator spec as a runtime ValidatorFn, its argument evaluated in scope. */
 function validatorFnOf(spec: ValidatorSpec, scope: Scope): ValidatorFn {
-  const arg = spec.argSource === undefined ? undefined : evalSafe(spec.argSource, scope);
+  const arg = spec.argSource === undefined ? undefined : evalSafeModule(spec.argSource, scope);
   switch (spec.fn) {
     case 'required': return Validators.required;
     case 'email': return Validators.email;
@@ -237,6 +337,25 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
     if (child.info.selector) childDefs.set(child.info.selector, child);
   }
   const serviceScopes = buildServiceScopes(data.services ?? []);
+  // --- Stage 12: custom pipes, directives, projected content ---------------
+  // Every expression the paint evaluates goes through this shadow of
+  // the module evalSafe, which threads the compilation's custom pipe
+  // functions into the evaluator.
+  const pipeFns = buildPipeFunctions(data.pipes);
+  const evalSafe = (source: string, scope: Scope, refs?: Scope): unknown =>
+    evalSafeModule(source, scope, refs, pipeFns);
+  const directiveDefs = previewDirectives(data.directives);
+  /**
+   * The projected content in flight (Stage 12): while a child
+   * component's template paints, this holds the children written
+   * inside its tag, the scope they were written in, and the content
+   * that was in flight outside (for content that itself projects).
+   */
+  let currentContent: {
+    nodes: TemplateNode[];
+    scope: Scope;
+    outer?: { nodes: TemplateNode[]; scope: Scope; outer?: unknown };
+  } | undefined;
   // --- Routing (Stage 9): the initial entry the static paint shows.
   // The runtime matcher resolves the empty path (redirects followed);
   // an unmatched start falls back to an empty entry and an empty outlet.
@@ -250,6 +369,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
       else if (dep.typeName === 'HttpClient') scope[dep.propertyName] = HTTP_STUB;
       else if (dep.typeName === 'ActivatedRoute') scope[dep.propertyName] = new ActivatedRoute(initialEntry.params);
       else if (dep.typeName === 'Router') scope[dep.propertyName] = ROUTER_STUB;
+      else if (dep.typeName === 'SnackBar') scope[dep.propertyName] = SNACK_STUB;
     }
   };
   assignDeps(baseScope, component);
@@ -273,7 +393,8 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
           if (field) {
             const errors = validateValue(
               stateObj[field],
-              validatorsOf(node).map((spec) => validatorFnOf(spec, scope)),
+              validatorsOf(node).filter((spec) => !spec.argInvalid)
+                .map((spec) => validatorFnOf(spec, scope)),
             );
             refs[node.ref] = {
               value: stateObj[field],
@@ -331,6 +452,25 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
 
   const truthy = (value: unknown): boolean => value === true || value === 'true';
 
+  /** The badge count dot for a host element (Stage 11), or ''. */
+  const badgeHtml = (el: ElementNode, scope: Scope): string => {
+    const text = badgeTextOf(rawBound(el, 'badge', scope));
+    return text === null ? '' : `<span class="badge-dot">${escapeHtml(text)}</span>`;
+  };
+
+  // Accordion single-open coordination for the static paint (Stage
+  // 11): while an <accordion> paints its children, the first panel
+  // whose [expanded] seed is open claims the one open slot through
+  // this hook; panels outside an accordion find it null.
+  let panelClaim: (() => boolean) | null = null;
+
+  /** A slider/progress number from an attribute or binding, with fallback. */
+  const numOf = (el: ElementNode, name: string, scope: Scope, fallback: number): number => {
+    const v = rawBound(el, name, scope);
+    const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN;
+    return Number.isFinite(n) ? n : fallback;
+  };
+
   /** An <icon> size resolved and snapped to the icon size scale (Stage 7). */
   const iconSizeOf = (el: ElementNode, scope: Scope): number => {
     const v = rawBound(el, 'size', scope);
@@ -384,12 +524,76 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
     // The child's template reads its own ngModel refs (Stage 8).
     const parentRefs = currentRefs;
     currentRefs = computeRefs(def.ast.children, scope, scope);
+    // Content projection (Stage 12): the children written inside the
+    // child's tag become the content its <ng-content> renders, in the
+    // parent scope they were written in.
+    const parentContent = currentContent;
+    currentContent = {
+      nodes: el.children,
+      scope: parentScope,
+      outer: parentContent as { nodes: TemplateNode[]; scope: Scope; outer?: unknown } | undefined,
+    };
     const html = renderNodes(def.ast.children, scope);
+    currentContent = parentContent;
     currentRefs = parentRefs;
     return html;
   };
 
+  /**
+   * The inline style attribute a host element's directives compute
+   * (Stage 12), or '' when no directive applies. Input values resolve
+   * like codegen's: a binding wins over a static attribute, which
+   * wins over the declared default. Values are escaped for the
+   * attribute; the property names come from the directive class
+   * itself (identifiers from its own source, validated by the
+   * extractor's grammar).
+   */
+  const directiveStyleAttr = (el: ElementNode, scope: Scope): string => {
+    const parts: string[] = [];
+    for (const d of directiveDefs) {
+      if (d.unsupported) continue;
+      const present = el.attrs[d.attr] !== undefined
+        || el.propBindings.some((b) => b.name === d.attr)
+        || el.booleanAttrs.includes(d.attr);
+      if (!present) continue;
+      const inputScope: Scope = { ...scope };
+      for (const input of d.info.inputs) {
+        const binding = el.propBindings.find((b) => b.name === input.name);
+        if (binding) {
+          const v = evalSafe(binding.expression, scope, currentRefs);
+          if (v !== UNSET) { inputScope[input.name] = v; continue; }
+        }
+        if (el.attrs[input.name] !== undefined) { inputScope[input.name] = el.attrs[input.name]; continue; }
+        if (el.booleanAttrs.includes(input.name)) { inputScope[input.name] = true; continue; }
+        if (input.initializer) {
+          const v = evaluateLiteral(input.initializer);
+          if (v !== undefined) inputScope[input.name] = v;
+        }
+      }
+      for (const a of d.assignments) {
+        const v = evalSafe(a.rhs, inputScope, currentRefs);
+        if (v === UNSET || v === undefined || v === null) continue;
+        if (typeof v !== 'string' && typeof v !== 'number') continue;
+        const cssProp = a.prop.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+        parts.push(`${cssProp}: ${String(v)}`);
+      }
+    }
+    return parts.length ? ` style="${escapeHtml(parts.join('; '))}"` : '';
+  };
+
   const renderCore = (el: ElementNode, scope: Scope): string => {
+    // Content projection (Stage 12): <ng-content> paints the content
+    // in flight, in its own scope, with the outer content restored
+    // for any <ng-content> inside the projected nodes themselves.
+    if (el.tag === 'ng-content') {
+      if (!currentContent) return '';
+      const content = currentContent;
+      const saved = currentContent;
+      currentContent = content.outer as typeof currentContent;
+      const html = renderNodes(content.nodes, content.scope);
+      currentContent = saved;
+      return html;
+    }
     const childDef = childDefs.get(el.tag);
     if (childDef) return renderChild(el, childDef, scope);
     // Routing (Stage 9): the outlet paints the initial route's
@@ -452,8 +656,84 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
         (errorText ? `<span class="field-error">${escapeHtml(errorText)}</span>` : '') +
         `</div>`;
     }
+    if (el.tag === 'datetime-picker') {
+      const labelText = bound(el, 'label', scope);
+      const rawMode = bound(el, 'mode', scope) ?? 'datetime';
+      const mode: PickerMode = rawMode === 'date' || rawMode === 'time' ? rawMode : 'datetime';
+      const rawValue = rawBound(el, 'value', scope);
+      const parts = parseDateTimeValue(rawValue);
+      const display = parts ? formatDateTimeValue(parts, mode) : rawValue === undefined ? '' : String(rawValue ?? '');
+      return `<div class="field">` +
+        (labelText ? `<span class="field-label">${escapeHtml(labelText)}</span>` : '') +
+        `<div class="picker-box"><span class="picker-value">${escapeHtml(display)}</span>${iconSvg('calendar', 20, 'textMuted')}</div>` +
+        `</div>`;
+    }
+    // Data display (Stage 11): these four read their declaration
+    // children themselves instead of rendering them generically.
+    if (el.tag === 'tabs') {
+      const tabEls = el.children.filter(
+        (n): n is ElementNode => n.type === 'element' && n.tag === 'tab',
+      );
+      const idxRaw = rawBound(el, 'index', scope);
+      const idx = typeof idxRaw === 'number' ? idxRaw : 0;
+      const active = Math.min(Math.max(idx, 0), Math.max(tabEls.length - 1, 0));
+      const headers = tabEls.map((tab, i) => {
+        const label = bound(tab, 'label', scope) ?? '';
+        return `<div class="tab-header${i === active ? ' selected' : ''}"><span class="tab-label">${escapeHtml(label)}</span>${i === active ? '<span class="tab-indicator"></span>' : ''}</div>`;
+      }).join('');
+      const content = tabEls[active] ? renderNodes(tabEls[active].children, scope) : '';
+      return `<div class="tabs"><div class="tab-headers">${headers}</div>${content}</div>`;
+    }
+    if (el.tag === 'accordion') {
+      const prev = panelClaim;
+      let claimed = false;
+      panelClaim = () => {
+        if (claimed) return false;
+        claimed = true;
+        return true;
+      };
+      try {
+        return `<div class="accordion">${renderNodes(el.children, scope)}</div>`;
+      } finally {
+        panelClaim = prev;
+      }
+    }
+    if (el.tag === 'panel') {
+      let open = truthy(rawBound(el, 'expanded', scope));
+      if (open && panelClaim) open = panelClaim();
+      const panelTitle = bound(el, 'title', scope) ?? '';
+      const panelSub = bound(el, 'subtitle', scope) ?? '';
+      const chevron = `<span class="panel-chevron${open ? ' open' : ''}">${iconSvg('chevron-right', 24, 'textMuted')}</span>`;
+      const header = `<div class="panel-header"><div class="panel-titles">` +
+        (panelTitle ? `<div class="panel-title">${escapeHtml(panelTitle)}</div>` : '') +
+        (panelSub ? `<div class="panel-subtitle">${escapeHtml(panelSub)}</div>` : '') +
+        `</div>${chevron}</div>`;
+      const bodyHtml = open ? `<div class="panel-body">${renderNodes(el.children, scope)}</div>` : '';
+      return `<div class="panel">${header}${bodyHtml}</div>`;
+    }
+    if (el.tag === 'table') {
+      const cols = el.children
+        .filter((n): n is ElementNode => n.type === 'element' && n.tag === 'column')
+        .map((c) => {
+          const name = c.attrs['name'] ?? c.attrs['key'] ?? '';
+          return { name, header: c.attrs['header'] ?? name };
+        })
+        .filter((c) => c.name !== '');
+      const dataBinding = el.propBindings.find((b) => b.name === 'data');
+      const dataVal = dataBinding ? evalSafe(dataBinding.expression, scope, currentRefs) : UNSET;
+      const rows = Array.isArray(dataVal) ? dataVal : [];
+      const head = `<div class="table-row">${cols.map((c) => `<span class="table-cell head">${escapeHtml(c.header)}</span>`).join('')}</div>`;
+      const bodyRows = rows.map((row) =>
+        `<div class="table-row">${cols.map((c) => `<span class="table-cell">${escapeHtml(String((row as Record<string, unknown> | null)?.[c.name] ?? ''))}</span>`).join('')}</div>`,
+      ).join('');
+      const emptyText = el.attrs['emptyText'];
+      const empty = !rows.length && emptyText
+        ? `<div class="table-empty">${escapeHtml(emptyText)}</div>` : '';
+      return `<div class="table">${head}${bodyRows}${empty}</div>`;
+    }
     const inner = renderNodes(el.children, scope);
     const title = bound(el, 'title', scope) ?? '';
+    const dirStyle = directiveStyleAttr(el, scope);
     switch (el.tag) {
       case 'screen':
         return `<div class="screen">${inner}</div>`;
@@ -465,21 +745,73 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
             : `<span class="appbar-title">${escapeHtml(title)}</span>`) +
           `<span class="avatar">${escapeHtml((title || 'R').charAt(0))}</span></header>`;
       }
-      case 'h1': return `<h1 class="display">${inner}</h1>`;
-      case 'h2': return `<h2 class="heading">${inner}</h2>`;
-      case 'h3': return `<h3 class="title">${inner}</h3>`;
-      case 'p': return `<p class="body">${inner}</p>`;
-      case 'label': return `<span class="label">${inner}</span>`;
+      case 'h1': return `<h1 class="display"${dirStyle}>${inner}</h1>`;
+      case 'h2': return `<h2 class="heading"${dirStyle}>${inner}</h2>`;
+      case 'h3': return `<h3 class="title"${dirStyle}>${inner}</h3>`;
+      case 'p': return `<p class="body"${dirStyle}>${inner}</p>`;
+      case 'label': return `<span class="label"${dirStyle}>${inner}</span>`;
       case 'span': {
         const cls = el.attrs['class'];
-        return cls ? `<span class="${escapeHtml(cls)}">${inner}</span>` : `<span>${inner}</span>`;
+        return cls ? `<span class="${escapeHtml(cls)}"${dirStyle}>${inner}</span>` : `<span${dirStyle}>${inner}</span>`;
       }
-      case 'card': return `<section class="card">${inner}</section>`;
+      case 'card': return `<section class="card"${dirStyle}>${inner}</section>`;
+      case 'sheet': {
+        const open = rawBound(el, 'open', scope);
+        if (open !== undefined && !truthy(open)) return '';
+        return `<div class="overlay"><div class="overlay-backdrop"></div><section class="sheet"><div class="sheet-handle"></div>${inner}</section></div>`;
+      }
+      case 'dialog': {
+        const open = rawBound(el, 'open', scope);
+        if (open !== undefined && !truthy(open)) return '';
+        return `<div class="overlay overlay-center"><div class="overlay-backdrop"></div><section class="dialog">${title ? `<div class="dialog-title">${escapeHtml(title)}</div>` : ''}${inner}</section></div>`;
+      }
+      case 'actions': return `<div class="actions">${inner}</div>`;
       case 'button': {
         const dis = el.propBindings.find((b) => b.name === 'disabled');
         const disabled = dis ? evalSafe(dis.expression, scope) === true : false;
-        return `<button class="btn" ${disabled ? 'disabled' : ''}>${inner}</button>`;
+        return `<button class="btn" ${disabled ? 'disabled' : ''}>${inner}${badgeHtml(el, scope)}</button>`;
       }
+      case 'slider': {
+        const min = numOf(el, 'min', scope, 0);
+        const max = numOf(el, 'max', scope, 100);
+        let step = numOf(el, 'step', scope, 1);
+        if (!(step > 0)) step = 1;
+        const valRaw = rawBound(el, 'value', scope);
+        const val = typeof valRaw === 'number' ? valRaw : min;
+        const frac = max > min ? Math.min(1, Math.max(0, (val - min) / (max - min))) : 0;
+        const steps = Math.round((max - min) / step);
+        const ticks = steps > 0 && steps <= 20
+          ? Array.from({ length: steps + 1 }, (_, i) =>
+            `<span class="slider-tick" style="left:${(i / steps) * 100}%"></span>`).join('')
+          : '';
+        return `<div class="slider"><div class="slider-track"><div class="slider-fill" style="width:${frac * 100}%"></div><div class="slider-thumb" style="left:${frac * 100}%"></div></div><div class="slider-ticks">${ticks}</div></div>`;
+      }
+      case 'progress-bar': {
+        const mode = bound(el, 'mode', scope);
+        let pct = 40;
+        if (mode !== 'indeterminate') {
+          const n = numOf(el, 'value', scope, NaN);
+          pct = Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0;
+        }
+        return `<div class="progress"><div class="progress-fill" style="width:${pct}%"></div></div>`;
+      }
+      case 'spinner': {
+        const size = iconSizeOf(el, scope);
+        const color = bound(el, 'color', scope);
+        const stroke = color
+          ? (/^[a-zA-Z]+$/.test(color) ? `var(--role-${kebabRole(color)})` : color)
+          : 'var(--role-primary)';
+        return `<span class="spinner"><svg width="${size}" height="${size}" viewBox="0 0 24 24"><path d="${SPINNER_ARC_PATH}" stroke="${stroke}" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg></span>`;
+      }
+      case 'chips': return `<div class="chips">${inner}</div>`;
+      case 'chip': {
+        const iconName = el.attrs['icon'];
+        const icon = iconName ? iconSvg(iconName, 20, 'textMuted') : '';
+        const removable = el.booleanAttrs.includes('removable');
+        return `<span class="chip">${icon}<span class="chip-label">${inner}</span>${removable ? `<span class="chip-remove">${iconSvg('close', 20, 'textMuted')}</span>` : ''}</span>`;
+      }
+      case 'tab': return '';
+      case 'column': return '';
       case 'switch': {
         const checked = truthy(rawBound(el, 'checked', scope));
         const disabled = truthy(rawBound(el, 'disabled', scope));
@@ -532,17 +864,19 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
           // page runtime do (e.g. an unread dot <span *ngIf="m.unread">),
           // unless the children already served as the title fallback.
           (titleBound !== undefined ? inner : '') +
-          `</span>${time ? `<span class="row-time">${escapeHtml(time)}</span>` : ''}</div>`;
+          `</span>${time ? `<span class="row-time">${escapeHtml(time)}</span>` : ''}${badgeHtml(el, scope)}</div>`;
       }
       case 'icon': {
         const name = bound(el, 'name', scope);
         if (!name) return '';
-        return iconSvg(name, iconSizeOf(el, scope), bound(el, 'color', scope));
+        const svg = iconSvg(name, iconSizeOf(el, scope), bound(el, 'color', scope));
+        const dot = badgeHtml(el, scope);
+        return dot ? `<span class="icon-badge">${svg}${dot}</span>` : svg;
       }
       case 'fab': return `<div class="fab">${inner || escapeHtml(bound(el, 'label', scope) ?? 'Compose')}</div>`;
-      case 'header': return `<header>${inner}</header>`;
-      case 'section': return `<section>${inner}</section>`;
-      default: return `<div>${inner}</div>`;
+      case 'header': return `<header${dirStyle}>${inner}</header>`;
+      case 'section': return `<section${dirStyle}>${inner}</section>`;
+      default: return `<div${dirStyle}>${inner}</div>`;
     }
   };
 
@@ -569,7 +903,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .preview-chrome button { background: #ffffff; color: #0b57d0; border: 1px solid #dadce0; border-radius: 9999px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
   .preview-nav-back { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 16px 0; padding: 8px 12px; border: 1px dashed #b3261e; border-radius: 12px; color: #b3261e; font-size: 12px; background: #ffffff; }
   .preview-nav-back button { background: #b3261e; color: #ffffff; border: none; border-radius: 9999px; padding: 4px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
-  .screen { width: 360px; max-width: 100%; min-height: 640px; background: var(--screen-bg); color: var(--text); border-radius: 28px; overflow: hidden; box-shadow: 0 10px 28px rgba(0,0,0,.18); padding-bottom: ${t.spacing.xxl}px; }
+  .screen { position: relative; width: 360px; max-width: 100%; min-height: 640px; background: var(--screen-bg); color: var(--text); border-radius: 28px; overflow: hidden; box-shadow: 0 10px 28px rgba(0,0,0,.18); padding-bottom: ${t.spacing.xxl}px; }
   .appbar { display: flex; align-items: center; gap: ${t.spacing.md}px; margin: ${t.spacing.md}px; background: var(--surface-variant); border-radius: ${t.radius.full}px; padding: 10px ${t.spacing.lg}px; }
   .search { flex: 1; color: var(--text-muted); font-size: 14px; }
   .appbar-title { flex: 1; font-size: ${t.typography.title.fontSize}px; font-weight: 600; }
@@ -618,6 +952,76 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .row-detail { font-size: 12.5px; color: var(--text-muted); }
   .row-time { font-size: 11px; color: var(--text-muted); }
   .fab { display: inline-block; float: right; margin: ${t.spacing.sm}px ${t.spacing.lg}px 0 0; background: var(--primary-container); color: var(--on-primary-container); border-radius: ${t.radius.lg}px; padding: 13px 18px; font-size: 14px; font-weight: 600; box-shadow: 0 3px 8px rgba(0,0,0,.25); }
+  .overlay { position: absolute; inset: 0; z-index: 10; display: flex; align-items: flex-end; }
+  .overlay-center { align-items: center; justify-content: center; padding: 0 ${t.spacing.lg}px; }
+  .overlay-backdrop { position: absolute; inset: 0; background: var(--role-scrim); opacity: .32; }
+  .sheet { position: relative; width: 100%; background: var(--role-surface); border-radius: ${t.radius.xl}px ${t.radius.xl}px 0 0; padding: ${t.spacing.sm}px ${t.spacing.lg}px ${t.spacing.xxl}px; box-shadow: 0 -4px 18px rgba(0,0,0,.18); animation: sheet-up .22s linear; max-height: 88%; overflow-y: auto; }
+  .sheet .body, .dialog .body, .sheet .label, .dialog .label { margin-left: 0; margin-right: 0; }
+  .sheet .btn, .dialog .btn, .sheet .radio-option { width: 100%; margin-left: 0; margin-right: 0; }
+  .sheet-handle { width: 36px; height: 4px; border-radius: ${t.radius.full}px; background: var(--border); margin: 0 auto ${t.spacing.md}px; }
+  @keyframes sheet-up { from { transform: translateY(24px); } to { transform: translateY(0); } }
+  .dialog { position: relative; width: 100%; background: var(--role-surface); border-radius: ${t.radius.xl}px; padding: ${t.spacing.xl}px; box-shadow: 0 10px 28px rgba(0,0,0,.25); animation: dialog-in .15s linear; }
+  .dialog-title { font-size: ${t.typography.title.fontSize}px; line-height: ${t.typography.title.lineHeight}px; font-weight: 600; margin-bottom: ${t.spacing.md}px; }
+  @keyframes dialog-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+  .actions { display: flex; justify-content: flex-end; align-items: center; gap: ${t.spacing.sm}px; margin-top: ${t.spacing.lg}px; }
+  .actions .btn { margin: 0; }
+  .picker-box { display: flex; align-items: center; gap: ${t.spacing.md}px; background: var(--role-surface); border: 1px solid var(--border); border-radius: ${t.radius.sm}px; padding: 10px ${t.spacing.md}px; cursor: pointer; }
+  .picker-value { flex: 1; font-size: ${t.typography.bodyLarge.fontSize}px; color: var(--text); }
+  .picker-head { display: flex; align-items: center; justify-content: space-between; min-height: 32px; margin-bottom: ${t.spacing.sm}px; }
+  .picker-head-btn { border: none; background: transparent; color: var(--primary); font: inherit; font-size: ${t.typography.bodyLarge.fontSize}px; padding: ${t.spacing.xs}px 0; cursor: pointer; }
+  .picker-head-done { font-weight: 600; }
+  .picker-head-title { font-size: ${t.typography.label.fontSize}px; font-weight: 600; }
+  .wheels { display: flex; gap: ${t.spacing.xs}px; }
+  .wheel { flex: 1; max-height: 160px; overflow-y: auto; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 64px 0; }
+  .wheel.wide { flex: 1.6; }
+  .wheel-value { display: block; width: 100%; height: 32px; border: none; background: transparent; color: var(--text-muted); font: inherit; font-size: ${t.typography.body.fontSize}px; white-space: nowrap; cursor: pointer; }
+  .wheel-value.selected { color: var(--text); font-weight: 600; }
+  /* Data display (Stage 11). The badge dot is deliberately its own
+     class: .badge above is the older showcase pill. */
+  .btn, .row { position: relative; }
+  .badge-dot { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; border-radius: ${t.radius.full}px; background: var(--role-error); color: var(--role-on-error); font-size: ${t.typography.caption.fontSize}px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; padding: 0 4px; z-index: 2; }
+  .row .badge-dot { top: 6px; right: 12px; }
+  .icon-badge { position: relative; display: inline-flex; }
+  .icon-badge .badge-dot { top: -4px; right: -4px; }
+  .tab-headers { display: flex; border-bottom: 1px solid var(--border); margin: 0 ${t.spacing.lg}px; }
+  .tab-header { flex: 1; min-height: 48px; display: flex; align-items: center; justify-content: center; position: relative; padding: 0 ${t.spacing.sm}px; cursor: pointer; }
+  .tab-label { font-size: ${t.typography.label.fontSize}px; color: var(--text-muted); }
+  .tab-header.selected .tab-label { color: var(--primary); font-weight: 600; }
+  .tab-indicator { position: absolute; left: ${t.spacing.md}px; right: ${t.spacing.md}px; bottom: 0; height: 3px; background: var(--primary); border-radius: ${t.radius.sm}px ${t.radius.sm}px 0 0; }
+  .panel { border-bottom: 1px solid var(--border); }
+  .panel-header { display: flex; align-items: center; gap: ${t.spacing.md}px; min-height: 48px; padding: ${t.spacing.sm}px ${t.spacing.lg}px; cursor: pointer; }
+  .panel-titles { flex: 1; }
+  .panel-title { font-size: ${t.typography.body.fontSize}px; font-weight: 600; color: var(--text); }
+  .panel-subtitle { font-size: ${t.typography.caption.fontSize}px; color: var(--text-muted); }
+  .panel-chevron { display: inline-flex; transform: rotate(90deg); }
+  .panel-chevron.open { transform: rotate(-90deg); }
+  .panel-body { padding: 0 ${t.spacing.lg}px ${t.spacing.lg}px; }
+  .panel-body .body, .panel-body .label { margin-left: 0; margin-right: 0; }
+  .panel-body .progress, .panel-body .slider { margin-left: 0; margin-right: 0; }
+  .table { margin: 0 ${t.spacing.lg}px ${t.spacing.lg}px; }
+  .table-row { display: flex; gap: ${t.spacing.md}px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+  .table-cell { flex: 1; font-size: ${t.typography.body.fontSize}px; color: var(--text); }
+  .table-cell.head { font-size: ${t.typography.label.fontSize}px; font-weight: 600; color: var(--text-muted); }
+  .table-empty { font-size: ${t.typography.body.fontSize}px; color: var(--text-muted); padding: 11px 0; }
+  .slider { margin: 0 ${t.spacing.lg}px; padding: ${t.spacing.md}px 0; }
+  .slider-track { position: relative; height: 4px; border-radius: ${t.radius.full}px; background: var(--surface-variant); }
+  .slider-fill { position: absolute; left: 0; top: 0; height: 4px; border-radius: ${t.radius.full}px; background: var(--primary); }
+  .slider-thumb { position: absolute; top: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: var(--primary); }
+  .slider-ticks { position: relative; height: 20px; }
+  .slider-tick { position: absolute; top: 6px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--border); border: none; cursor: pointer; padding: 0; }
+  button.slider-tick { background: var(--primary); opacity: .55; }
+  .progress { height: 4px; border-radius: ${t.radius.full}px; background: var(--surface-variant); margin: ${t.spacing.sm}px ${t.spacing.lg}px; overflow: hidden; }
+  .progress-fill { height: 4px; border-radius: ${t.radius.full}px; background: var(--primary); }
+  .spinner { display: inline-flex; vertical-align: middle; }
+  .chips { display: flex; flex-wrap: wrap; gap: ${t.spacing.sm}px; margin: ${t.spacing.sm}px ${t.spacing.lg}px; }
+  .chip { display: inline-flex; align-items: center; gap: ${t.spacing.xs}px; background: var(--surface-variant); border: 1px solid var(--border); border-radius: ${t.radius.full}px; padding: 6px ${t.spacing.md}px; font-size: ${t.typography.label.fontSize}px; color: var(--text); }
+  .chip-remove { display: inline-flex; cursor: pointer; }
+  .auto-anchor { position: relative; }
+  .auto-panel { position: absolute; left: 0; right: 0; top: 100%; margin-top: ${t.spacing.xs}px; background: var(--role-surface); border: 1px solid var(--border); border-radius: ${t.radius.sm}px; z-index: 10; box-shadow: 0 6px 18px rgba(0,0,0,.18); }
+  .auto-option { padding: 10px ${t.spacing.md}px; font-size: ${t.typography.body.fontSize}px; color: var(--text); cursor: pointer; }
+  .snackbar { position: absolute; left: ${t.spacing.lg}px; right: ${t.spacing.lg}px; bottom: ${t.spacing.xxxl}px; z-index: 20; display: flex; align-items: center; gap: ${t.spacing.md}px; background: var(--text); color: var(--screen-bg); border-radius: ${t.radius.sm}px; padding: ${t.spacing.md}px ${t.spacing.lg}px; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+  .snackbar-text { flex: 1; font-size: ${t.typography.body.fontSize}px; }
+  .snackbar-action { border: none; background: transparent; color: var(--primary-container); font: inherit; font-size: ${t.typography.label.fontSize}px; font-weight: 600; text-transform: uppercase; cursor: pointer; padding: 0; }
 </style>
 </head>
 <body>
@@ -720,6 +1124,32 @@ export function previewScript(
       `    "methods": {\n${defMethods(child.info, outputCallbacks)}\n    }\n  }`,
     );
   }
+  // Stage 12: custom pipes, serialized like services (state from the
+  // literal fields, methods translated in state mode), and attribute
+  // directives, serialized as their extracted style assignments plus
+  // input defaults, so the page computes the same styles codegen does.
+  const pipeEntries: string[] = [];
+  for (const pipe of data.pipes ?? []) {
+    const pipeState: Record<string, unknown> = {};
+    for (const f of pipe.fields) {
+      if (f.isOutput || !f.initializer) continue;
+      const v = evaluateLiteral(f.initializer);
+      if (v !== undefined) pipeState[f.name] = v;
+    }
+    pipeEntries.push(
+      `  ${jsonForScript(pipe.pipeName)}: {\n` +
+      `    "state": ${jsonForScript(pipeState)},\n` +
+      `    "methods": {\n${defMethods(pipe)}\n    }\n  }`,
+    );
+  }
+  const directiveEntries = previewDirectives(data.directives).map((d) => ({
+    attr: d.attr,
+    inputs: d.info.inputs.map((i) => ({
+      name: i.name,
+      def: i.initializer ? evaluateLiteral(i.initializer) : undefined,
+    })),
+    assignments: d.unsupported ? [] : d.assignments,
+  }));
   const rootDeps = depsOf(component.constructorDeps);
   const rootOnInit = component.methods.includes('ngOnInit') ? '"ngOnInit"' : 'null';
   const needsWiring = Object.keys(rootDeps).length > 0 || rootOnInit !== 'null';
@@ -745,6 +1175,10 @@ ${serviceEntries.join(',\n')}
 const COMPONENTS = {
 ${componentEntries.join(',\n')}
 };
+const PIPES = {
+${pipeEntries.join(',\n')}
+};
+const DIRECTIVES = ${jsonForScript(directiveEntries)};
 const ROUTES = ${jsonForScript((data.routes ?? []).map((r) => ({
     path: r.path,
     ...(r.selector ? { selector: r.selector } : {}),
@@ -957,14 +1391,135 @@ function __parse(src) {
   if (peek().k !== 'eof') throw new Error('preview: trailing tokens');
   return e;
 }
-function __pipe(name, value) {
+function __pipeDigits(info, fb) {
+  if (typeof info !== 'string') return fb;
+  var m = /^(\d+)\.(\d+)-(\d+)$/.exec(info.replace(/^\s+|\s+$/g, ''));
+  if (!m) return fb;
+  var d = { minInt: Number(m[1]), minFrac: Number(m[2]), maxFrac: Number(m[3]) };
+  return d.maxFrac < d.minFrac ? fb : d;
+}
+function __pipeNum(value, digits) {
+  if (!isFinite(value)) return String(value);
+  var negative = value < 0;
+  var fixed = Math.abs(value).toFixed(digits.maxFrac);
+  var dot = fixed.indexOf('.');
+  var intPart = dot >= 0 ? fixed.slice(0, dot) : fixed;
+  var fracPart = dot >= 0 ? fixed.slice(dot + 1) : '';
+  while (fracPart.length > digits.minFrac && fracPart.charAt(fracPart.length - 1) === '0') fracPart = fracPart.slice(0, -1);
+  while (fracPart.length < digits.minFrac) fracPart += '0';
+  while (intPart.length < digits.minInt) intPart = '0' + intPart;
+  var grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return (negative ? '-' : '') + grouped + (fracPart ? '.' + fracPart : '');
+}
+var __pipeMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+var __pipeFormats = { shortDate: 'M/d/yy', mediumDate: 'MMM d, yyyy', shortTime: 'h:mm a', medium: 'MMM d, yyyy, h:mm:ss a', short: 'M/d/yy, h:mm a' };
+function __pipeDate(value, formatArg) {
+  var d = null;
+  if (value !== null && typeof value === 'object' && typeof value.getTime === 'function') { if (!isNaN(value.getTime())) d = value; }
+  else if (typeof value === 'number' && isFinite(value)) d = new Date(value);
+  else if (typeof value === 'string' && value.replace(/^\s+|\s+$/g, '') !== '') {
+    var parsed = new Date(value);
+    if (!isNaN(parsed.getTime())) d = parsed;
+  }
+  if (!d) return value;
+  var named = typeof formatArg === 'string' ? formatArg : 'mediumDate';
+  var format = __pipeFormats[named] !== undefined ? __pipeFormats[named] : named;
+  var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+  var hours = d.getHours();
+  var hour12 = hours % 12 === 0 ? 12 : hours % 12;
+  var tokens = [
+    ['yyyy', '' + d.getFullYear()], ['MMM', __pipeMonths[d.getMonth()]],
+    ['yy', pad(d.getFullYear() % 100)], ['MM', pad(d.getMonth() + 1)],
+    ['dd', pad(d.getDate())], ['HH', pad(hours)], ['hh', pad(hour12)],
+    ['mm', pad(d.getMinutes())], ['ss', pad(d.getSeconds())],
+    ['M', '' + (d.getMonth() + 1)], ['d', '' + d.getDate()],
+    ['H', '' + hours], ['h', '' + hour12], ['a', hours < 12 ? 'AM' : 'PM']
+  ];
+  var out = '', i = 0;
+  while (i < format.length) {
+    var hit = null;
+    for (var j = 0; j < tokens.length; j++) {
+      if (format.slice(i, i + tokens[j][0].length) === tokens[j][0]) { hit = tokens[j]; break; }
+    }
+    if (hit) { out += hit[1]; i += hit[0].length; } else { out += format.charAt(i); i++; }
+  }
+  return out;
+}
+var __pipeSymbols = { USD: '$', EUR: '€', GBP: '£', INR: '₹', NPR: 'Rs' };
+function __pipeCurrency(value, args) {
+  if (typeof value !== 'number') return value;
+  var code = typeof args[0] === 'string' && args[0] !== '' ? args[0] : 'USD';
+  var display = typeof args[1] === 'string' ? args[1] : 'symbol';
+  var digits = __pipeDigits(args[2], { minInt: 1, minFrac: 2, maxFrac: 2 });
+  var symbol = display === 'code' ? undefined : __pipeSymbols[code];
+  var formatted = __pipeNum(Math.abs(value), digits);
+  var sign = value < 0 ? '-' : '';
+  return symbol !== undefined ? sign + symbol + formatted : sign + code + ' ' + formatted;
+}
+// The async pipe (Stage 12): one subscription per observable object,
+// kept across renders; an emission stores the latest value and
+// re-renders. During a render, an emission only marks the page dirty,
+// and __render runs once more at the end (see __render).
+var __asyncSubs = [];
+var __asyncDirty = false;
+var __rendering = false;
+function __asyncPipe(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value.subscribe !== 'function') return value;
+  for (var i = 0; i < __asyncSubs.length; i++) {
+    if (__asyncSubs[i].obs === value) return __asyncSubs[i].latest;
+  }
+  var rec = { obs: value, latest: null };
+  __asyncSubs.push(rec);
+  try {
+    value.subscribe(function (v) {
+      rec.latest = v;
+      if (__rendering) __asyncDirty = true; else __render();
+    });
+  } catch (e) { console.warn('preview: async pipe subscribe failed', e); }
+  return rec.latest;
+}
+var __pipeInstances = {};
+function __customPipe(name, value, args) {
+  var def = PIPES[name];
+  if (!def || typeof def.methods !== 'object') return undefined;
+  var inst = __pipeInstances[name];
+  if (!inst) {
+    var st = {};
+    Object.keys(def.state).forEach(function (k) { st[k] = def.state[k]; });
+    inst = { state: st, props: {}, methods: {} };
+    inst.methods = __bind(def, inst);
+    __pipeInstances[name] = inst;
+  }
+  if (typeof inst.methods.transform !== 'function') return undefined;
+  return inst.methods.transform.apply(null, [value].concat(args));
+}
+function __pipe(name, value, args) {
+  args = args || [];
   switch (name) {
     case 'uppercase': return typeof value === 'string' ? value.toUpperCase() : value;
     case 'lowercase': return typeof value === 'string' ? value.toLowerCase() : value;
     case 'titlecase': return typeof value === 'string' ? value.replace(/\w\S*/g, function (w) { return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); }) : value;
     case 'json': return JSON.stringify(value);
-    default: throw new Error("preview: unknown pipe '" + name + "'");
+    case 'date': return __pipeDate(value, args[0]);
+    case 'number': return typeof value === 'number' ? __pipeNum(value, __pipeDigits(args[0], { minInt: 1, minFrac: 0, maxFrac: 3 })) : value;
+    case 'percent': return typeof value === 'number' ? __pipeNum(value * 100, __pipeDigits(args[0], { minInt: 1, minFrac: 0, maxFrac: 3 })) + '%' : value;
+    case 'currency': return __pipeCurrency(value, args);
+    case 'slice': {
+      if (typeof value !== 'string' && !Array.isArray(value)) return value;
+      var start = typeof args[0] === 'number' ? args[0] : 0;
+      var end = typeof args[1] === 'number' ? args[1] : undefined;
+      return value.slice(start, end);
+    }
+    case 'keyvalue': {
+      if (value === null || typeof value !== 'object' || Array.isArray(value)) return value;
+      return Object.keys(value).map(function (k) { return { key: k, value: value[k] }; })
+        .sort(function (a, b) { return a.key < b.key ? -1 : a.key > b.key ? 1 : 0; });
+    }
+    case 'async': return __asyncPipe(value);
   }
+  if (PIPES[name]) return __customPipe(name, value, args);
+  throw new Error("preview: unknown pipe '" + name + "'");
 }
 function __eval(e, scope) {
   switch (e.type) {
@@ -1033,7 +1588,7 @@ function __eval(e, scope) {
     case 'array':
       return e.elements.map(function (el) { return __eval(el, scope); });
     case 'pipe':
-      return __pipe(e.name, __eval(e.input, scope));
+      return __pipe(e.name, __eval(e.input, scope), e.args.map(function (a) { return __eval(a, scope); }));
   }
 }
 function __evalSrc(src, scope) { return __eval(__parse(src), scope); }
@@ -1103,7 +1658,42 @@ function __buildNode(node, scope, path, form) {
     });
     return [document.createTextNode(txt)];
   }
-  return __buildElement(node, scope, path, form);
+  var built = __buildElement(node, scope, path, form);
+  __applyDirectives(built, node, scope);
+  return built;
+}
+// Attribute directives (Stage 12): after a host element is built, each
+// directive it carries computes its style assignments (extracted from
+// the directive class by the compiler, shipped in DIRECTIVES) against
+// the host's input values and writes them onto the node's style, the
+// page mirror of codegen's merged style prop. Hosts codegen cannot
+// style (components, dedicated renderers) are skipped, as there.
+function __applyDirectives(nodes, el, scope) {
+  if (!nodes.length || !DIRECTIVES.length) return;
+  var dom = nodes[0];
+  if (!dom || !dom.style) return;
+  if (COMPONENTS[el.tag]) return;
+  if (el.tag === 'input' || el.tag === 'icon' || el.tag === 'datetime-picker' || el.tag === 'router-outlet') return;
+  DIRECTIVES.forEach(function (d) {
+    var present = el.attrs[d.attr] !== undefined
+      || el.propBindings.some(function (b) { return b.name === d.attr; })
+      || el.booleanAttrs.indexOf(d.attr) >= 0;
+    if (!present) return;
+    var values = {};
+    d.inputs.forEach(function (input) {
+      var v = __binding(el, input.name, scope);
+      if (v !== undefined) { values[input.name] = v; return; }
+      if (el.attrs[input.name] !== undefined) { values[input.name] = el.attrs[input.name]; return; }
+      if (el.booleanAttrs.indexOf(input.name) >= 0) { values[input.name] = true; return; }
+      if (input.def !== undefined) values[input.name] = input.def;
+    });
+    var s2 = __extend(scope, values);
+    d.assignments.forEach(function (a) {
+      var v;
+      try { v = __evalSrc(a.rhs, s2); } catch (e) { console.warn(e); return; }
+      if (typeof v === 'string' || typeof v === 'number') dom.style[a.prop] = String(v);
+    });
+  });
 }
 function __buildElement(el, scope, path, form) {
   if (el.structural && el.structural.name === 'ngIf') {
@@ -1203,6 +1793,387 @@ function __runChange(el, scope, value) {
     } catch (err) { console.warn(err); }
   });
   __render();
+}
+function __runClose(el, scope) {
+  el.eventBindings.forEach(function (ev) {
+    if (ev.name !== 'close') return;
+    var s = __extend(scope, { $event: undefined });
+    try {
+      var e = __parse(ev.expression);
+      if (e.type === 'call') { __eval(e, s); return; }
+      if (e.type === 'identifier') {
+        var fn = s[e.name];
+        if (typeof fn === 'function') { fn(); return; }
+        console.warn('preview: close handler ' + e.name + ' is not a method');
+        return;
+      }
+      __eval(e, s);
+    } catch (err) { console.warn(err); }
+  });
+  __render();
+}
+// Generic named-event runner (Stage 11), the __runClose shape for the
+// events data display adds: (toggle) on panels, (remove) on chips and
+// (optionSelected) on autocomplete inputs. The handler receives the
+// value as $event, like the controls contract.
+function __runEvent(el, scope, name, value) {
+  var ran = false;
+  el.eventBindings.forEach(function (ev) {
+    if (ev.name !== name) return;
+    ran = true;
+    var s = __extend(scope, { $event: value });
+    try {
+      var e = __parse(ev.expression);
+      if (e.type === 'call') { __eval(e, s); return; }
+      if (e.type === 'identifier') {
+        var fn = s[e.name];
+        if (typeof fn === 'function') { fn(value); return; }
+        console.warn('preview: ' + name + ' handler ' + e.name + ' is not a method');
+        return;
+      }
+      __eval(e, s);
+    } catch (err) { console.warn(err); }
+  });
+  if (ran) __render();
+  return ran;
+}
+// Badge (Stage 11), a mirror of badgeTextOf in @rangular/ui: 0 or
+// empty hides the badge, a number above 99 shows as 99+.
+function __badgeText(value) {
+  if (value === undefined || value === null || value === '') return null;
+  var n = Number(value);
+  if (isFinite(n)) {
+    if (n <= 0) return null;
+    return n > 99 ? '99+' : String(Math.trunc(n));
+  }
+  return String(value);
+}
+function __badgeDot(el, scope) {
+  var text = __badgeText(__controlValue(el, 'badge', scope));
+  if (text === null) return null;
+  var dot = document.createElement('span');
+  dot.className = 'badge-dot';
+  dot.textContent = text;
+  return dot;
+}
+// The spinner arc (Stage 11): the same path RgSpinner draws in
+// @rangular/ui and the static paint draws; a test pins the copies.
+var __SPINNER_ARC = 'M 12 3 A 9 9 0 1 1 3 12';
+// Date-time helpers (Stage 10). Plain-JS mirrors of @rangular/ui
+// datetime.ts: the same parsing, composition, wheel and formatting
+// rules, parity-tested against the TypeScript helpers.
+var __MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function __pad2(n) { return n < 10 ? '0' + n : '' + n; }
+function __daysInMonth(year, month) {
+  var lengths = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (month === 2) {
+    var leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+    return leap ? 29 : 28;
+  }
+  return lengths[month - 1] || 31;
+}
+function __clampParts(parts) {
+  var month = Math.min(12, Math.max(1, Math.trunc(parts.month) || 1));
+  var year = Math.trunc(parts.year) || 2000;
+  var day = Math.min(__daysInMonth(year, month), Math.max(1, Math.trunc(parts.day) || 1));
+  var hour = Math.min(23, Math.max(0, Math.trunc(parts.hour) || 0));
+  var minute = Math.min(59, Math.max(0, Math.trunc(parts.minute) || 0));
+  return { year: year, month: month, day: day, hour: hour, minute: minute };
+}
+function __parseParts(value) {
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) return null;
+    return { year: value.getFullYear(), month: value.getMonth() + 1, day: value.getDate(), hour: value.getHours(), minute: value.getMinutes() };
+  }
+  if (typeof value !== 'string') return null;
+  var m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?)?\s*(?:Z)?$/.exec(value.replace(/^\s+|\s+$/g, ''));
+  if (!m) return null;
+  var parts = { year: Number(m[1]), month: Number(m[2]), day: Number(m[3]), hour: m[4] === undefined ? 0 : Number(m[4]), minute: m[5] === undefined ? 0 : Number(m[5]) };
+  if (parts.month < 1 || parts.month > 12) return null;
+  if (parts.day < 1 || parts.day > __daysInMonth(parts.year, parts.month)) return null;
+  if (parts.hour < 0 || parts.hour > 23 || parts.minute < 0 || parts.minute > 59) return null;
+  return parts;
+}
+function __composeIso(parts) {
+  var p = __clampParts(parts);
+  return p.year + '-' + __pad2(p.month) + '-' + __pad2(p.day) + 'T' + __pad2(p.hour) + ':' + __pad2(p.minute) + ':00';
+}
+function __nowParts() {
+  var d = new Date();
+  return { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate(), hour: d.getHours(), minute: d.getMinutes() };
+}
+function __hour12(parts) { var h = parts.hour % 12; return h === 0 ? 12 : h; }
+function __ampm(parts) { return parts.hour < 12 ? 'AM' : 'PM'; }
+function __formatParts(parts, mode) {
+  var p = __clampParts(parts);
+  var date = __MONTH_SHORT[p.month - 1] + ' ' + p.day + ', ' + p.year;
+  var time = __hour12(p) + ':' + __pad2(p.minute) + ' ' + __ampm(p);
+  if (mode === 'date') return date;
+  if (mode === 'time') return time;
+  return date + ' ' + time;
+}
+function __addDays(year, month, day, n) {
+  var dt = new Date(Date.UTC(year, month - 1, day + n));
+  return { year: dt.getUTCFullYear(), month: dt.getUTCMonth() + 1, day: dt.getUTCDate() };
+}
+function __wheelSpecs(parts, mode, minuteInterval) {
+  var p = __clampParts(parts);
+  var wheels = [];
+  var i, d;
+  if (mode === 'date') {
+    var months = [];
+    for (i = 0; i < 12; i++) months.push({ value: '' + (i + 1), label: __MONTH_SHORT[i] });
+    wheels.push({ name: 'month', options: months, value: '' + p.month });
+    var days = [];
+    for (d = 1; d <= __daysInMonth(p.year, p.month); d++) days.push({ value: '' + d, label: '' + d });
+    wheels.push({ name: 'day', options: days, value: '' + p.day });
+    var years = [];
+    for (i = p.year - 25; i <= p.year + 25; i++) years.push({ value: '' + i, label: '' + i });
+    wheels.push({ name: 'year', options: years, value: '' + p.year });
+  }
+  if (mode === 'datetime') {
+    var dates = [];
+    for (i = -183; i <= 183; i++) {
+      var dd = __addDays(p.year, p.month, p.day, i);
+      dates.push({ value: dd.year + '-' + __pad2(dd.month) + '-' + __pad2(dd.day), label: __MONTH_SHORT[dd.month - 1] + ' ' + dd.day + ' ' + dd.year });
+    }
+    wheels.push({ name: 'date', options: dates, value: p.year + '-' + __pad2(p.month) + '-' + __pad2(p.day) });
+  }
+  if (mode === 'time' || mode === 'datetime') {
+    var hours = [];
+    for (i = 1; i <= 12; i++) hours.push({ value: '' + i, label: '' + i });
+    wheels.push({ name: 'hour', options: hours, value: '' + __hour12(p) });
+    var step = minuteInterval === 5 ? 5 : 1;
+    var snappedMinute = Math.min(60 - step, Math.round(p.minute / step) * step);
+    var minutes = [];
+    for (i = 0; i < 60; i += step) minutes.push({ value: '' + i, label: __pad2(i) });
+    wheels.push({ name: 'minute', options: minutes, value: '' + snappedMinute });
+    wheels.push({ name: 'ampm', options: [{ value: 'AM', label: 'AM' }, { value: 'PM', label: 'PM' }], value: __ampm(p) });
+  }
+  return wheels;
+}
+function __applyWheel(parts, wheel, value) {
+  var p = __clampParts(parts);
+  var next, parsed, h12;
+  if (wheel === 'month') { next = { year: p.year, month: Number(value), day: p.day, hour: p.hour, minute: p.minute }; return __clampParts(next); }
+  if (wheel === 'day') { next = { year: p.year, month: p.month, day: Number(value), hour: p.hour, minute: p.minute }; return __clampParts(next); }
+  if (wheel === 'year') { next = { year: Number(value), month: p.month, day: p.day, hour: p.hour, minute: p.minute }; return __clampParts(next); }
+  if (wheel === 'date') {
+    parsed = __parseParts(value);
+    if (!parsed) return p;
+    return { year: parsed.year, month: parsed.month, day: parsed.day, hour: p.hour, minute: p.minute };
+  }
+  if (wheel === 'hour') {
+    h12 = Number(value);
+    if (!isFinite(h12)) return p;
+    return { year: p.year, month: p.month, day: p.day, hour: (h12 % 12) + (p.hour >= 12 ? 12 : 0), minute: p.minute };
+  }
+  if (wheel === 'minute') return { year: p.year, month: p.month, day: p.day, hour: p.hour, minute: Number(value) || 0 };
+  if (wheel === 'ampm') {
+    var wantPm = value === 'PM';
+    var isPm = p.hour >= 12;
+    if (wantPm === isPm) return p;
+    return { year: p.year, month: p.month, day: p.day, hour: wantPm ? p.hour + 12 : p.hour - 12, minute: p.minute };
+  }
+  return p;
+}
+var __pickerStates = {};
+function __buildPicker(el, scope, path) {
+  var modeAttr = __attr(el, 'mode', scope);
+  var mode = modeAttr === 'date' || modeAttr === 'time' ? modeAttr : 'datetime';
+  var rawValue = __controlValue(el, 'value', scope);
+  var current = __parseParts(rawValue) || __nowParts();
+  var intervalRaw = Number(__controlValue(el, 'minuteInterval', scope));
+  var interval = intervalRaw === 5 ? 5 : 1;
+  var wrap = document.createElement('div');
+  wrap.className = 'field';
+  var label = __attr(el, 'label', scope);
+  if (label) {
+    var labelEl = document.createElement('span');
+    labelEl.className = 'field-label';
+    labelEl.textContent = String(label);
+    wrap.appendChild(labelEl);
+  }
+  var box = document.createElement('div');
+  box.className = 'picker-box';
+  var valueEl = document.createElement('span');
+  valueEl.className = 'picker-value';
+  valueEl.textContent = __formatParts(current, mode);
+  box.appendChild(valueEl);
+  box.appendChild(__icon('calendar', 20, 'textMuted'));
+  box.addEventListener('click', function () {
+    var pending = __parseParts(__controlValue(el, 'value', scope)) || __nowParts();
+    if (interval === 5) {
+      pending.minute = Math.min(55, Math.round(pending.minute / 5) * 5);
+    }
+    __pickerStates[path] = { pending: pending };
+    __render();
+  });
+  wrap.appendChild(box);
+  var pickerState = __pickerStates[path];
+  if (pickerState) wrap.appendChild(__buildPickerSheet(el, scope, path, mode, interval, pickerState));
+  return wrap;
+}
+function __buildPickerSheet(el, scope, path, mode, interval, pickerState) {
+  var overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  var backdrop = document.createElement('div');
+  backdrop.className = 'overlay-backdrop';
+  backdrop.addEventListener('click', function () {
+    delete __pickerStates[path];
+    __render();
+  });
+  overlay.appendChild(backdrop);
+  var sheet = document.createElement('section');
+  sheet.className = 'sheet';
+  var handle = document.createElement('div');
+  handle.className = 'sheet-handle';
+  sheet.appendChild(handle);
+  var head = document.createElement('div');
+  head.className = 'picker-head';
+  var cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.className = 'picker-head-btn';
+  cancel.textContent = 'Cancel';
+  cancel.addEventListener('click', function () {
+    delete __pickerStates[path];
+    __render();
+  });
+  head.appendChild(cancel);
+  var headTitle = document.createElement('span');
+  headTitle.className = 'picker-head-title';
+  var label = __attr(el, 'label', scope);
+  headTitle.textContent = label ? String(label) : 'Choose';
+  head.appendChild(headTitle);
+  var done = document.createElement('button');
+  done.type = 'button';
+  done.className = 'picker-head-btn picker-head-done';
+  done.textContent = 'Done';
+  done.addEventListener('click', function () {
+    var st = __pickerStates[path];
+    if (!st) return;
+    var iso = __composeIso(st.pending);
+    delete __pickerStates[path];
+    __runChange(el, scope, iso);
+  });
+  head.appendChild(done);
+  sheet.appendChild(head);
+  var wheels = document.createElement('div');
+  wheels.className = 'wheels';
+  __wheelSpecs(pickerState.pending, mode, interval).forEach(function (spec) {
+    var wheel = document.createElement('div');
+    wheel.className = 'wheel' + (spec.name === 'date' ? ' wide' : '');
+    wheel.setAttribute('data-wheel', spec.name);
+    spec.options.forEach(function (option) {
+      var item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'wheel-value' + (option.value === spec.value ? ' selected' : '');
+      item.textContent = option.label;
+      item.setAttribute('data-value', option.value);
+      item.addEventListener('click', function () {
+        var st = __pickerStates[path];
+        if (!st) return;
+        st.pending = __applyWheel(st.pending, spec.name, option.value);
+        __render();
+      });
+      wheel.appendChild(item);
+    });
+    wheels.appendChild(wheel);
+  });
+  sheet.appendChild(wheels);
+  overlay.appendChild(sheet);
+  return overlay;
+}
+function __overlayShell(el, scope, path, form, kids, kind) {
+  var open = __controlValue(el, 'open', scope);
+  if (open !== undefined && !__truthy(open)) return [];
+  var overlay = document.createElement('div');
+  overlay.className = 'overlay' + (kind === 'dialog' ? ' overlay-center' : '');
+  var backdrop = document.createElement('div');
+  backdrop.className = 'overlay-backdrop';
+  backdrop.addEventListener('click', function () { __runClose(el, scope); });
+  overlay.appendChild(backdrop);
+  var panel = document.createElement('section');
+  panel.className = kind;
+  if (kind === 'sheet') {
+    var handle = document.createElement('div');
+    handle.className = 'sheet-handle';
+    panel.appendChild(handle);
+  }
+  if (kind === 'dialog') {
+    var title = __attr(el, 'title', scope);
+    if (title) {
+      var titleEl = document.createElement('div');
+      titleEl.className = 'dialog-title';
+      titleEl.textContent = String(title);
+      panel.appendChild(titleEl);
+    }
+  }
+  kids.forEach(function (k) { panel.appendChild(k); });
+  overlay.appendChild(panel);
+  return [overlay];
+}
+// Snackbar runtime (Stage 10). A plain-JS mirror of the runtime
+// SnackBar service: one current bar, an auto-dismiss timer when the
+// host environment provides timers, and action callbacks on the ref
+// returned by open(). The preview tests dismiss through the action
+// rather than waiting for real time.
+var __snackState = null;
+var __snackRef = null;
+var __snackTimer = null;
+function __snackClearTimer() {
+  if (__snackTimer !== null && typeof clearTimeout === 'function') clearTimeout(__snackTimer);
+  __snackTimer = null;
+}
+function __snackDismiss() {
+  if (!__snackState) return;
+  __snackClearTimer();
+  __snackState = null;
+  __snackRef = null;
+}
+function __snackPressAction() {
+  var ref = __snackRef;
+  __snackDismiss();
+  if (ref) ref.__fire();
+  __render();
+}
+var __snackBarObj = {
+  open: function (message, actionLabel, durationMs) {
+    __snackClearTimer();
+    var callbacks = [];
+    var ref = {
+      onAction: function (cb) { callbacks.push(cb); return ref; },
+      dismiss: function () {
+        if (__snackRef === ref) { __snackDismiss(); __render(); }
+      },
+      __fire: function () { callbacks.slice().forEach(function (cb) { cb(); }); }
+    };
+    __snackRef = ref;
+    var duration = durationMs === undefined ? 4000 : durationMs;
+    __snackState = { message: String(message), actionLabel: actionLabel, durationMs: duration };
+    if (duration > 0 && typeof setTimeout === 'function') {
+      __snackTimer = setTimeout(function () { __snackDismiss(); __render(); }, duration);
+    }
+    return ref;
+  }
+};
+function __buildSnackbar(host) {
+  if (!__snackState || !host || !host.appendChild) return;
+  var bar = document.createElement('div');
+  bar.className = 'snackbar';
+  var text = document.createElement('span');
+  text.className = 'snackbar-text';
+  text.textContent = __snackState.message;
+  bar.appendChild(text);
+  if (__snackState.actionLabel) {
+    var action = document.createElement('button');
+    action.type = 'button';
+    action.className = 'snackbar-action';
+    action.textContent = String(__snackState.actionLabel).toUpperCase();
+    action.addEventListener('click', function () { __snackPressAction(); });
+    bar.appendChild(action);
+  }
+  host.appendChild(bar);
 }
 // Forms runtime (Stage 8). Plain-JS mirrors of the @rangular/runtime
 // forms core (Validators, FormControl, FormGroup semantics and error
@@ -1485,7 +2456,8 @@ function __formCtx(el, scope) {
   if (g !== undefined && g !== null) ctx.group = g;
   return ctx;
 }
-function __buildInput(el, scope, form) {
+var __autoStates = {};
+function __buildInput(el, scope, form, path) {
   var wrap = document.createElement('div');
   wrap.className = 'field';
   var labelText = __attr(el, 'label', scope);
@@ -1546,7 +2518,80 @@ function __buildInput(el, scope, form) {
     });
     __render();
   });
+  input.addEventListener('focus', function () {
+    el.eventBindings.forEach(function (ev) {
+      if (ev.name === 'focus') __runHandler(ev.expression, scope, undefined);
+    });
+  });
   wrap.appendChild(input);
+  // Autocomplete (Stage 11): with an [options] binding, while the
+  // field is focused and its text is non-empty, a panel under the
+  // field lists the options containing the text (case-insensitive
+  // substring, the Angular Material example filter). Choosing one
+  // writes it through the same path as typing, reports it through
+  // (optionSelected), and closes the panel. Open state is keyed by
+  // template path so it survives re-renders, like the picker state.
+  var optionsBinding = null;
+  el.propBindings.forEach(function (b) { if (b.name === 'options') optionsBinding = b; });
+  if (optionsBinding) {
+    var anchor = document.createElement('div');
+    anchor.className = 'auto-anchor';
+    anchor.appendChild(input);
+    wrap.appendChild(anchor);
+    var allOptions = [];
+    try { allOptions = __evalSrc(optionsBinding.expression, scope); }
+    catch (err) { console.warn(err); allOptions = []; }
+    var autoText = input.value;
+    var autoMatches = [];
+    if (__autoStates[path] && Array.isArray(allOptions) && autoText !== '') {
+      var lowerText = autoText.toLowerCase();
+      allOptions.forEach(function (o) {
+        if (typeof o === 'string' && o.toLowerCase().indexOf(lowerText) >= 0) autoMatches.push(o);
+      });
+    }
+    if (autoMatches.length) {
+      var autoPanel = document.createElement('div');
+      autoPanel.className = 'auto-panel';
+      autoMatches.forEach(function (option) {
+        var optionRow = document.createElement('div');
+        optionRow.className = 'auto-option';
+        optionRow.textContent = option;
+        var chosen = false;
+        var choose = function () {
+          if (chosen) return;
+          chosen = true;
+          if (control) control.setValue(option);
+          if (tw && field && scope.__state) scope.__state[field] = option;
+          el.eventBindings.forEach(function (ev) {
+            if (ev.name === 'ngModelChange') __runHandler(ev.expression, scope, option);
+          });
+          __autoStates[path] = false;
+          __runEvent(el, scope, 'optionSelected', option);
+          __render();
+        };
+        // mousedown lands before the field's blur in a browser, click
+        // is what simple harnesses dispatch; the guard makes the pair
+        // choose exactly once.
+        optionRow.addEventListener('mousedown', choose);
+        optionRow.addEventListener('click', choose);
+        autoPanel.appendChild(optionRow);
+      });
+      anchor.appendChild(autoPanel);
+    }
+    input.addEventListener('focus', function () {
+      if (!__autoStates[path]) { __autoStates[path] = true; __render(); }
+    });
+    input.addEventListener('blur', function () {
+      if (typeof setTimeout === 'function') {
+        setTimeout(function () {
+          if (__autoStates[path]) { __autoStates[path] = false; __render(); }
+        }, 150);
+      } else if (__autoStates[path]) {
+        __autoStates[path] = false;
+        __render();
+      }
+    });
+  }
   var errText = __attr(el, 'error', scope);
   if (errText) {
     var es = document.createElement('span');
@@ -1556,9 +2601,298 @@ function __buildInput(el, scope, form) {
   }
   return wrap;
 }
+// Data display builders (Stage 11). Open and selection state that
+// the primitives hold internally is keyed by template path here, so
+// it survives re-renders: uncontrolled tab selection, standalone
+// panel open state, and each accordion's one open panel.
+var __tabStates = {};
+var __panelStates = {};
+var __accStates = {};
+var __accStack = [];
+function __panelSeedOpen(el, scope) {
+  var v = __controlValue(el, 'expanded', scope);
+  return v === true || v === 'true';
+}
+function __buildTabs(el, scope, path, form) {
+  var wrap = document.createElement('div');
+  wrap.className = 'tabs';
+  var tabEls = el.children.filter(function (c) { return c.type === 'element' && c.tag === 'tab'; });
+  var boundIndex = __controlValue(el, 'index', scope);
+  var controlled = typeof boundIndex === 'number';
+  var active = controlled ? boundIndex : (__tabStates[path] || 0);
+  active = Math.min(Math.max(active, 0), Math.max(tabEls.length - 1, 0));
+  var headers = document.createElement('div');
+  headers.className = 'tab-headers';
+  tabEls.forEach(function (tab, i) {
+    var h = document.createElement('div');
+    h.className = 'tab-header' + (i === active ? ' selected' : '');
+    var label = document.createElement('span');
+    label.className = 'tab-label';
+    var lt = __attr(tab, 'label', scope);
+    label.textContent = lt ? String(lt) : '';
+    h.appendChild(label);
+    if (i === active) {
+      var ind = document.createElement('span');
+      ind.className = 'tab-indicator';
+      h.appendChild(ind);
+    }
+    h.addEventListener('click', function () {
+      if (!controlled) __tabStates[path] = i;
+      __runChange(el, scope, i);
+      __render();
+    });
+    headers.appendChild(h);
+  });
+  wrap.appendChild(headers);
+  var activeTab = tabEls[active];
+  if (activeTab) {
+    __buildNodes(activeTab.children, scope, path + '/tab' + active, form).forEach(function (k) { wrap.appendChild(k); });
+  }
+  return wrap;
+}
+function __buildAccordion(el, scope, path, form) {
+  var wrap = document.createElement('div');
+  wrap.className = 'accordion';
+  var st = __accStates[path];
+  if (!st) { st = { openPath: null, init: false }; __accStates[path] = st; }
+  if (!st.init) {
+    st.init = true;
+    el.children.forEach(function (child, i) {
+      if (st.openPath === null && child.type === 'element' && child.tag === 'panel' && __panelSeedOpen(child, scope)) {
+        st.openPath = path + '/' + i;
+      }
+    });
+  }
+  __accStack.push({ path: path, state: st });
+  try {
+    __buildNodes(el.children, scope, path, form).forEach(function (k) { wrap.appendChild(k); });
+  } finally {
+    __accStack.pop();
+  }
+  return wrap;
+}
+function __buildPanel(el, scope, path, form) {
+  // The nearest enclosing accordion (the longest matching path
+  // prefix on the stack) owns this panel's open state; standalone
+  // panels keep their own, seeded by [expanded].
+  var group = null;
+  for (var gi = __accStack.length - 1; gi >= 0; gi--) {
+    if (path.indexOf(__accStack[gi].path + '/') === 0) { group = __accStack[gi]; break; }
+  }
+  var open;
+  if (group) open = group.state.openPath === path;
+  else {
+    if (__panelStates[path] === undefined) __panelStates[path] = __panelSeedOpen(el, scope);
+    open = !!__panelStates[path];
+  }
+  var wrap = document.createElement('div');
+  wrap.className = 'panel';
+  var header = document.createElement('div');
+  header.className = 'panel-header';
+  var titles = document.createElement('div');
+  titles.className = 'panel-titles';
+  var titleText = __attr(el, 'title', scope);
+  if (titleText) {
+    var pt = document.createElement('div');
+    pt.className = 'panel-title';
+    pt.textContent = String(titleText);
+    titles.appendChild(pt);
+  }
+  var subText = __attr(el, 'subtitle', scope);
+  if (subText) {
+    var ps = document.createElement('div');
+    ps.className = 'panel-subtitle';
+    ps.textContent = String(subText);
+    titles.appendChild(ps);
+  }
+  header.appendChild(titles);
+  var chev = document.createElement('span');
+  chev.className = 'panel-chevron' + (open ? ' open' : '');
+  chev.appendChild(__icon('chevron-right', 24, 'textMuted'));
+  header.appendChild(chev);
+  header.addEventListener('click', function () {
+    var next = !open;
+    if (group) group.state.openPath = next ? path : null;
+    else __panelStates[path] = next;
+    __runEvent(el, scope, 'toggle', next);
+    __render();
+  });
+  wrap.appendChild(header);
+  if (open) {
+    var body = document.createElement('div');
+    body.className = 'panel-body';
+    __buildNodes(el.children, scope, path, form).forEach(function (k) { body.appendChild(k); });
+    wrap.appendChild(body);
+  }
+  return wrap;
+}
+function __buildTable(el, scope) {
+  var wrap = document.createElement('div');
+  wrap.className = 'table';
+  var cols = [];
+  el.children.forEach(function (c) {
+    if (c.type !== 'element' || c.tag !== 'column') return;
+    var name = c.attrs['name'] !== undefined ? c.attrs['name'] : c.attrs['key'];
+    if (!name) return;
+    cols.push({ name: name, header: c.attrs['header'] !== undefined ? c.attrs['header'] : name });
+  });
+  var head = document.createElement('div');
+  head.className = 'table-row';
+  cols.forEach(function (col) {
+    var cell = document.createElement('span');
+    cell.className = 'table-cell head';
+    cell.textContent = col.header;
+    head.appendChild(cell);
+  });
+  wrap.appendChild(head);
+  var data = __binding(el, 'data', scope);
+  var rows = Array.isArray(data) ? data : [];
+  rows.forEach(function (row) {
+    var r = document.createElement('div');
+    r.className = 'table-row';
+    cols.forEach(function (col) {
+      var cell = document.createElement('span');
+      cell.className = 'table-cell';
+      var v = row ? row[col.name] : undefined;
+      cell.textContent = v === undefined || v === null ? '' : String(v);
+      r.appendChild(cell);
+    });
+    wrap.appendChild(r);
+  });
+  if (!rows.length && el.attrs['emptyText']) {
+    var empty = document.createElement('div');
+    empty.className = 'table-empty';
+    empty.textContent = el.attrs['emptyText'];
+    wrap.appendChild(empty);
+  }
+  return wrap;
+}
+function __sliderNum(el, name, scope, fallback) {
+  var v = __controlValue(el, name, scope);
+  var n = typeof v === 'number' ? v : (typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN);
+  return isFinite(n) ? n : fallback;
+}
+function __buildSlider(el, scope, path) {
+  var min = __sliderNum(el, 'min', scope, 0);
+  var max = __sliderNum(el, 'max', scope, 100);
+  var step = __sliderNum(el, 'step', scope, 1);
+  if (!(step > 0)) step = 1;
+  var raw = __controlValue(el, 'value', scope);
+  var value = typeof raw === 'number' ? raw : min;
+  var frac = max > min ? Math.min(1, Math.max(0, (value - min) / (max - min))) : 0;
+  var wrap = document.createElement('div');
+  wrap.className = 'slider';
+  var track = document.createElement('div');
+  track.className = 'slider-track';
+  var fill = document.createElement('div');
+  fill.className = 'slider-fill';
+  fill.style.width = (frac * 100) + '%';
+  track.appendChild(fill);
+  var thumb = document.createElement('div');
+  thumb.className = 'slider-thumb';
+  thumb.style.left = (frac * 100) + '%';
+  track.appendChild(thumb);
+  wrap.appendChild(track);
+  // Preview simplification (documented): with at most 20 steps the
+  // track also renders one tappable tick per step value, because a
+  // DOM harness cannot click at an x fraction reliably. The app
+  // slider takes taps and drags at any position.
+  var steps = Math.round((max - min) / step);
+  if (steps > 0 && steps <= 20) {
+    var ticks = document.createElement('div');
+    ticks.className = 'slider-ticks';
+    for (var i = 0; i <= steps; i++) {
+      (function (tickValue, leftPct) {
+        var tick = document.createElement('button');
+        tick.type = 'button';
+        tick.className = 'slider-tick';
+        tick.style.left = leftPct + '%';
+        if (tick.setAttribute) tick.setAttribute('data-value', String(tickValue));
+        tick.addEventListener('click', function () { __runChange(el, scope, tickValue); });
+        ticks.appendChild(tick);
+      })(min + i * step, (i / steps) * 100);
+    }
+    wrap.appendChild(ticks);
+  }
+  return wrap;
+}
+function __buildProgress(el, scope) {
+  var mode = __attr(el, 'mode', scope);
+  var pct = 40;
+  if (mode !== 'indeterminate') {
+    var v = __controlValue(el, 'value', scope);
+    var n = typeof v === 'number' ? v : Number(v);
+    pct = isFinite(n) ? Math.min(100, Math.max(0, n)) : 0;
+  }
+  var wrap = document.createElement('div');
+  wrap.className = 'progress';
+  var fill = document.createElement('div');
+  fill.className = 'progress-fill';
+  fill.style.width = pct + '%';
+  wrap.appendChild(fill);
+  return wrap;
+}
+function __buildSpinner(el, scope) {
+  var size = __iconSize(el, scope);
+  var color = __attr(el, 'color', scope);
+  var stroke = 'var(--role-primary)';
+  if (color) {
+    stroke = /^[a-zA-Z]+$/.test(String(color))
+      ? 'var(--role-' + __kebabRole(color) + ')'
+      : String(color);
+  }
+  var span = document.createElement('span');
+  span.className = 'spinner';
+  // Static in the preview (documented): the app rotates this arc.
+  span.innerHTML = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24"><path d="' + __SPINNER_ARC + '" stroke="' + stroke + '" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg>';
+  return span;
+}
+function __buildChip(el, scope, path, form) {
+  var chip = document.createElement('span');
+  chip.className = 'chip';
+  var iconName = el.attrs['icon'];
+  if (iconName) chip.appendChild(__icon(iconName, 20, 'textMuted'));
+  var label = document.createElement('span');
+  label.className = 'chip-label';
+  __buildNodes(el.children, scope, path, form).forEach(function (k) { label.appendChild(k); });
+  chip.appendChild(label);
+  if (el.booleanAttrs.indexOf('removable') >= 0) {
+    var rm = document.createElement('span');
+    rm.className = 'chip-remove';
+    rm.appendChild(__icon('close', 20, 'textMuted'));
+    rm.addEventListener('click', function (ev) {
+      if (ev && ev.stopPropagation) ev.stopPropagation();
+      __runEvent(el, scope, 'remove', undefined);
+      __render();
+    });
+    chip.appendChild(rm);
+  }
+  return chip;
+}
 function __buildCore(el, scope, path, form) {
+  if (el.tag === 'ng-content') {
+    // Content projection (Stage 12): paint the content the host wrote
+    // inside this component's tag, in the host's scope; a nested
+    // <ng-content> inside that content sees the outer content.
+    var content = scope.__content;
+    if (!content) return [];
+    var cs = __extend(content.scope, {});
+    cs.__content = content.outer;
+    return __buildNodes(content.nodes, cs, path + '/content', form);
+  }
   if (el.tag === 'router-outlet') return __buildOutlet(el, scope, path);
   if (COMPONENTS[el.tag]) return __buildChild(el, scope, path);
+  if (el.tag === 'datetime-picker') return [__buildPicker(el, scope, path)];
+  // Data display (Stage 11): dedicated builders, like the picker.
+  if (el.tag === 'tabs') return [__buildTabs(el, scope, path, form)];
+  if (el.tag === 'accordion') return [__buildAccordion(el, scope, path, form)];
+  if (el.tag === 'panel') return [__buildPanel(el, scope, path, form)];
+  if (el.tag === 'table') return [__buildTable(el, scope)];
+  if (el.tag === 'column' || el.tag === 'tab') return [];
+  if (el.tag === 'slider') return [__buildSlider(el, scope, path)];
+  if (el.tag === 'progress-bar') return [__buildProgress(el, scope)];
+  if (el.tag === 'spinner') return [__buildSpinner(el, scope)];
+  if (el.tag === 'chip') return [__buildChip(el, scope, path, form)];
   var kidsForm = form;
   if (el.tag === 'form') kidsForm = __formCtx(el, scope);
   var kids = __buildNodes(el.children, scope, path, kidsForm);
@@ -1597,13 +2931,19 @@ function __buildCore(el, scope, path, form) {
       return sp;
     }
     case 'card': return wrap('section', 'card');
+    case 'sheet': return __overlayShell(el, scope, path, form, kids, 'sheet');
+    case 'dialog': return __overlayShell(el, scope, path, form, kids, 'dialog');
+    case 'actions': return wrap('div', 'actions');
     case 'form': return wrap('div', 'form');
-    case 'input': return [__buildInput(el, scope, form)];
+    case 'input': return [__buildInput(el, scope, form, path)];
+    case 'chips': return wrap('div', 'chips');
     case 'button': {
       var b = document.createElement('button');
       b.className = 'btn';
       if (__binding(el, 'disabled', scope)) b.disabled = true;
       kids.forEach(function (k) { b.appendChild(k); });
+      var btnDot = __badgeDot(el, scope);
+      if (btnDot) b.appendChild(btnDot);
       // Form submit (Stage 8): a submit button inside a form with a
       // (submit) handler runs that handler, first marking every ngModel
       // input touched (and every control of a reactive group), the
@@ -1751,6 +3091,8 @@ function __buildCore(el, scope, path, form) {
         rtEl.textContent = String(tm);
         row.appendChild(rtEl);
       }
+      var rowDot = __badgeDot(el, scope);
+      if (rowDot) row.appendChild(rowDot);
       __attachEvents(row, el, scope);
       __attachNav(row, el, scope);
       return [row];
@@ -1758,7 +3100,14 @@ function __buildCore(el, scope, path, form) {
     case 'icon': {
       var iconName = __attr(el, 'name', scope);
       if (!iconName) return [];
-      return [__icon(String(iconName), __iconSize(el, scope), __attr(el, 'color', scope))];
+      var iconNode = __icon(String(iconName), __iconSize(el, scope), __attr(el, 'color', scope));
+      var iconDot = __badgeDot(el, scope);
+      if (!iconDot) return [iconNode];
+      var iconBadgeWrap = document.createElement('span');
+      iconBadgeWrap.className = 'icon-badge';
+      iconBadgeWrap.appendChild(iconNode);
+      iconBadgeWrap.appendChild(iconDot);
+      return [iconBadgeWrap];
     }
     case 'fab': {
       var f = wrap('div', 'fab')[0];
@@ -1782,6 +3131,7 @@ function __httpStub() {
 }
 function __resolveDep(token) {
   if (token === 'HttpClient') return __httpStub();
+  if (token === 'SnackBar') return __snackBarObj;
   // Routing tokens (Stage 9): the Router is one shared object over the
   // preview's navigation stack; ActivatedRoute is seeded per route
   // component instance by the outlet (see __buildOutlet), falling back
@@ -1831,10 +3181,11 @@ function __childInstance(path, def, props) {
   def.inputs.forEach(function (n) { if (n in props) inst.state[n] = props[n]; });
   return inst;
 }
-function __childScope(inst, def) {
+function __childScope(inst, def, content) {
   var s = {}, k;
   for (k in inst.state) s[k] = inst.state[k];
   for (k in inst.methods) s[k] = inst.methods[k];
+  s.__content = content;
   // Forms channels (Stage 8), the child instance's own stores.
   s.__state = inst.state;
   s.__touched = inst.touched;
@@ -1863,7 +3214,8 @@ function __buildChild(el, scope, path) {
     inst.fresh = false;
     if (def.onInit && inst.methods[def.onInit]) inst.methods[def.onInit]();
   }
-  var nodes = __buildNodes(def.template.children, __childScope(inst, def), path);
+  var content = { nodes: el.children, scope: scope, outer: scope.__content };
+  var nodes = __buildNodes(def.template.children, __childScope(inst, def, content), path);
   var domEvents = el.eventBindings.filter(function (ev) { return def.outputs.indexOf(ev.name) < 0; });
   if (domEvents.length && nodes[0] && nodes[0].addEventListener) {
     __attachEvents(nodes[0], { eventBindings: domEvents }, scope);
@@ -2008,9 +3360,18 @@ if (ROUTES.length) {
   __navStack = [__matchRoute('') || { path: '', params: {}, routePath: '' }];
 }
 function __render() {
+  __rendering = true;
   var app = document.getElementById('app');
   app.innerHTML = '';
-  __buildNodes(TEMPLATE.children, __scope(), 'root').forEach(function (n) { app.appendChild(n); });
+  var nodes = __buildNodes(TEMPLATE.children, __scope(), 'root');
+  var host = null;
+  nodes.forEach(function (n) {
+    if (!host && n && typeof n.className === 'string' && n.className.split(' ').indexOf('screen') >= 0) host = n;
+  });
+  nodes.forEach(function (n) { app.appendChild(n); });
+  __buildSnackbar(host || app);
+  __rendering = false;
+  if (__asyncDirty) { __asyncDirty = false; __render(); }
 }
 __render();
 `;

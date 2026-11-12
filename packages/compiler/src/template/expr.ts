@@ -253,6 +253,21 @@ export function exprToString(expr: Expr): string {
 export interface ExprToCodeOptions {
   renames?: Map<string, string>;
   refBases?: Map<string, string>;
+  /**
+   * Custom @Pipe classes (Stage 12): pipe name -> the generated
+   * instance variable holding the pipe (`__pipeExclaim`). A pipe use
+   * becomes `<instance>.transform(input, ...args)` instead of the
+   * runtime pipe() helper.
+   */
+  customPipes?: Map<string, string>;
+  /**
+   * Async pipe hoisting (Stage 12): the generated code string of an
+   * async pipe's input expression -> the state variable the generated
+   * subscription hook fills. An `expr | async` whose input code is a
+   * key here compiles to just that variable; the hook lives at the top
+   * of the generated component.
+   */
+  asyncVars?: Map<string, string>;
 }
 
 /** The root identifier of a member/index/call chain, when it has one. */
@@ -310,34 +325,49 @@ function withRefRoots(expr: Expr, refBases: Map<string, string>): Expr {
 
 /**
  * Translate a template expression into generated-code source.
- * Pipes have no RN equivalent yet: they are emitted as a call to a runtime
- * `pipe(name, value, ...args)` helper so the shape stays explicit.
+ * Built-in pipes are emitted as a call to the runtime
+ * `pipe(name, value, ...args)` helper; custom @Pipe classes (Stage 12)
+ * become a transform call on the generated pipe instance, and an
+ * `| async` whose input the generator hoisted becomes the hook's
+ * state variable.
  */
 export function exprToCode(source: string, options: ExprToCodeOptions = {}): string {
   try {
-    let expr = parseExpression(source);
-    if (options.refBases && options.refBases.size) expr = withRefRoots(expr, options.refBases);
-    return codeOf(expr, options.renames);
+    return exprAstToCode(parseExpression(source), options);
   } catch {
     return source.trim(); // fall back to the raw text; diagnostics are raised elsewhere
   }
 }
 
-function codeOf(expr: Expr, renames?: Map<string, string>): string {
+/** Translate an already-parsed expression (Stage 12: the pipe scan shares it). */
+export function exprAstToCode(exprIn: Expr, options: ExprToCodeOptions = {}): string {
+  let expr = exprIn;
+  if (options.refBases && options.refBases.size) expr = withRefRoots(expr, options.refBases);
+  return codeOf(expr, options);
+}
+
+function codeOf(expr: Expr, options: ExprToCodeOptions): string {
+  const renames = options.renames;
   switch (expr.type) {
     case 'pipe': {
-      const args = expr.args.map((a) => codeOf(a, renames)).join(', ');
-      return `pipe('${expr.name}', ${codeOf(expr.input, renames)}${args ? `, ${args}` : ''})`;
+      const inputCode = codeOf(expr.input, options);
+      if (expr.name === 'async' && options.asyncVars?.has(inputCode)) {
+        return options.asyncVars.get(inputCode)!;
+      }
+      const args = expr.args.map((a) => codeOf(a, options)).join(', ');
+      const custom = options.customPipes?.get(expr.name);
+      if (custom) return `${custom}.transform(${inputCode}${args ? `, ${args}` : ''})`;
+      return `pipe('${expr.name}', ${inputCode}${args ? `, ${args}` : ''})`;
     }
-    case 'binary': return `(${codeOf(expr.left, renames)} ${expr.op} ${codeOf(expr.right, renames)})`;
+    case 'binary': return `(${codeOf(expr.left, options)} ${expr.op} ${codeOf(expr.right, options)})`;
     case 'conditional':
-      return `(${codeOf(expr.test, renames)} ? ${codeOf(expr.consequent, renames)} : ${codeOf(expr.alternate, renames)})`;
-    case 'array': return `[${expr.elements.map((el) => codeOf(el, renames)).join(', ')}]`;
+      return `(${codeOf(expr.test, options)} ? ${codeOf(expr.consequent, options)} : ${codeOf(expr.alternate, options)})`;
+    case 'array': return `[${expr.elements.map((el) => codeOf(el, options)).join(', ')}]`;
     case 'identifier': return renames?.get(expr.name) ?? expr.name;
-    case 'member': return `${codeOf(expr.object, renames)}.${expr.property}`;
-    case 'index': return `${codeOf(expr.object, renames)}[${codeOf(expr.index, renames)}]`;
-    case 'call': return `${codeOf(expr.callee, renames)}(${expr.args.map((a) => codeOf(a, renames)).join(', ')})`;
-    case 'unary': return `${expr.op}${codeOf(expr.argument, renames)}`;
+    case 'member': return `${codeOf(expr.object, options)}.${expr.property}`;
+    case 'index': return `${codeOf(expr.object, options)}[${codeOf(expr.index, options)}]`;
+    case 'call': return `${codeOf(expr.callee, options)}(${expr.args.map((a) => codeOf(a, options)).join(', ')})`;
+    case 'unary': return `${expr.op}${codeOf(expr.argument, options)}`;
     case 'literal': return expr.raw;
   }
 }

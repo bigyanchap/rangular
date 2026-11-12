@@ -1,0 +1,56 @@
+<screen>
+  <appbar title="Mailbox Pro"></appbar>
+
+  <row title="Inbox" subtitle="Your mail at a glance" [badge]="unread"></row>
+  <button [badge]="unread" (click)="markAllRead()">Mark all read</button>
+
+  <tabs [index]="tabIndex" (change)="onTab($event)">
+    <tab label="Inbox">
+      <list>
+        <row *ngFor="let m of inboxMails" [title]="m.from" [subtitle]="m.subject"></row>
+      </list>
+    </tab>
+    <tab label="Starred">
+      <list>
+        <row *ngFor="let m of starredMails" [title]="m.from" [subtitle]="m.subject"></row>
+      </list>
+    </tab>
+  </tabs>
+
+  <label>Filters</label>
+  <chips>
+    <chip icon="star">Starred only</chip>
+    <chip *ngFor="let f of filters" removable (remove)="removeFilter(f)">{{ f }}</chip>
+  </chips>
+
+  <label>Move to folder</label>
+  <input [(ngModel)]="moveTo" [options]="folderNames" (optionSelected)="onMove($event)" placeholder="Type a folder name">
+  <p *ngIf="movedTo">Moved to {{ movedTo }}</p>
+
+  <label>Reading</label>
+  <p>Preview lines: {{ previewLines }}</p>
+  <slider min="0" max="3" step="1" [value]="previewLines" (change)="onLines($event)"></slider>
+
+  <label>Folders</label>
+  <table [data]="folders">
+    <column name="name" header="Folder"></column>
+    <column name="count" header="Messages"></column>
+  </table>
+
+  <accordion>
+    <panel title="Storage" subtitle="82% of 15 GB used" [expanded]="true">
+      <p>Storage used</p>
+      <progress-bar [value]="storageUsed"></progress-bar>
+    </panel>
+    <panel title="Sync">
+      <spinner></spinner>
+      <p>Syncing now</p>
+      <progress-bar mode="indeterminate"></progress-bar>
+    </panel>
+  </accordion>
+
+  <panel title="About this mailbox" (toggle)="onAboutToggle($event)">
+    <p>One mailbox, every folder in one place.</p>
+  </panel>
+  <p>About open: {{ aboutOpen }}</p>
+</screen>

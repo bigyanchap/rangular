@@ -140,6 +140,76 @@ outside the project into build output, previews or source maps.
   `--source-map`, and the path boundary now guarantees those contents
   come from inside the project.
 
+## Stage 12 re-audit (2026-11-12)
+
+The closing re-audit re-ran the Stage 5 adversarial method against the
+current compiler, covering the original fixture classes (still green)
+plus every surface Stages 6 to 12 added. Each item below was run
+through the real compiler or CLI with a hostile fixture; the outputs
+are the evidence, and the fixtures are pinned as regression tests in
+`tests/security.test.ts` and `tests/stage12.test.ts`.
+
+### Fixed in this audit
+
+1. **A static `minlength` / `maxlength` attribute could inject code
+   (High).** Validator arguments that arrived as static attributes
+   were emitted raw into the generated `Validators.minLength(...)`
+   call, so `minlength="3); pwned();//"` broke out of the call and
+   injected arbitrary code into the generated component. Binding-form
+   arguments (`[minlength]="expr"`) are the author's own expressions
+   and were never the issue; static attribute text is data. Fix: a
+   static value must be all digits to become an argument; anything
+   else drops that validator with a `GEN_VALIDATOR_ARG` warning.
+   Static `pattern` values were checked in the same pass: they were
+   already emitted through `JSON.stringify` and are safe.
+   (`packages/compiler/src/template/forms.ts`,
+   `packages/compiler/src/codegen/generate.ts`)
+
+### Checked, no finding
+
+- **Icon names.** A static `name` with quotes and markup is not in
+  the icon set, so it fails with `GEN_ICON_UNKNOWN` and never reaches
+  the output as markup. Bound names are the author's expressions.
+- **routerLink strings.** A value carrying quotes and braces is
+  emitted as one escaped string argument to the navigate call; the
+  payload survives only inside the quoted string.
+- **Routes file contents.** The routes file is author code, but its
+  string data (paths, redirects) is re-emitted as a JSON array in the
+  generated navigator construction and through `jsonForScript` in the
+  preview. A path of `x'; pwned();//` round-trips through
+  `JSON.parse` as inert data in both.
+- **Datetime values.** A static `value` with a quote is emitted
+  entity-escaped in the attribute string, the Stage 5 discipline, and
+  the picker parses values as ISO data, never as code.
+- **Autocomplete options.** Options are component data; an option
+  containing `</script><script>alert(1)</script>` reaches the preview
+  only in `jsonForScript`-escaped form, with exactly one script block
+  in the page.
+- **Badge values.** A static `badge` with a quote is entity-escaped
+  into the attribute string like any other static attribute.
+- **Custom pipe names.** A `@Pipe` name is data everywhere it lands:
+  the preview serializes the pipe registry through `jsonForScript`
+  (a name containing a script closer stays escaped), template pipe
+  uses parse as identifiers (a hostile name cannot be written as a
+  pipe use at all), and an unregistered name is a `PIPE_UNKNOWN`
+  error. Pipe class and instance names in generated code derive from
+  the class name, which is the author's own identifier.
+- **Projection children.** Content written inside a child component
+  tag is template content and gets the same treatment as any template
+  text: brace-bearing text is emitted as a string expression and
+  painted as text in the preview.
+- **Attribute directives.** The directive subset extracts style
+  assignments from the directive class (author code) and substitutes
+  host input values as expressions or JSON strings; static attribute
+  values bound to inputs are data and are emitted as quoted strings.
+- **Scaffold paths.** `rangular init --app` with a bare name writes
+  only under `<repoRoot>/apps/<name>`, and bare names are restricted
+  to letters, digits, dot, underscore and hyphen, with `.` and `..`
+  refused outright (`CLI_INIT_UNSAFE`). An explicit path is the
+  caller's own chosen target; every file the scaffold writes is
+  joined under the resolved target directory, and a non-empty target
+  is refused (`CLI_INIT_NOT_EMPTY`) rather than overwritten.
+
 ## The file access boundary rule
 
 When the CLI compiles a component, the project root is the nearest

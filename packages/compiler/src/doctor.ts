@@ -36,7 +36,7 @@ export interface DoctorInput {
   styleTexts: DoctorStyleText[];
 }
 
-const CONTAINER_TAGS = new Set(['screen', 'card', 'list']);
+const CONTAINER_TAGS = new Set(['screen', 'card', 'list', 'sheet', 'dialog', 'tab', 'panel']);
 const HEX_RE = /#[0-9a-fA-F]{3,8}\b/g;
 const DECL_RE = /([a-zA-Z-]+)\s*:\s*(-?\d+(?:\.\d+)?)px/g;
 export const ALLOW_HEX_MARKER = 'doctor: allow-hex';

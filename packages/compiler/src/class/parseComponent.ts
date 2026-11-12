@@ -67,6 +67,63 @@ export interface ServiceInfo {
   fileName: string;
 }
 
+/**
+ * A custom @Pipe class (Stage 12). The compiler registers it by its
+ * pipe `name`, emits the class into the generated file and rewrites
+ * `value | name:args` into a call on one shared instance's transform.
+ */
+export interface PipeInfo {
+  /** The pipe name from @Pipe({ name: '...' }), used after the | in templates. */
+  pipeName: string;
+  className: string;
+  fields: ComponentField[];
+  methods: string[];
+  methodDetails: ComponentMethod[];
+  constructorDeps: ConstructorDep[];
+  constructorBody?: string;
+  /** Bare parameter names of transform(value, ...args), in order. */
+  transformParams: string[];
+  /**
+   * When transform's body is exactly one return statement, the source
+   * text of the returned expression. The preview's static paint can
+   * evaluate that shape with its safe expression evaluator (no eval);
+   * richer bodies run only in the interactive preview and the app.
+   */
+  transformReturn?: string;
+  /** Key of the file this class was read from (the compile.ts registry key). */
+  fileName: string;
+}
+
+/** One @Input field of a directive class. */
+export interface DirectiveInput {
+  name: string;
+  /** Source text of the initializer, when one is written (the default). */
+  initializer?: string;
+}
+
+/**
+ * An attribute @Directive class (Stage 12), the supported subset: a
+ * bracket selector, @Input fields, an ElementRef constructor
+ * dependency, and styling logic in ngOnInit or in a setter for one
+ * input. parseDirective.ts extracts the style assignments.
+ */
+export interface DirectiveInfo {
+  className: string;
+  /** The selector as written, e.g. '[appHighlight]'. */
+  selector?: string;
+  /** The attribute name inside the brackets, when the selector has that shape. */
+  attrName?: string;
+  inputs: DirectiveInput[];
+  /** The constructor property typed ElementRef, when one is injected. */
+  elProp?: string;
+  /** Source text of the ngOnInit body block, when present. */
+  initBody?: string;
+  /** A set accessor: its property, its parameter name, its body block. */
+  setter?: { prop: string; paramName: string; body: string };
+  /** Key of the file this class was read from (the compile.ts registry key). */
+  fileName: string;
+}
+
 export interface ImportInfo {
   /** Named imports, e.g. ['Component', 'Input']. */
   names: string[];
@@ -78,6 +135,10 @@ export interface ImportInfo {
 export interface ClassFileInfo {
   components: ComponentInfo[];
   services: ServiceInfo[];
+  /** Custom @Pipe classes (Stage 12). */
+  pipes: PipeInfo[];
+  /** Attribute @Directive classes (Stage 12). */
+  directives: DirectiveInfo[];
   imports: ImportInfo[];
 }
 
@@ -238,6 +299,97 @@ function readServiceClass(node: ts.ClassDeclaration, sf: ts.SourceFile, fileName
   };
 }
 
+function readPipeClass(node: ts.ClassDeclaration, sf: ts.SourceFile, fileName: string): PipeInfo | undefined {
+  const dec = classDecorators(node).find((d) => decoratorName(d) === 'Pipe');
+  if (!dec || !node.name) return undefined;
+  let pipeName: string | undefined;
+  const arg = decoratorArgs(dec)[0];
+  if (arg && ts.isObjectLiteralExpression(arg)) {
+    for (const prop of arg.properties) {
+      if (!ts.isPropertyAssignment(prop)) continue;
+      const key = prop.name.getText(sf).replace(/['"]/g, '');
+      if (key === 'name') pipeName = stringOf(prop.initializer);
+    }
+  }
+  if (!pipeName) return undefined;
+  const members = readMembers(node, sf);
+  const ctor = readConstructor(node, sf);
+  let transformParams: string[] = [];
+  let transformReturn: string | undefined;
+  for (const member of node.members) {
+    if (!ts.isMethodDeclaration(member) || !member.name || member.name.getText(sf) !== 'transform') continue;
+    transformParams = member.parameters.map((p) => p.name.getText(sf));
+    if (member.body && member.body.statements.length === 1) {
+      const only = member.body.statements[0];
+      if (ts.isReturnStatement(only) && only.expression) {
+        transformReturn = only.expression.getText(sf);
+      }
+    }
+  }
+  return {
+    pipeName,
+    className: node.name.text,
+    fields: members.fields,
+    methods: members.methods,
+    methodDetails: members.methodDetails,
+    constructorDeps: ctor.deps,
+    constructorBody: ctor.body,
+    transformParams,
+    transformReturn,
+    fileName,
+  };
+}
+
+function readDirectiveClass(node: ts.ClassDeclaration, sf: ts.SourceFile, fileName: string): DirectiveInfo | undefined {
+  const dec = classDecorators(node).find((d) => decoratorName(d) === 'Directive');
+  if (!dec || !node.name) return undefined;
+  let selector: string | undefined;
+  const arg = decoratorArgs(dec)[0];
+  if (arg && ts.isObjectLiteralExpression(arg)) {
+    for (const prop of arg.properties) {
+      if (!ts.isPropertyAssignment(prop)) continue;
+      const key = prop.name.getText(sf).replace(/['"]/g, '');
+      if (key === 'selector') selector = stringOf(prop.initializer);
+    }
+  }
+  const info: DirectiveInfo = {
+    className: node.name.text,
+    selector,
+    inputs: [],
+    fileName,
+  };
+  const bracket = selector ? /^\[\s*([A-Za-z][\w-]*)\s*\]$/.exec(selector.trim()) : null;
+  if (bracket) info.attrName = bracket[1];
+  const ctor = readConstructor(node, sf);
+  const elDep = ctor.deps.find((d) => d.typeName === 'ElementRef');
+  if (elDep) info.elProp = elDep.propertyName;
+  for (const member of node.members) {
+    if (ts.isPropertyDeclaration(member) && member.name && hasDecorator(member, 'Input')) {
+      info.inputs.push({
+        name: member.name.getText(sf),
+        initializer: member.initializer ? member.initializer.getText(sf) : undefined,
+      });
+    } else if (ts.isMethodDeclaration(member) && member.name
+      && member.name.getText(sf) === 'ngOnInit' && member.body) {
+      info.initBody = member.body.getText(sf);
+    } else if (ts.isSetAccessorDeclaration(member) && member.name && member.body
+      && member.parameters.length === 1) {
+      info.setter = {
+        prop: member.name.getText(sf),
+        paramName: member.parameters[0].name.getText(sf),
+        body: member.body.getText(sf),
+      };
+      // An @Input() setter is also an input: the host binds it by the
+      // accessor's name, and the setter parameter stands for its value.
+      if (hasDecorator(member, 'Input')
+        && !info.inputs.some((i) => i.name === info.setter!.prop)) {
+        info.inputs.push({ name: info.setter.prop });
+      }
+    }
+  }
+  return info;
+}
+
 /**
  * Read a whole TypeScript file: every @Component class, every @Injectable
  * class and every import statement. Stage 3's registry (compile.ts) follows
@@ -246,7 +398,7 @@ function readServiceClass(node: ts.ClassDeclaration, sf: ts.SourceFile, fileName
  */
 export function parseClassFile(tsSource: string, fileName = 'component.ts'): ClassFileInfo {
   const sf = ts.createSourceFile(fileName, tsSource, ts.ScriptTarget.Latest, /* setParentNodes */ true);
-  const result: ClassFileInfo = { components: [], services: [], imports: [] };
+  const result: ClassFileInfo = { components: [], services: [], pipes: [], directives: [], imports: [] };
   const visit = (node: ts.Node): void => {
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
       const names: string[] = [];
@@ -262,6 +414,10 @@ export function parseClassFile(tsSource: string, fileName = 'component.ts'): Cla
       if (comp) result.components.push(comp);
       const svc = readServiceClass(node, sf, fileName);
       if (svc) result.services.push(svc);
+      const pipe = readPipeClass(node, sf, fileName);
+      if (pipe) result.pipes.push(pipe);
+      const directive = readDirectiveClass(node, sf, fileName);
+      if (directive) result.directives.push(directive);
       return; // classes are not nested further for our purposes
     }
     ts.forEachChild(node, visit);
