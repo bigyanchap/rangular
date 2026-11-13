@@ -1,6 +1,6 @@
 {
   "name": "rangular",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "tags": [
     {
       "tag": "div",
@@ -271,6 +271,111 @@
       "tag": "divider",
       "component": "RgDivider",
       "from": "@rangular/ui"
+    },
+    {
+      "tag": "bottom-nav",
+      "component": "RgBottomNav",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "nav-item",
+      "component": "RgNavItem",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "skeleton",
+      "component": "RgSkeleton",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "row-action",
+      "component": "RgRowAction",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "rating",
+      "component": "RgRating",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "otp",
+      "component": "RgOtp",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "file-picker",
+      "component": "RgFilePicker",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "color-picker",
+      "component": "RgColorPicker",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "editor",
+      "component": "RgEditor",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "carousel",
+      "component": "RgCarousel",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "timeline",
+      "component": "RgTimeline",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "timeline-item",
+      "component": "RgTimelineItem",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "calendar",
+      "component": "RgCalendar",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "avatar",
+      "component": "RgAvatar",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "avatar-group",
+      "component": "RgAvatarGroup",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "empty-state",
+      "component": "RgEmptyState",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "chart",
+      "component": "RgChart",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "image",
+      "component": "RgImage",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "lightbox",
+      "component": "RgLightbox",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "breadcrumbs",
+      "component": "RgBreadcrumbs",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "crumb",
+      "component": "RgCrumb",
+      "from": "@rangular/ui"
     }
   ],
   "events": [
@@ -309,6 +414,14 @@
     {
       "event": "optionSelected",
       "rnProp": "onOptionSelected"
+    },
+    {
+      "event": "refresh",
+      "rnProp": "onRefresh"
+    },
+    {
+      "event": "endReached",
+      "rnProp": "onEndReached"
     },
     {
       "event": "input",
@@ -368,6 +481,18 @@
         },
         {
           "name": "theme",
+          "type": "any"
+        },
+        {
+          "name": "refreshing",
+          "type": "any"
+        },
+        {
+          "name": "onRefresh",
+          "type": "any"
+        },
+        {
+          "name": "onEndReached",
           "type": "any"
         }
       ]
@@ -554,6 +679,10 @@
           "type": "any"
         },
         {
+          "name": "mask",
+          "type": "any"
+        },
+        {
           "name": "style",
           "type": "any"
         }
@@ -698,6 +827,39 @@
         },
         {
           "name": "keyExtractor",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "refreshing",
+          "type": "any"
+        },
+        {
+          "name": "onRefresh",
+          "type": "any"
+        },
+        {
+          "name": "onEndReached",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgRowAction",
+      "props": [
+        {
+          "name": "label",
+          "type": "any"
+        },
+        {
+          "name": "icon",
+          "type": "any"
+        },
+        {
+          "name": "color",
           "type": "any"
         },
         {
@@ -1281,6 +1443,10 @@
           "type": "any"
         },
         {
+          "name": "mode",
+          "type": "any"
+        },
+        {
           "name": "children",
           "type": "any"
         },
@@ -1314,6 +1480,454 @@
           "name": "expanded",
           "type": "any"
         },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgNavItem",
+      "props": [
+        {
+          "name": "icon",
+          "type": "any"
+        },
+        {
+          "name": "label",
+          "type": "any"
+        },
+        {
+          "name": "badge",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgBottomNav",
+      "props": [
+        {
+          "name": "index",
+          "type": "any"
+        },
+        {
+          "name": "onChange",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgSkeleton",
+      "props": [
+        {
+          "name": "shape",
+          "type": "any"
+        },
+        {
+          "name": "width",
+          "type": "any"
+        },
+        {
+          "name": "height",
+          "type": "any"
+        },
+        {
+          "name": "size",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgRating",
+      "props": [
+        {
+          "name": "value",
+          "type": "any"
+        },
+        {
+          "name": "max",
+          "type": "any"
+        },
+        {
+          "name": "disabled",
+          "type": "any"
+        },
+        {
+          "name": "onChange",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgOtp",
+      "props": [
+        {
+          "name": "value",
+          "type": "any"
+        },
+        {
+          "name": "length",
+          "type": "any"
+        },
+        {
+          "name": "disabled",
+          "type": "any"
+        },
+        {
+          "name": "onChange",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgCarousel",
+      "props": [
+        {
+          "name": "index",
+          "type": "any"
+        },
+        {
+          "name": "onChange",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgFilePicker",
+      "props": [
+        {
+          "name": "label",
+          "type": "any"
+        },
+        {
+          "name": "kind",
+          "type": "any"
+        },
+        {
+          "name": "multiple",
+          "type": "any"
+        },
+        {
+          "name": "placeholder",
+          "type": "any"
+        },
+        {
+          "name": "disabled",
+          "type": "any"
+        },
+        {
+          "name": "onChange",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgTimeline",
+      "props": [
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgTimelineItem",
+      "props": [
+        {
+          "name": "title",
+          "type": "any"
+        },
+        {
+          "name": "time",
+          "type": "any"
+        },
+        {
+          "name": "__last",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgCalendar",
+      "props": [
+        {
+          "name": "value",
+          "type": "any"
+        },
+        {
+          "name": "onChange",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgAvatar",
+      "props": [
+        {
+          "name": "text",
+          "type": "any"
+        },
+        {
+          "name": "src",
+          "type": "any"
+        },
+        {
+          "name": "size",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgAvatarGroup",
+      "props": [
+        {
+          "name": "max",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgEmptyState",
+      "props": [
+        {
+          "name": "icon",
+          "type": "any"
+        },
+        {
+          "name": "title",
+          "type": "any"
+        },
+        {
+          "name": "text",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgChart",
+      "props": [
+        {
+          "name": "type",
+          "type": "any"
+        },
+        {
+          "name": "data",
+          "type": "any"
+        },
+        {
+          "name": "width",
+          "type": "any"
+        },
+        {
+          "name": "height",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgEditor",
+      "props": [
+        {
+          "name": "value",
+          "type": "any"
+        },
+        {
+          "name": "label",
+          "type": "any"
+        },
+        {
+          "name": "placeholder",
+          "type": "any"
+        },
+        {
+          "name": "disabled",
+          "type": "any"
+        },
+        {
+          "name": "onChange",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgImage",
+      "props": [
+        {
+          "name": "src",
+          "type": "any"
+        },
+        {
+          "name": "width",
+          "type": "any"
+        },
+        {
+          "name": "height",
+          "type": "any"
+        },
+        {
+          "name": "resize",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgLightbox",
+      "props": [
+        {
+          "name": "open",
+          "type": "any"
+        },
+        {
+          "name": "onClose",
+          "type": "any"
+        },
+        {
+          "name": "src",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgColorPicker",
+      "props": [
+        {
+          "name": "value",
+          "type": "any"
+        },
+        {
+          "name": "label",
+          "type": "any"
+        },
+        {
+          "name": "placeholder",
+          "type": "any"
+        },
+        {
+          "name": "disabled",
+          "type": "any"
+        },
+        {
+          "name": "onChange",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgCrumb",
+      "props": [
+        {
+          "name": "children",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgBreadcrumbs",
+      "props": [
         {
           "name": "children",
           "type": "any"
@@ -1816,7 +2430,7 @@
     },
     {
       "code": "GEN_CONTROL_NESTING",
-      "meaning": "A declaration is nested in the wrong parent; option belongs in switcher or select, radio belongs in radio-group, tab belongs in tabs, column belongs in table, step belongs in stepper, menu-item belongs in menu, grid-tile belongs in grid-list, and tree-node belongs in tree or another tree-node, and those groups (plus accordion, which takes panels only, and menu, which also takes dividers) accept only their own declarations."
+      "meaning": "A declaration is nested in the wrong parent; option belongs in switcher or select, radio belongs in radio-group, tab belongs in tabs, column belongs in table, step belongs in stepper, menu-item belongs in menu, grid-tile belongs in grid-list, tree-node belongs in tree or another tree-node, nav-item belongs in bottom-nav, row-action belongs in row, timeline-item belongs in timeline, avatar belongs in avatar-group, and crumb belongs in breadcrumbs, and those groups (plus accordion, which takes panels only, and menu, which also takes dividers) accept only their own declarations."
     },
     {
       "code": "GEN_ICON_UNKNOWN",
@@ -1871,12 +2485,20 @@
       "meaning": "A <datetime-picker> mode is not one of the three picker modes (date, time, datetime)."
     },
     {
+      "code": "GEN_CHART_TYPE",
+      "meaning": "A <chart> type is not one of the three chart types (bar, line, pie); the chart would draw bars instead."
+    },
+    {
+      "code": "GEN_OTP_LENGTH",
+      "meaning": "An <otp> length is outside the supported 4 to 8; the generated control clamps it to the nearest of the two."
+    },
+    {
       "code": "GEN_PICKER_INTERVAL",
       "meaning": "A <datetime-picker> minuteInterval is not 1 or 5; the generated code uses the nearest of the two."
     },
     {
       "code": "GEN_OVERLAY_OPEN",
-      "meaning": "A <sheet>, <dialog>, <menu> or <drawer> has no [open] binding, so it cannot be opened or closed from the component; it renders statically open."
+      "meaning": "A <sheet>, <dialog>, <menu>, <drawer> or <lightbox> has no [open] binding, so it cannot be opened or closed from the component; it renders statically open."
     },
     {
       "code": "GEN_TOOLTIP_HOST",
@@ -1904,7 +2526,7 @@
     },
     {
       "code": "GEN_BADGE_HOST",
-      "meaning": "A badge attribute or [badge] binding sits on an element that cannot host a badge in this version (button, row and icon can); the badge was dropped."
+      "meaning": "A badge attribute or [badge] binding sits on an element that cannot host a badge in this version (button, row, icon and nav-item can); the badge was dropped."
     },
     {
       "code": "METHOD_UNSUPPORTED",

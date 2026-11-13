@@ -1,0 +1,27 @@
+<screen [refreshing]="refreshing" (refresh)="reload()" (endReached)="loadMore()">
+  <appbar title="Feed"></appbar>
+
+  <p>Pull to refresh and infinite scroll live on the screen here: (refresh) reloads, (endReached) appends the older posts, and [refreshing] drives the native spinner while the class works. In this demo the data is local, so the reload lands at once; in a real app the flag stays up while the fetch runs.</p>
+
+  <button variant="text" (click)="toggleLoading()">Preview the loading skeleton</button>
+  <card *ngIf="loading">
+    <skeleton shape="line" width="180"></skeleton>
+    <skeleton shape="line"></skeleton>
+    <skeleton shape="block" height="72"></skeleton>
+  </card>
+
+  <list *ngIf="!loading">
+    <row avatar *ngFor="let m of posts" [title]="m.from" [subtitle]="m.subject" [detail]="m.snippet" [time]="m.time">
+      <row-action icon="star" (click)="star(m.subject)">Star</row-action>
+      <row-action icon="delete" color="error" (click)="remove(m.subject)">Delete</row-action>
+    </row>
+  </list>
+  <p *ngIf="lastAction">{{ lastAction }}</p>
+
+  <bottom-nav [index]="tab" (change)="onTab($event)">
+    <nav-item icon="home" label="Home"></nav-item>
+    <nav-item icon="mail" label="Mail" badge="3"></nav-item>
+    <nav-item icon="bell" label="Alerts"></nav-item>
+    <nav-item icon="person" label="Profile"></nav-item>
+  </bottom-nav>
+</screen>

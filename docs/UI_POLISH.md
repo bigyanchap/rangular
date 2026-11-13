@@ -247,3 +247,16 @@ Tutorial app, from screenshots on a real phone:
   is the same hairline the panels and tables use, and tooltips are
   small dark bubbles in the snackbar's colours. No new colours, no
   new radii, no springs.
+- Stage 15 (2026-11-13) added the beyond-Angular pieces on the
+  same discipline of reuse: the bottom navigation bar is the
+  surface and hairline language with the tab selection colour, the
+  skeleton pulses on surface variant (no new loading colour), the
+  colour picker reuses the select's field and bottom sheet and the
+  swatches are data colours from the shared palette, the lightbox
+  reuses the overlay scrim (deepened) with a surface close chip,
+  the timeline rides the row rhythm on a hairline rail, the
+  calendar's selected day reuses the filled primary circle of the
+  stepper, the editor reuses the input field, swipe actions slide
+  with a plain timing settle, and avatar initials sit on the
+  theme's avatar colour. No new colours beyond the data palette,
+  no new radii, no springs.

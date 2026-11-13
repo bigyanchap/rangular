@@ -1,0 +1,34 @@
+<screen>
+  <appbar title="Forms Plus"></appbar>
+
+  <p>The Tier 2 controls, each on the Stage 6 contract: a value in, a (change) out. The phone field is an ordinary input carrying a mask; the rating, the code input and the carousel hold their own values; the picker hands back the files it chose.</p>
+
+  <input label="Phone" mask="(999) 999-9999" placeholder="(555) 123-4567" [value]="phone" (change)="onPhone($event)">
+  <p>Phone so far: {{ phone }}</p>
+
+  <label>How was the session?</label>
+  <rating [value]="score" (change)="onScore($event)"></rating>
+  <p *ngIf="score">You rated it {{ score }} of 5.</p>
+
+  <label>Enter the six digit code</label>
+  <otp length="6" [value]="code" (change)="onCode($event)"></otp>
+  <p *ngIf="code.length === 6">Code complete: {{ code }}</p>
+
+  <carousel [index]="page" (change)="onPage($event)">
+    <card>
+      <h3>One</h3>
+      <p>The first page of the carousel. Pages are plain projected content; swipe, or tap the dots in the preview.</p>
+    </card>
+    <card>
+      <h3>Two</h3>
+      <p>The second page. The index is yours when you bind it, as here.</p>
+    </card>
+    <card>
+      <h3>Three</h3>
+      <p>The third page. Page {{ page + 1 }} of 3 is showing.</p>
+    </card>
+  </carousel>
+
+  <file-picker label="Attach a photo" kind="image" (change)="onFiles($event)">Choose a photo</file-picker>
+  <p *ngIf="picked">Picked: {{ picked }}</p>
+</screen>

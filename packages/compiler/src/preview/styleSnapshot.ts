@@ -138,6 +138,33 @@ function allRoles(mode: ThemeMode): Record<string, StyleRecord> {
     textTitle: { fontSize: ty.title.fontSize, lineHeight: ty.title.lineHeight, fontWeight: 600 },
     textBody: { fontSize: ty.bodyLarge.fontSize, lineHeight: ty.bodyLarge.lineHeight, color: c.text },
     textLabel: { fontSize: ty.label.fontSize, lineHeight: ty.label.lineHeight, fontWeight: 600 },
+    // Stage 15 roles: the beyond-Angular pieces. Token values
+    // only, mirroring the primitive styles of the same names.
+    bottomNav: { background: c.surface, borderColor: c.border },
+    navItem: { color: c.textMuted, selectedColor: c.primary, fontSize: ty.caption.fontSize },
+    skeleton: { background: c.surfaceVariant, borderRadius: t.radius.lg },
+    swipeAction: { background: c.primary, color: c.onPrimary, width: 72 },
+    rating: { color: c.primary, size: 28 },
+    otp: {
+      borderColor: c.outline, activeBorderColor: c.primary, borderRadius: t.radius.sm,
+      width: 44, height: 52, fontSize: ty.heading.fontSize,
+    },
+    carousel: { dotBackground: c.border, activeDotBackground: c.primary, dotSize: 8 },
+    timeline: { dotBackground: c.primary, lineBackground: c.border, dotSize: 12 },
+    calendar: {
+      selectedBackground: c.primary, selectedColor: c.onPrimary,
+      todayColor: c.primary, fontSize: ty.body.fontSize,
+    },
+    avatarFace: { background: c.avatar, color: c.onAvatar },
+    avatarGroup: { ringColor: c.background, overlap: -10 },
+    emptyState: { iconBackground: c.surfaceVariant, titleColor: c.text, textColor: c.textMuted },
+    editor: { borderColor: c.border, background: c.surface, minHeight: 96 },
+    image: { borderRadius: t.radius.md },
+    lightbox: { closeBackground: c.surface, closeColor: c.text },
+    colorPicker: { borderColor: c.outline, borderRadius: t.radius.sm, swatchSize: 44 },
+    breadcrumbs: { color: c.primary, currentColor: c.text, separatorColor: c.textMuted },
+    chart: { labelColor: c.textMuted, labelFontSize: 12 },
+    masonry: { gap: t.spacing.sm },
   };
 }
 
@@ -149,7 +176,11 @@ function rolesForElement(el: ElementNode): string[] {
     case 'card': return ['card'];
     case 'button': return ['button'];
     case 'list': return ['list'];
-    case 'row': return el.booleanAttrs.includes('avatar') ? ['row', 'rowAvatar'] : ['row'];
+    case 'row': {
+      const roles = el.booleanAttrs.includes('avatar') ? ['row', 'rowAvatar'] : ['row'];
+      if (el.children.some((n) => n.type === 'element' && n.tag === 'row-action')) roles.push('swipeAction');
+      return roles;
+    }
     case 'h1': return ['textDisplay'];
     case 'h2': return ['textHeading'];
     case 'h3': return ['textTitle'];
@@ -182,6 +213,25 @@ function rolesForElement(el: ElementNode): string[] {
     case 'grid-tile': return ['gridTile'];
     case 'tree-node': return ['treeNode'];
     case 'span': return el.attrs['class'] === 'badge' ? ['badge'] : [];
+    // Stage 15 roles.
+    case 'bottom-nav': return ['bottomNav', 'navItem'];
+    case 'skeleton': return ['skeleton'];
+    case 'rating': return ['rating'];
+    case 'otp': return ['otp'];
+    case 'carousel': return ['carousel'];
+    case 'timeline-item': return ['timeline'];
+    case 'calendar': return ['calendar'];
+    case 'avatar': return ['avatarFace'];
+    case 'avatar-group': return ['avatarGroup', 'avatarFace'];
+    case 'empty-state': return ['emptyState'];
+    case 'editor': return ['editor', 'input'];
+    case 'image': return ['image'];
+    case 'lightbox': return ['lightbox'];
+    case 'color-picker': return ['colorPicker', 'picker'];
+    case 'breadcrumbs': return ['breadcrumbs'];
+    case 'chart': return ['chart'];
+    case 'grid-list': return el.attrs['mode'] === 'masonry' ? ['masonry', 'gridTile'] : [];
+    case 'file-picker': return ['picker'];
     default: return [];
   }
 }

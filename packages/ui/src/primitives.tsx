@@ -21,8 +21,10 @@ import {
   Animated,
   Easing,
   FlatList,
+  Image,
   PanResponder,
   Pressable,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -30,14 +32,20 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Svg, Path } from 'react-native-svg';
+import { Svg, Path, Rect, Circle, Text as SvgText } from 'react-native-svg';
 import { theme as makeTheme } from './tokens';
 import type { Theme } from './tokens';
 import { ICON_PATHS } from './icons';
+import { applyMask } from './mask';
+import { chartModel } from './chart';
+import type { ChartShape } from './chart';
+import { COLOR_SWATCHES } from './palette';
 import {
+  MONTH_SHORT,
   applyWheelValue,
   composeDateTimeIso,
   dateTimeWheels,
+  daysInMonth,
   formatDateTimeValue,
   nowParts,
   parseDateTimeValue,
@@ -531,17 +539,194 @@ function buildStyles(t: Theme) {
       gap: t.spacing.sm, paddingTop: t.spacing.sm,
     },
     tablePagerText: { fontSize: t.typography.caption.fontSize, color: c.textMuted },
+    // Stage 15: the pieces real apps use that Angular never
+    // shipped. Bottom navigation is a surface bar with a hairline
+    // on top; the refresh row is just the spinner centred; the
+    // skeleton is a surface variant shape (its pulse is animated
+    // in the primitive, a plain timing loop, no spring).
+    bottomNav: {
+      flexDirection: 'row', backgroundColor: c.surface,
+      borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border,
+      paddingVertical: t.spacing.xs, ...t.elevation.level2,
+    },
+    navItem: {
+      flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center',
+      gap: t.spacing.xs, paddingVertical: t.spacing.xs,
+    },
+    navItemIconWrap: { position: 'relative' },
+    navItemLabel: { fontSize: t.typography.caption.fontSize, color: c.textMuted },
+    navItemLabelSelected: { color: c.primary, fontWeight: '600' },
+    refreshRow: { alignItems: 'center', paddingVertical: t.spacing.sm },
+    skeleton: { backgroundColor: c.surfaceVariant },
+    // Swipe actions (Stage 15): the tray sits behind the row at
+    // its end edge; each action is a 72 wide coloured block.
+    rowWrap: { position: 'relative', overflow: 'hidden' },
+    swipeTray: { position: 'absolute', right: 0, top: 0, bottom: 0, flexDirection: 'row' },
+    swipeAction: {
+      width: 72, alignItems: 'center', justifyContent: 'center', gap: t.spacing.xs,
+      backgroundColor: c.primary,
+    },
+    swipeActionLabel: { color: c.onPrimary, fontSize: t.typography.caption.fontSize, fontWeight: '600' },
+    // Rating and OTP (Stage 15): stars are icon buttons in a row;
+    // OTP boxes are input boxes in a row with one hidden field
+    // over them taking the actual typing.
+    rating: { flexDirection: 'row', gap: t.spacing.xs, paddingVertical: t.spacing.xs },
+    ratingStar: { padding: t.spacing.xs },
+    otpRow: { flexDirection: 'row', gap: t.spacing.sm },
+    otpBox: {
+      width: 44, height: 52, borderWidth: 1, borderColor: c.outline,
+      borderRadius: t.radius.sm, backgroundColor: c.surface,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    otpBoxActive: { borderColor: c.primary, borderWidth: 2 },
+    otpDigit: { fontSize: t.typography.heading.fontSize, color: c.text, fontWeight: '600' },
+    otpHiddenInput: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, opacity: 0 },
+    // Carousel (Stage 15): pages plus a dots row.
+    carouselDots: {
+      flexDirection: 'row', justifyContent: 'center', gap: t.spacing.xs,
+      paddingTop: t.spacing.sm,
+    },
+    carouselDot: { width: 8, height: 8, borderRadius: t.radius.full, backgroundColor: c.outline },
+    carouselDotActive: { backgroundColor: c.primary },
+    // Timeline (Stage 15): a rail column (dot plus connecting
+    // line) beside the item body, in the row rhythm.
+    timelineItem: { flexDirection: 'row', gap: t.spacing.md },
+    timelineRail: { alignItems: 'center', width: 24 },
+    timelineDot: {
+      width: 12, height: 12, borderRadius: t.radius.full,
+      backgroundColor: c.primary, marginTop: 5,
+    },
+    timelineLine: { flex: 1, width: 2, backgroundColor: c.border, marginTop: t.spacing.xs },
+    timelineBody: { flex: 1, paddingBottom: t.spacing.lg },
+    timelineHead: { flexDirection: 'row', alignItems: 'baseline', gap: t.spacing.md },
+    timelineTitle: { flex: 1, fontSize: t.typography.body.fontSize, fontWeight: '600', color: c.text },
+    timelineTime: { fontSize: t.typography.caption.fontSize, color: c.textMuted },
+    // Calendar (Stage 15): a month grid of seventh-width cells;
+    // the selected day is a filled circle, today is primary text.
+    calendarHead: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      marginBottom: t.spacing.sm,
+    },
+    calendarTitle: { fontSize: t.typography.title.fontSize, fontWeight: '600', color: c.text },
+    calendarWeek: { flexDirection: 'row' },
+    calendarWeekCell: {
+      width: '14.2857%', textAlign: 'center', fontSize: t.typography.caption.fontSize,
+      fontWeight: '600', color: c.textMuted, paddingVertical: t.spacing.xs,
+    },
+    calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+    calendarCell: { width: '14.2857%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
+    calendarDay: { fontSize: t.typography.body.fontSize, color: c.text },
+    calendarDayToday: { color: c.primary, fontWeight: '700' },
+    calendarDaySelected: {
+      width: 36, height: 36, borderRadius: t.radius.full, backgroundColor: c.primary,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    calendarDaySelectedText: { color: c.onPrimary, fontWeight: '600' },
+    // Avatar group (Stage 15): overlapping circles with a ring
+    // in the screen background colour.
+    avatarGroup: { flexDirection: 'row', alignItems: 'center' },
+    avatarRing: {
+      borderWidth: 2, borderColor: c.background, borderRadius: t.radius.full,
+    },
+    // Empty state (Stage 15): a centred column, the icon in a
+    // soft circle, one title, one line, then the action.
+    emptyState: { alignItems: 'center', gap: t.spacing.md, paddingVertical: t.spacing.xxxl },
+    emptyIconCircle: {
+      width: 72, height: 72, borderRadius: t.radius.full, backgroundColor: c.surfaceVariant,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    emptyTitle: {
+      fontSize: t.typography.title.fontSize, fontWeight: '600', color: c.text, textAlign: 'center',
+    },
+    emptyText: { fontSize: t.typography.body.fontSize, color: c.textMuted, textAlign: 'center' },
+    // Editor (Stage 15): a toolbar row over a tall input field.
+    editorToolbar: { flexDirection: 'row', gap: t.spacing.sm, marginBottom: t.spacing.sm },
+    editorTool: {
+      paddingHorizontal: t.spacing.md, minHeight: 36, borderRadius: t.radius.full,
+      borderWidth: 1, borderColor: c.border, alignItems: 'center', justifyContent: 'center',
+    },
+    editorToolLabel: { fontSize: t.typography.label.fontSize, color: c.primary, fontWeight: '600' },
+    editorArea: { minHeight: 120, textAlignVertical: 'top' },
+    // Lightbox (Stage 15): the photo centred over the scrim,
+    // the close button a surface chip at the top end corner.
+    lightboxImage: { width: '100%', height: '72%' },
+    lightboxClose: {
+      position: 'absolute', top: t.spacing.xxl, right: t.spacing.lg, zIndex: 2,
+      backgroundColor: c.surface, borderRadius: t.radius.full, padding: t.spacing.sm,
+    },
+    lightboxCaption: { paddingHorizontal: t.spacing.lg, paddingTop: t.spacing.md, alignItems: 'center' },
+    // Colour picker (Stage 15): a swatch chip in the field and a
+    // grid of swatches in the sheet.
+    colorSwatchChip: {
+      width: 24, height: 24, borderRadius: t.radius.sm,
+      borderWidth: 1, borderColor: c.border,
+    },
+    swatchGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm, paddingVertical: t.spacing.sm },
+    swatch: { width: 44, height: 44, borderRadius: t.radius.md, borderWidth: 1, borderColor: c.border },
+    swatchSelected: { borderColor: c.primary, borderWidth: 3 },
+    // Breadcrumbs (Stage 15): a wrapping row of links joined by
+    // chevrons; the last crumb is the current page, plain text.
+    breadcrumbs: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: t.spacing.xs },
+    crumbLabel: { fontSize: t.typography.body.fontSize, color: c.primary },
+    crumbCurrent: { fontSize: t.typography.body.fontSize, color: c.text, fontWeight: '600' },
+    // Masonry (Stage 15): columns of stacked tiles, the grid
+    // list's uneven mode.
+    masonry: { flexDirection: 'row', gap: t.spacing.sm },
+    masonryCol: { flex: 1, flexDirection: 'column', gap: t.spacing.sm },
   });
 }
 
-export function RgScreen({ children, style, theme: mode }: any) {
+/**
+ * An end-reached scroll handler (Stage 15, infinite scroll): the
+ * callback fires when the scroll comes within 48 of the end, once
+ * per content size; when the content grows (the next page landed)
+ * it may fire again. Shared by RgScreen and RgList, the two
+ * scrollers. This is the contract ngx-infinite-scroll sells as an
+ * add-on in Angular; here it is one prop on the scroller.
+ */
+function endReachedScrollHandler(onEndReached?: () => void) {
+  let firedFor = -1;
+  return (e: any): void => {
+    if (!onEndReached) return;
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent ?? {};
+    if (!layoutMeasurement || !contentOffset || !contentSize) return;
+    const near = layoutMeasurement.height + contentOffset.y >= contentSize.height - 48;
+    if (near && firedFor !== contentSize.height) {
+      firedFor = contentSize.height;
+      onEndReached();
+    }
+  };
+}
+
+export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, onEndReached }: any) {
   const inherited = useRgTheme();
   const active = mode === 'dark' || mode === 'light' ? makeTheme(mode) : inherited;
   const styles = stylesFor(active);
+  const onScroll = useRef(endReachedScrollHandler(onEndReached)).current;
+  // A bottom navigation bar is a screen child in the template but
+  // not a scrolling one: the screen lifts it out of the ScrollView
+  // and pins it under the content, the way a real app shell does.
+  const kids = React.Children.toArray(children);
+  const navs = kids.filter(
+    (k) => React.isValidElement(k) && (k as React.ReactElement<any>).type === RgBottomNav,
+  );
+  const body = kids.filter(
+    (k) => !(React.isValidElement(k) && (k as React.ReactElement<any>).type === RgBottomNav),
+  );
   return (
     <RgThemeContext.Provider value={active}>
       <SafeAreaView style={[styles.screen, style]}>
-        <ScrollView contentContainerStyle={styles.screenContent}>{children}</ScrollView>
+        <ScrollView
+          contentContainerStyle={styles.screenContent}
+          refreshControl={onRefresh
+            ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} />
+            : undefined}
+          onScroll={onEndReached ? onScroll : undefined}
+          scrollEventThrottle={64}
+        >
+          {body}
+        </ScrollView>
+        {navs}
       </SafeAreaView>
     </RgThemeContext.Provider>
   );
@@ -678,7 +863,7 @@ export function RgButton({ children, disabled, onPress, badge, style, variant, t
  * `secure` is the password form of the template's type attribute;
  * keyboardType passes the template's email/number choice through.
  */
-export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, label, error, disabled, secure, keyboardType, options, onOptionSelected, style }: any) {
+export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, label, error, disabled, secure, keyboardType, options, onOptionSelected, mask, style }: any) {
   const t = useRgTheme();
   const styles = stylesFor(t);
   // Autocomplete (Stage 11): while the field is focused and its text
@@ -706,8 +891,10 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
       <View style={styles.inputAnchor}>
         <TextInput
           style={[styles.inputField, error ? styles.inputFieldError : null, disabled ? styles.inputDisabled : null]}
-          value={value}
-          onChangeText={onChangeText}
+          value={mask ? applyMask(text, String(mask)) : value}
+          onChangeText={mask
+            ? (next: string) => onChangeText?.(applyMask(next, String(mask)))
+            : onChangeText}
           onFocus={() => { setFocused(true); onFocus?.(); }}
           onBlur={() => { setFocused(false); onBlur?.(); }}
           placeholder={placeholder}
@@ -883,16 +1070,132 @@ export function RgRadioGroup({ value, disabled, onChange, children, style }: any
   );
 }
 
-export function RgList({ data, renderItem, keyExtractor, children }: any) {
+export function RgList({ data, renderItem, keyExtractor, children, refreshing, onRefresh, onEndReached }: any) {
+  const onScroll = useRef(endReachedScrollHandler(onEndReached)).current;
   // Generated code (Stage 2) renders rows as children, e.g. a *ngFor map,
   // rather than via FlatList's data/renderItem. Support both shapes.
-  if (children) return <View>{children}</View>;
+  // Stage 15: a list that refreshes or pages becomes its own
+  // scroller (RefreshControl plus the shared end-reached handler);
+  // a plain list stays a plain View inside the screen's scroll.
+  if (children) {
+    if (onRefresh || onEndReached) {
+      return (
+        <ScrollView
+          refreshControl={onRefresh
+            ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} />
+            : undefined}
+          onScroll={onEndReached ? onScroll : undefined}
+          scrollEventThrottle={64}
+        >
+          {children}
+        </ScrollView>
+      );
+    }
+    return <View>{children}</View>;
+  }
   return (
     <FlatList
       data={data}
       renderItem={renderItem}
       keyExtractor={keyExtractor ?? ((item: any, index: number) => String(item?.id ?? index))}
+      refreshControl={onRefresh
+        ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} />
+        : undefined}
+      onEndReached={onEndReached}
+      onEndReachedThreshold={0.4}
     />
+  );
+}
+
+/** Marker for one swipe action of an RgRow. The row reads its props. */
+export function RgRowAction({ label, icon, color, children }: any) {
+  void label;
+  void icon;
+  void color;
+  void children;
+  return null;
+}
+
+/** The swipe actions a row's children declare (Stage 15), in order. */
+function rowActionsOf(children: unknown): { label: string; icon?: string; color?: string; onPress?: () => void }[] {
+  return React.Children.toArray(children as any)
+    .filter((child) => React.isValidElement(child))
+    .filter((child) => (child as React.ReactElement<any>).type === RgRowAction)
+    .map((child) => {
+      const el = child as React.ReactElement<any>;
+      return {
+        label: el.props.label !== undefined ? String(el.props.label) : declarationText(el.props.children),
+        icon: el.props.icon,
+        color: el.props.color,
+        onPress: el.props.onPress,
+      };
+    });
+}
+
+/**
+ * A row with swipe actions (Stage 15), internal: the actions sit in
+ * a tray behind the row's end edge, and a horizontal pan slides the
+ * row over them (a plain timing settle, the house motion rule, no
+ * spring, so the row cannot overshoot the tray). A tap still works:
+ * the responder only claims a gesture that is clearly more
+ * horizontal than vertical. Choosing an action runs it and closes
+ * the row. The sliding content carries the screen background, the
+ * surface lists sit on; a row with actions belongs in a list, not
+ * inside a card.
+ */
+function SwipeRow({ actions, children }: any) {
+  const t = useRgTheme();
+  const styles = stylesFor(t);
+  const trayWidth = actions.length * 72;
+  const shift = useRef(new Animated.Value(0)).current;
+  const openRef = useRef(false);
+  const settle = (open: boolean): void => {
+    openRef.current = open;
+    Animated.timing(shift, {
+      toValue: open ? -trayWidth : 0, duration: 160,
+      easing: Easing.linear, useNativeDriver: false,
+    }).start();
+  };
+  const responder = useRef(PanResponder.create({
+    onMoveShouldSetPanResponder: (_e: any, g: any) =>
+      Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
+    onPanResponderMove: (_e: any, g: any) => {
+      const base = openRef.current ? -trayWidth : 0;
+      shift.setValue(Math.min(0, Math.max(-trayWidth, base + g.dx)));
+    },
+    onPanResponderRelease: (_e: any, g: any) => {
+      const base = openRef.current ? -trayWidth : 0;
+      settle(base + g.dx < -trayWidth / 2);
+    },
+    onPanResponderTerminate: () => settle(openRef.current),
+  })).current;
+  return (
+    <View style={styles.rowWrap}>
+      <View style={styles.swipeTray}>
+        {actions.map((a, i) => {
+          const bg = a.color
+            ? ((t.colors as unknown as Record<string, string>)[a.color] ?? a.color)
+            : undefined;
+          return (
+            <Pressable
+              key={i}
+              style={[styles.swipeAction, bg ? { backgroundColor: bg } : null]}
+              onPress={() => { settle(false); a.onPress?.(); }}
+              accessibilityRole="button"
+            >
+              {a.icon ? <RgIcon name={a.icon} size={24} color="onPrimary" /> : null}
+              {a.label ? <Text style={styles.swipeActionLabel}>{a.label}</Text> : null}
+            </Pressable>
+          );
+        })}
+      </View>
+      <Animated.View
+        style={{ transform: [{ translateX: shift }], backgroundColor: t.colors.background }}
+        {...responder.panHandlers}
+      >
+        {children}
+      </Animated.View>
+    </View>
   );
 }
 
@@ -922,8 +1225,9 @@ export function RgRow({ title, subtitle, detail, time, avatar, onPress, badge, t
   // template) is a Pressable; a row without one stays a plain View, so
   // static lists pay nothing for the affordance. A tooltip makes the
   // row a Pressable too, for the long press that shows the bubble.
+  let inner: React.ReactNode;
   if (onPress || tip.show) {
-    return (
+    inner = (
       <View style={styles.tooltipWrap}>
         <Pressable onPress={onPress} onLongPress={tip.show} style={({ pressed }: any) => [styles.row, pressed && { opacity: 0.7 }]}>
           {content}
@@ -931,8 +1235,15 @@ export function RgRow({ title, subtitle, detail, time, avatar, onPress, badge, t
         {tip.bubble}
       </View>
     );
+  } else {
+    inner = <View style={styles.row}>{content}</View>;
   }
-  return <View style={styles.row}>{content}</View>;
+  // Swipe actions (Stage 15): <row-action> declarations among the
+  // row's children turn the row into a SwipeRow; the declarations
+  // themselves render nothing in the content (the marker is null).
+  const actions = rowActionsOf(children);
+  if (!actions.length) return inner;
+  return <SwipeRow actions={actions}>{inner}</SwipeRow>;
 }
 
 /**
@@ -1843,9 +2154,35 @@ export function RgGridTile({ __widthPct, children, style }: any) {
  * `cols` columns (default 2), each tile taking an equal share of
  * the row. Tiles hold any content; the list only arranges them.
  */
-export function RgGridList({ cols, children, style }: any) {
+export function RgGridList({ cols, mode, children, style }: any) {
   const styles = stylesFor(useRgTheme());
   const n = Number.isFinite(Number(cols)) && Number(cols) > 0 ? Math.floor(Number(cols)) : 2;
+  // Masonry (Stage 15): mode="masonry" is the same tag and the same
+  // tiles with uneven heights: the tiles are dealt into `cols`
+  // columns in order and each column stacks its own tiles, so a
+  // tall tile pushes only its own column down (the Pinterest
+  // pattern). It is a mode of grid-list, not a sibling tag, because
+  // the vocabulary (cols, tiles) is identical; only the arrangement
+  // changes.
+  if (mode === 'masonry') {
+    const tiles = React.Children.toArray(children)
+      .filter((child) => React.isValidElement(child));
+    const columns: React.ReactElement<any>[][] = Array.from({ length: n }, () => []);
+    tiles.forEach((tile, i) => { columns[i % n].push(tile as React.ReactElement<any>); });
+    return (
+      <View style={[styles.masonry, style]}>
+        {columns.map((colTiles, ci) => (
+          <View key={ci} style={styles.masonryCol}>
+            {colTiles.map((tile, ti) => (
+              <View key={ti} style={styles.gridTile}>
+                {tile.type === RgGridTile ? tile.props.children : tile}
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
+    );
+  }
   const pct = 100 / n;
   return (
     <View style={[styles.gridList, style]}>
@@ -1885,6 +2222,856 @@ export function RgTreeNode({ label, expanded, children, style }: any) {
         <Text style={styles.treeNodeLabel}>{label}</Text>
       </Pressable>
       {hasKids && open ? <View style={styles.treeChildren}>{children}</View> : null}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Stage 15: beyond Angular. The pieces real apps use constantly that
+// Angular itself never shipped (the 2026-11-13 beyond-Angular
+// audit): bottom navigation, pull to refresh and infinite scroll
+// (on RgScreen and RgList above), skeletons, swipe row actions
+// (RgRow above), the picker, rating, OTP, carousel, timeline,
+// calendar, avatars, empty state, charts, a small editor, image
+// and lightbox, colour picker and breadcrumbs. The declaration
+// pattern is the house one throughout: group primitives read their
+// declaration children, and a declaration renders nothing alone.
+
+/** Marker for one destination of RgBottomNav. The bar reads its props. */
+export function RgNavItem({ icon, label, badge, children }: any) {
+  void icon;
+  void label;
+  void badge;
+  void children;
+  return null;
+}
+
+/**
+ * The bottom navigation bar: three to five destinations at the
+ * bottom of the screen, in thumb reach, the primary navigation of
+ * nearly every phone app and a component Angular Material never
+ * shipped. `<bottom-nav [index] (change)>` follows the tabs
+ * contract; each `<nav-item icon="home" label="Home">` may carry a
+ * routerLink or a (click) (composed by the compiler into the item's
+ * onPress, as on rows and buttons), and tapping it selects it,
+ * runs its own press, and reports the index through (change).
+ * RgScreen lifts the bar out of the scrolling content and pins it
+ * under the screen. An item may carry a badge count.
+ */
+export function RgBottomNav({ index, onChange, children, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  const items = React.Children.toArray(children)
+    .filter((child) => React.isValidElement(child))
+    .filter((child) => (child as React.ReactElement<any>).type === RgNavItem)
+    .map((child) => {
+      const el = child as React.ReactElement<any>;
+      return { icon: el.props.icon, label: el.props.label, badge: el.props.badge, onPress: el.props.onPress };
+    });
+  const [internal, setInternal] = useState(0);
+  const controlled = typeof index === 'number';
+  const active = controlled
+    ? Math.min(Math.max(index, 0), Math.max(items.length - 1, 0))
+    : Math.min(internal, Math.max(items.length - 1, 0));
+  const select = (i: number): void => {
+    if (!controlled) setInternal(i);
+    items[i]?.onPress?.();
+    onChange?.(i);
+  };
+  return (
+    <View style={[styles.bottomNav, style]}>
+      {items.map((item, i) => {
+        const selected = i === active;
+        return (
+          <Pressable
+            key={i}
+            onPress={() => select(i)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            style={styles.navItem}
+          >
+            <View style={styles.navItemIconWrap}>
+              {item.icon ? (
+                <RgIcon name={item.icon} size={24} color={selected ? 'primary' : 'textMuted'} />
+              ) : null}
+              <BadgeDot value={item.badge} styles={styles} offset={{ top: -6, right: -10 }} />
+            </View>
+            {item.label ? (
+              <Text style={[styles.navItemLabel, selected && styles.navItemLabelSelected]}>
+                {String(item.label)}
+              </Text>
+            ) : null}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/**
+ * A skeleton placeholder (Stage 15): a surface variant shape that
+ * pulses while content loads, in the layout the content will take.
+ * `shape` is line (the default, a text line), block (a rectangle,
+ * `height` tall) or circle (`size` across). The pulse is a plain
+ * timing loop between two opacities, the house motion rule.
+ * Compose skeletons inside cards and rows where real content goes;
+ * when the data lands, swap them out with *ngIf.
+ */
+export function RgSkeleton({ shape = 'line', width, height, size, style }: any) {
+  const t = useRgTheme();
+  const styles = stylesFor(t);
+  const pulse = useRef(new Animated.Value(0.55)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(pulse, { toValue: 1, duration: 700, easing: Easing.linear, useNativeDriver: false }),
+      Animated.timing(pulse, { toValue: 0.55, duration: 700, easing: Easing.linear, useNativeDriver: false }),
+    ]));
+    loop.start();
+    return () => { loop.stop(); };
+  }, [pulse]);
+  const w = Number(width);
+  const h = Number(height);
+  const d = Number(size);
+  let dims: Record<string, unknown>;
+  if (shape === 'circle') {
+    const diameter = Number.isFinite(d) && d > 0 ? d : 40;
+    dims = { width: diameter, height: diameter, borderRadius: t.radius.full };
+  } else if (shape === 'block') {
+    dims = {
+      width: Number.isFinite(w) && w > 0 ? w : '100%',
+      height: Number.isFinite(h) && h > 0 ? h : 96,
+      borderRadius: t.radius.lg,
+    };
+  } else {
+    dims = {
+      width: Number.isFinite(w) && w > 0 ? w : '100%',
+      height: Number.isFinite(h) && h > 0 ? h : 14,
+      borderRadius: t.radius.sm,
+    };
+  }
+  return <Animated.View style={[styles.skeleton, dims, { opacity: pulse }, style]} />;
+}
+
+/**
+ * The star rating control (Stage 15): `[value]` in, `(change)` out
+ * with the tapped star's number, the Stage 6 controls contract.
+ * Stars are the icon set's star, filled in the primary colour up
+ * to the value and muted beyond it; there are no half stars in
+ * this version. `max` defaults to 5.
+ */
+export function RgRating({ value, max, disabled, onChange, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  const n = Number.isFinite(Number(max)) && Number(max) > 0
+    ? Math.min(10, Math.floor(Number(max))) : 5;
+  const current = Number.isFinite(Number(value)) ? Number(value) : 0;
+  return (
+    <View style={[styles.rating, style]} accessibilityRole="adjustable"
+      accessibilityValue={{ min: 0, max: n, now: current }}>
+      {Array.from({ length: n }, (_, i) => i + 1).map((star) => (
+        <Pressable
+          key={star}
+          disabled={disabled}
+          onPress={() => onChange?.(star)}
+          style={styles.ratingStar}
+          accessibilityRole="button"
+          accessibilityLabel={`${star} star${star === 1 ? '' : 's'}`}
+        >
+          {star <= current
+            ? <RgIcon name="star" size={28} color="primary" />
+            : (
+              <View style={{ opacity: 0.35 }}>
+                <RgIcon name="star" size={28} color="textMuted" />
+              </View>
+            )}
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+/**
+ * The OTP and PIN input (Stage 15): one control holding one string
+ * of digits across `length` boxes (4 to 8, default 6). A hidden
+ * text field over the boxes takes the typing (the pattern OTP
+ * inputs use on both platforms), so the keyboard, autofill and
+ * paste all behave; the boxes only display. `(change)` emits the
+ * digit string as it grows; the class decides when it is complete
+ * (its length is the control's length). Digits only in this
+ * version: it is a code and PIN control, not a general segmented
+ * input.
+ */
+export function RgOtp({ value, length, disabled, onChange, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  const rawLen = Number.isFinite(Number(length)) ? Math.floor(Number(length)) : 6;
+  const len = Math.min(8, Math.max(4, rawLen));
+  const text = String(value ?? '').replace(/\D/g, '').slice(0, len);
+  const [focused, setFocused] = useState(false);
+  const inputRef = useRef<any>(null);
+  const activeBox = Math.min(text.length, len - 1);
+  return (
+    <View style={[styles.otpRow, style]}>
+      {Array.from({ length: len }, (_, i) => (
+        <Pressable
+          key={i}
+          disabled={disabled}
+          onPress={() => inputRef.current?.focus()}
+          style={[styles.otpBox, focused && i === activeBox && styles.otpBoxActive]}
+        >
+          <Text style={styles.otpDigit}>{text[i] ?? ''}</Text>
+        </Pressable>
+      ))}
+      <TextInput
+        ref={inputRef}
+        style={styles.otpHiddenInput}
+        value={text}
+        onChangeText={(next: string) => onChange?.(next.replace(/\D/g, '').slice(0, len))}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        keyboardType="number-pad"
+        maxLength={len}
+        editable={!disabled}
+        caretHidden
+        accessibilityLabel="One time code"
+      />
+    </View>
+  );
+}
+
+/**
+ * The carousel (Stage 15): a paging container whose children are
+ * pages, one screen wide each, with a dots row under them. Follows
+ * the stepper's index contract: `[index]` in, `(change)` out with
+ * the page the swipe settled on. Pages are plain content; for a
+ * photo gallery, put an <image> in each page.
+ */
+export function RgCarousel({ index, onChange, children, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  const pages = React.Children.toArray(children)
+    .filter((child) => React.isValidElement(child) || typeof child === 'string');
+  const [pageWidth, setPageWidth] = useState(0);
+  const [internal, setInternal] = useState(0);
+  const controlled = typeof index === 'number';
+  const active = controlled
+    ? Math.min(Math.max(index, 0), Math.max(pages.length - 1, 0))
+    : Math.min(internal, Math.max(pages.length - 1, 0));
+  const scrollRef = useRef<any>(null);
+  useEffect(() => {
+    if (controlled && pageWidth > 0) {
+      scrollRef.current?.scrollTo({ x: active * pageWidth, animated: false });
+    }
+  }, [controlled, active, pageWidth]);
+  const settled = (e: any): void => {
+    if (pageWidth <= 0) return;
+    const i = Math.min(pages.length - 1, Math.max(0, Math.round(e.nativeEvent.contentOffset.x / pageWidth)));
+    if (i === active) return;
+    if (!controlled) setInternal(i);
+    onChange?.(i);
+  };
+  return (
+    <View style={style}>
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onLayout={(e: any) => setPageWidth(e.nativeEvent.layout.width)}
+        onMomentumScrollEnd={settled}
+      >
+        {pages.map((page, i) => (
+          <View key={i} style={{ width: pageWidth > 0 ? pageWidth : '100%' }}>{page}</View>
+        ))}
+      </ScrollView>
+      {pages.length > 1 ? (
+        <View style={styles.carouselDots}>
+          {pages.map((_, i) => (
+            <View key={i} style={[styles.carouselDot, i === active && styles.carouselDotActive]} />
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/** One file the picker hands back (Stage 15), the documented shape. */
+export interface RgPickedFile {
+  name: string;
+  uri: string;
+  size?: number;
+  type?: string;
+}
+
+/**
+ * The file and image picker (Stage 15): a field in the select's
+ * shape; tapping it opens the platform picker and `(change)` emits
+ * an array of picked files, each `{ name, uri, size, type }`.
+ * `kind="image"` (the default) picks from the photo library;
+ * `kind="file"` picks a document. `multiple` allows several at
+ * once. Cancelling emits nothing.
+ *
+ * App side requirement, stated plainly: the picker modules are
+ * Expo modules the app must carry, expo-image-picker for images
+ * and expo-document-picker for files. They are loaded lazily here
+ * so an app without them still runs; the tap then only logs a
+ * warning naming the missing module. Expo Go carries both for
+ * SDK 58, so Expo Go runs work with no setup.
+ */
+export function RgFilePicker({ label, kind = 'image', multiple, placeholder, disabled, onChange, children, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  const pick = async (): Promise<void> => {
+    const emit = (files: RgPickedFile[]): void => { if (files.length) onChange?.(files); };
+    try {
+      if (kind === 'file') {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const docs = require('expo-document-picker');
+        const result = await docs.getDocumentAsync({ multiple: !!multiple, copyToCacheDirectory: true });
+        if (result.canceled) return;
+        emit((result.assets ?? []).map((a: any) => ({
+          name: a.name ?? 'file', uri: a.uri, size: a.size, type: a.mimeType,
+        })));
+        return;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const images = require('expo-image-picker');
+      const permission = await images.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) return;
+      const result = await images.launchImageLibraryAsync({
+        allowsMultipleSelection: !!multiple,
+        mediaTypes: 'images',
+        quality: 1,
+      });
+      if (result.canceled) return;
+      emit((result.assets ?? []).map((a: any) => ({
+        name: a.fileName ?? String(a.uri).split('/').pop() ?? 'photo',
+        uri: a.uri, size: a.fileSize, type: a.mimeType,
+      })));
+    } catch {
+      console.warn(
+        'RgFilePicker: the picker module is not available in this app. '
+        + 'Add expo-image-picker (kind="image") or expo-document-picker (kind="file") to the app.',
+      );
+    }
+  };
+  const buttonText = declarationText(children) || (placeholder ?? (kind === 'file' ? 'Choose a file' : 'Choose a photo'));
+  return (
+    <View style={[styles.inputWrap, style]}>
+      {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
+      <Pressable
+        disabled={disabled}
+        onPress={pick}
+        style={[styles.pickerBox, disabled ? styles.inputDisabled : null]}
+        accessibilityRole="button"
+      >
+        <Text style={[styles.pickerValue, styles.selectPlaceholder]}>{buttonText}</Text>
+        <RgIcon name={kind === 'file' ? 'edit' : 'plus'} size={24} color="textMuted" />
+      </Pressable>
+    </View>
+  );
+}
+
+export function RgTimeline({ children, style }: any) {
+  // The timeline's root: it only holds its <timeline-item>
+  // children and tells the last one it is last, so its rail line
+  // stops at its dot (the internal prop pattern, as the accordion
+  // uses for its panels).
+  const items = React.Children.toArray(children)
+    .filter((child) => React.isValidElement(child));
+  return (
+    <View style={style}>
+      {items.map((child, i) => {
+        const el = child as React.ReactElement<any>;
+        if (el.type !== RgTimelineItem) return child;
+        return React.cloneElement(el, { __last: i === items.length - 1 });
+      })}
+    </View>
+  );
+}
+
+export function RgTimelineItem({ title, time, __last, children, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  return (
+    <View style={[styles.timelineItem, style]}>
+      <View style={styles.timelineRail}>
+        <View style={styles.timelineDot} />
+        {__last ? null : <View style={styles.timelineLine} />}
+      </View>
+      <View style={styles.timelineBody}>
+        <View style={styles.timelineHead}>
+          {title ? <Text style={styles.timelineTitle}>{String(title)}</Text> : <View style={{ flex: 1 }} />}
+          {time ? <Text style={styles.timelineTime}>{String(time)}</Text> : null}
+        </View>
+        {children}
+      </View>
+    </View>
+  );
+}
+
+/**
+ * The calendar month view (Stage 15): a tappable month grid shown
+ * as a screen element, not a picker popup. This is a different
+ * component from <datetime-picker> on purpose: the picker is the
+ * iOS wheel form for choosing a moment (Bigyan's product rule);
+ * the calendar is for looking at a month and tapping a day.
+ * `[value]` holds the selected day as an ISO string and `(change)`
+ * emits the tapped day's ISO string, the picker's value language.
+ * Weeks start on Sunday. The displayed month is the control's own
+ * state, seeded from the value; the header chevrons move it.
+ */
+export function RgCalendar({ value, onChange, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  const selected = parseDateTimeValue(value);
+  const seed = selected ?? nowParts();
+  const [shown, setShown] = useState({ year: seed.year, month: seed.month });
+  const today = nowParts();
+  const firstWeekday = new Date(shown.year, shown.month - 1, 1).getDay();
+  const count = daysInMonth(shown.year, shown.month);
+  const cells: (number | null)[] = [
+    ...Array.from({ length: firstWeekday }, () => null),
+    ...Array.from({ length: count }, (_, i) => i + 1),
+  ];
+  const move = (delta: number): void => {
+    setShown((s) => {
+      const total = s.year * 12 + (s.month - 1) + delta;
+      return { year: Math.floor(total / 12), month: (total % 12) + 1 };
+    });
+  };
+  const pick = (day: number): void => {
+    onChange?.(composeDateTimeIso({
+      year: shown.year, month: shown.month, day,
+      hour: selected?.hour ?? 0, minute: selected?.minute ?? 0,
+    }));
+  };
+  const isSelected = (day: number): boolean =>
+    !!selected && selected.year === shown.year && selected.month === shown.month && selected.day === day;
+  const isToday = (day: number): boolean =>
+    today.year === shown.year && today.month === shown.month && today.day === day;
+  return (
+    <View style={style}>
+      <View style={styles.calendarHead}>
+        <RgIconButton name="chevron-left" size={24} onPress={() => move(-1)} />
+        <Text style={styles.calendarTitle}>
+          {`${MONTH_SHORT[shown.month - 1]} ${shown.year}`}
+        </Text>
+        <RgIconButton name="chevron-right" size={24} onPress={() => move(1)} />
+      </View>
+      <View style={styles.calendarWeek}>
+        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
+          <Text key={d} style={styles.calendarWeekCell}>{d}</Text>
+        ))}
+      </View>
+      <View style={styles.calendarGrid}>
+        {cells.map((day, i) => {
+          if (day === null) return <View key={i} style={styles.calendarCell} />;
+          const sel = isSelected(day);
+          return (
+            <Pressable key={i} style={styles.calendarCell} onPress={() => pick(day)} accessibilityRole="button">
+              {sel ? (
+                <View style={styles.calendarDaySelected}>
+                  <Text style={[styles.calendarDay, styles.calendarDaySelectedText]}>{day}</Text>
+                </View>
+              ) : (
+                <Text style={[styles.calendarDay, isToday(day) && styles.calendarDayToday]}>{day}</Text>
+              )}
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+/** The initials an avatar shows for a name: first letters of the first two words. */
+function avatarInitials(text: unknown): string {
+  const words = String(text ?? '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return '';
+  if (words.length === 1) return words[0].charAt(0).toUpperCase();
+  return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
+}
+
+/**
+ * An avatar (Stage 15): a circle holding either an image (`src`,
+ * a URI) or the initials of `text` (a name) on the theme's avatar
+ * colour. `size` is the diameter in px, default 40. An avatar in
+ * an <avatar-group> overlaps its neighbours.
+ */
+export function RgAvatar({ text, src, size, style }: any) {
+  const t = useRgTheme();
+  const c = t.colors;
+  const d = Number.isFinite(Number(size)) && Number(size) > 0 ? Number(size) : 40;
+  if (src) {
+    return (
+      <Image
+        source={{ uri: String(src) }}
+        style={[{ width: d, height: d, borderRadius: t.radius.full }, style]}
+      />
+    );
+  }
+  return (
+    <View
+      style={[{
+        width: d, height: d, borderRadius: t.radius.full, backgroundColor: c.avatar,
+        alignItems: 'center', justifyContent: 'center',
+      }, style]}
+    >
+      <Text style={{ color: c.onAvatar, fontSize: Math.round(d * 0.4), fontWeight: '600' }}>
+        {avatarInitials(text)}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * An avatar group (Stage 15): <avatar> children overlapping in a
+ * row. `max` caps how many faces show; the rest collapse into one
+ * more circle reading +N. Without `max` every avatar shows.
+ */
+export function RgAvatarGroup({ max, children, style }: any) {
+  const t = useRgTheme();
+  const c = t.colors;
+  const styles = stylesFor(t);
+  const items = React.Children.toArray(children)
+    .filter((child) => React.isValidElement(child))
+    .filter((child) => (child as React.ReactElement<any>).type === RgAvatar);
+  const limit = Number.isFinite(Number(max)) && Number(max) > 0
+    ? Math.floor(Number(max)) : items.length;
+  const shown = items.slice(0, limit);
+  const overflow = items.length - shown.length;
+  const d = 40;
+  return (
+    <View style={[styles.avatarGroup, style]}>
+      {shown.map((child, i) => (
+        <View key={i} style={[styles.avatarRing, i > 0 && { marginLeft: -10 }]}>
+          {child}
+        </View>
+      ))}
+      {overflow > 0 ? (
+        <View
+          style={[styles.avatarRing, shown.length > 0 && { marginLeft: -10 }, {
+            width: d, height: d, borderRadius: t.radius.full, backgroundColor: c.surfaceVariant,
+            alignItems: 'center', justifyContent: 'center',
+          }]}
+        >
+          <Text style={{ color: c.text, fontSize: 14, fontWeight: '600' }}>{`+${overflow}`}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * The empty state (Stage 15): the designed answer to "nothing
+ * here yet": an icon in a soft circle, one title line, one body
+ * line, and the projected children as its action (usually one
+ * button: an empty state's action always does something, the
+ * only-meaningful-buttons rule). Every app designs this by hand
+ * today; here it is one named block.
+ */
+export function RgEmptyState({ icon, title, text, children, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  return (
+    <View style={[styles.emptyState, style]}>
+      {icon ? (
+        <View style={styles.emptyIconCircle}>
+          <RgIcon name={icon} size={28} color="textMuted" />
+        </View>
+      ) : null}
+      {title ? <Text style={styles.emptyTitle}>{String(title)}</Text> : null}
+      {text ? <Text style={styles.emptyText}>{String(text)}</Text> : null}
+      {children}
+    </View>
+  );
+}
+
+/** Serialize one chart shape through react-native-svg (Stage 15). */
+function chartShapeElement(shape: ChartShape, key: number): React.ReactNode {
+  switch (shape.kind) {
+    case 'rect':
+      return <Rect key={key} x={shape.x} y={shape.y} width={shape.width} height={shape.height} fill={shape.fill} />;
+    case 'path':
+      return (
+        <Path
+          key={key} d={shape.d}
+          fill={shape.fill ?? 'none'}
+          stroke={shape.stroke}
+          strokeWidth={shape.strokeWidth}
+        />
+      );
+    case 'circle':
+      return <Circle key={key} cx={shape.cx} cy={shape.cy} r={shape.r} fill={shape.fill} />;
+    case 'text':
+      return (
+        <SvgText
+          key={key} x={shape.x} y={shape.y} fill={shape.fill}
+          fontSize={shape.size}
+          textAnchor={shape.anchor === 'middle' ? 'middle' : 'start'}
+        >
+          {shape.text}
+        </SvgText>
+      );
+  }
+}
+
+/**
+ * A chart (Stage 15): `<chart type="bar|line|pie" [data]="points">`
+ * where points are `{ label, value }` pairs (a point may carry its
+ * own `color` hex). The geometry comes from the shared engine in
+ * ./chart and is drawn with react-native-svg, like the icons; the
+ * preview draws the identical model as inline SVG. `height` is the
+ * plotting height (default 160); `width` defaults to the measured
+ * layout width. Scope: one series, no axes, no animation, no
+ * interaction; see ./chart for the honest list.
+ */
+export function RgChart({ type = 'bar', data, width, height, style }: any) {
+  const t = useRgTheme();
+  const [layoutWidth, setLayoutWidth] = useState(0);
+  const w = Number.isFinite(Number(width)) && Number(width) > 0
+    ? Number(width) : (layoutWidth > 0 ? layoutWidth : 320);
+  const h = Number.isFinite(Number(height)) && Number(height) > 0 ? Number(height) : 160;
+  const kind = type === 'line' || type === 'pie' ? type : 'bar';
+  const model = chartModel(kind, data, w, h, COLOR_SWATCHES, t.colors.textMuted);
+  return (
+    <View
+      style={style}
+      onLayout={(e: any) => setLayoutWidth(e.nativeEvent.layout.width)}
+    >
+      <Svg width={model.width} height={model.height} viewBox={`0 0 ${model.width} ${model.height}`}>
+        {model.shapes.map((shape, i) => chartShapeElement(shape, i))}
+      </Svg>
+    </View>
+  );
+}
+
+/**
+ * The editor (Stage 15): a lightweight rich text control whose
+ * value is the text itself, marked up with markdown style markers
+ * (double star for bold, single star for italic, a dash and space
+ * to start a list line). The toolbar's three buttons act on the
+ * current selection: Bold and Italic wrap it in their markers,
+ * List starts its line with the list marker. Scope limit, stated
+ * plainly: this is a marked-up text field with helpers, not a
+ * WYSIWYG engine; the stored value is the marked text, and
+ * rendering that markup is the reading side's job (a <p> shows it
+ * raw today). What it gives an app is one control with the
+ * contract every other control has: [value] in, (change) out.
+ */
+export function RgEditor({ value, label, placeholder, disabled, onChange, style }: any) {
+  const t = useRgTheme();
+  const styles = stylesFor(t);
+  const text = value === undefined || value === null ? '' : String(value);
+  const [selection, setSelection] = useState({ start: 0, end: 0 });
+  const clampSel = (): { start: number; end: number } => {
+    const start = Math.min(Math.max(selection.start || 0, 0), text.length);
+    const end = Math.min(Math.max(selection.end || 0, start), text.length);
+    return { start, end };
+  };
+  const wrap = (marker: string): void => {
+    const { start, end } = clampSel();
+    onChange?.(text.slice(0, start) + marker + text.slice(start, end) + marker + text.slice(end));
+  };
+  const listLine = (): void => {
+    const { start } = clampSel();
+    const lineStart = text.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
+    onChange?.(text.slice(0, lineStart) + '- ' + text.slice(lineStart));
+  };
+  const tool = (labelText: string, act: () => void): React.ReactNode => (
+    <Pressable key={labelText} disabled={disabled} onPress={act} style={styles.editorTool} accessibilityRole="button">
+      <Text style={styles.editorToolLabel}>{labelText}</Text>
+    </Pressable>
+  );
+  return (
+    <View style={[styles.inputWrap, style]}>
+      {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
+      <View style={styles.editorToolbar}>
+        {tool('Bold', () => wrap('**'))}
+        {tool('Italic', () => wrap('*'))}
+        {tool('List', listLine)}
+      </View>
+      <TextInput
+        style={[styles.inputField, styles.editorArea, disabled ? styles.inputDisabled : null]}
+        value={text}
+        onChangeText={(next: string) => onChange?.(next)}
+        onSelectionChange={(e: any) => setSelection(e.nativeEvent.selection)}
+        placeholder={placeholder}
+        placeholderTextColor={t.colors.textMuted}
+        editable={!disabled}
+        multiline
+      />
+    </View>
+  );
+}
+
+/**
+ * An image (Stage 15): `<image src="..." width="320" height="180">`
+ * shows a remote or bundled picture at a declared size. Declaring
+ * width and height is the contract (the doctor enforces it,
+ * DOC_IMG_SIZE): the layout is known before the picture loads, so
+ * the screen does not jump. `resize` is cover (the default, fill
+ * and crop), contain (fit whole) or stretch. This is also the
+ * enabling piece for the lightbox and for image carousel pages.
+ */
+export function RgImage({ src, width, height, resize, style }: any) {
+  const w = Number(width);
+  const h = Number(height);
+  const dims = {
+    width: Number.isFinite(w) && w > 0 ? w : '100%',
+    height: Number.isFinite(h) && h > 0 ? h : 160,
+  };
+  const mode = resize === 'contain' ? 'contain' : resize === 'stretch' ? 'stretch' : 'cover';
+  return (
+    <Image
+      source={{ uri: String(src ?? '') }}
+      style={[dims as any, style]}
+      resizeMode={mode}
+    />
+  );
+}
+
+/**
+ * The lightbox (Stage 15): a full screen photo viewer on the
+ * overlay contract, `<lightbox [open]="photoOpen"
+ * (close)="closePhoto()" src="...">`. The photo fits the screen
+ * over the dimmed backdrop; a backdrop tap, or the close chip at
+ * the top end corner, calls onClose. Children render under the
+ * photo as its caption. Pinch zoom comes from the scroll view's
+ * zoom on iOS; Android pinch zoom is not part of this version,
+ * stated plainly.
+ */
+export function RgLightbox({ open, onClose, src, children, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  const isOpen = open === undefined ? true : open === 'false' ? false : !!open;
+  if (!isOpen) return null;
+  return (
+    <View style={styles.overlayRootCenter}>
+      <View style={[styles.overlayBackdrop, { opacity: 0.92 }]}>
+        <Pressable style={styles.overlayFill} onPress={onClose} accessibilityLabel="Close" />
+      </View>
+      <Pressable style={styles.lightboxClose} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close">
+        <RgIcon name="close" size={24} color="text" />
+      </Pressable>
+      <ScrollView
+        maximumZoomScale={3}
+        minimumZoomScale={1}
+        centerContent
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+      >
+        <Image
+          source={{ uri: String(src ?? '') }}
+          style={[styles.lightboxImage, style]}
+          resizeMode="contain"
+        />
+      </ScrollView>
+      {children ? <View style={styles.lightboxCaption}>{children}</View> : null}
+    </View>
+  );
+}
+
+/**
+ * The colour picker (Stage 15): `[value]` holds a hex string
+ * from the shared palette (or any six digit hex) and `(change)`
+ * emits the picked hex, the controls contract. The field shows a
+ * swatch of the current colour; a tap
+ * opens a bottom sheet with the shared data palette as a swatch
+ * grid, plus one custom row where any six digit hex can be typed
+ * and applied. The palette is data (./palette), the same in both
+ * themes.
+ */
+export function RgColorPicker({ value, label, placeholder, disabled, onChange, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  const [open, setOpen] = useState(false);
+  const [custom, setCustom] = useState('');
+  const current = value === undefined || value === null ? '' : String(value);
+  const pick = (hex: string): void => {
+    setOpen(false);
+    onChange?.(hex);
+  };
+  const applyCustom = (): void => {
+    const m = /^#?([0-9a-fA-F]{6})$/.exec(custom.trim());
+    if (m) pick(`#${m[1].toLowerCase()}`);
+  };
+  return (
+    <View style={[styles.inputWrap, style]}>
+      {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
+      <Pressable
+        disabled={disabled}
+        onPress={() => setOpen(true)}
+        style={[styles.pickerBox, disabled ? styles.inputDisabled : null]}
+        accessibilityRole="button"
+      >
+        <View style={[styles.colorSwatchChip, current ? { backgroundColor: current } : null]} />
+        <Text style={[styles.pickerValue, !current && styles.selectPlaceholder]}>
+          {current || (placeholder ?? 'Pick a colour')}
+        </Text>
+        <View style={{ transform: [{ rotate: '90deg' }] }}>
+          <RgIcon name="chevron-right" size={24} color="textMuted" />
+        </View>
+      </Pressable>
+      <RgSheet open={open} onClose={() => setOpen(false)}>
+        <View style={styles.swatchGrid}>
+          {COLOR_SWATCHES.map((hex) => {
+            const selected = hex.toLowerCase() === current.toLowerCase();
+            return (
+              <Pressable
+                key={hex}
+                onPress={() => pick(hex)}
+                style={[styles.swatch, { backgroundColor: hex }, selected && styles.swatchSelected]}
+                accessibilityRole="button"
+                accessibilityLabel={hex}
+              />
+            );
+          })}
+        </View>
+        <RgInput
+          label="Custom hex"
+          placeholder="d93025"
+          value={custom}
+          onChangeText={setCustom}
+        />
+        <RgButton variant="text" onPress={applyCustom}>Use this colour</RgButton>
+      </RgSheet>
+    </View>
+  );
+}
+
+/** Marker for one crumb of RgBreadcrumbs. The bar reads its props. */
+export function RgCrumb({ children }: any) {
+  void children;
+  return null;
+}
+
+/**
+ * Breadcrumbs (Stage 15): `<crumb>` declarations in a wrapping
+ * row, joined by chevron icons (the icon set, never a font
+ * glyph). Every crumb but the last is a link (a routerLink or
+ * (click), composed into its onPress by the compiler); the last
+ * crumb is the current page and renders as plain semibold text.
+ * On a phone the back chevron does most of this job; breadcrumbs
+ * earn their place in deep settings and content hierarchies,
+ * which is why the audit ranked them last of the twenty.
+ */
+export function RgBreadcrumbs({ children, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  const items = React.Children.toArray(children)
+    .filter((child) => React.isValidElement(child))
+    .filter((child) => (child as React.ReactElement<any>).type === RgCrumb)
+    .map((child) => {
+      const el = child as React.ReactElement<any>;
+      return { label: declarationText(el.props.children), onPress: el.props.onPress };
+    });
+  return (
+    <View style={[styles.breadcrumbs, style]}>
+      {items.map((item, i) => {
+        const last = i === items.length - 1;
+        return (
+          <React.Fragment key={i}>
+            {i > 0 ? <RgIcon name="chevron-right" size={20} color="textMuted" /> : null}
+            {last || !item.onPress
+              ? <Text style={styles.crumbCurrent}>{item.label}</Text>
+              : (
+                <Pressable onPress={item.onPress} accessibilityRole="link">
+                  <Text style={styles.crumbLabel}>{item.label}</Text>
+                </Pressable>
+              )}
+          </React.Fragment>
+        );
+      })}
     </View>
   );
 }

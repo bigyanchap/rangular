@@ -85,7 +85,7 @@ test('primitives deliver the theme through context with a light default', () => 
   assert.match(src, /createContext<Theme>\(makeTheme\('light'\)\)/);
   assert.match(src, /export function useRgTheme\(\)/);
   assert.match(src, /export function RgThemeProvider/);
-  assert.match(src, /export function RgScreen\(\{ children, style, theme: mode \}/);
+  assert.match(src, /export function RgScreen\(\{ children, style, theme: mode/);
 });
 
 // --- Snapping (C) ---------------------------------------------------------------

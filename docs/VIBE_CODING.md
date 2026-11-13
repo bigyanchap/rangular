@@ -955,6 +955,94 @@ recipe cards.
   bound array never mutated); `pageSize="5"` on `<table>` pages
   the rows and draws a pager only while they overflow one page.
 
+## Beyond Angular (Stage 15)
+
+A second audit listed what real apps use constantly that Angular
+itself (core, Material, CDK) never shipped. All twenty items are
+built, in three tour examples: `examples/feed/` (Tier 1),
+`examples/forms-plus/` (Tier 2) and `examples/insights/` (Tier 3).
+
+- **Bottom navigation is a declaration group on the tabs
+  contract.** `<bottom-nav [index]="tab" (change)="onTab($event)">`
+  holds `<nav-item icon="home" label="Home">` destinations; an
+  item takes a `routerLink` or its own `(click)`, and a `badge`
+  (the badge's fourth host). The screen lifts the bar out of the
+  scrolling content and pins it under the screen. Misplaced
+  declarations warn `GEN_CONTROL_NESTING`.
+- **Refresh and infinite scroll are scroller events, not tags.**
+  `<screen>` and `<list>` take `[refreshing]="busy"`,
+  `(refresh)="reload()"` and `(endReached)="loadMore()"`. The app
+  wires React Native's RefreshControl and fires end reached once
+  per approach (again only after the content grows). The preview
+  cannot pull or scroll to an end: a true flag paints the spinner
+  row, and small documented cues fire the two events, the slider
+  tick pattern.
+- **Skeleton is a placeholder with a shape.** `<skeleton
+  shape="line">`, `shape="block"` with `height`, `shape="circle"`
+  with `size`, pulsing on the surface variant colour; compose it
+  where content will sit and swap with `*ngIf`.
+- **Swipe actions are declarations inside the row.**
+  `<row-action icon="delete" color="error" (click)="remove()">`
+  inside `<row>` reveals behind it on a horizontal swipe in the
+  app (a plain timing settle, the house motion rule) and from a
+  reveal handle in the preview; choosing one runs it and closes
+  the row. A `<row-action>` outside a row warns.
+- **The picker emits file info.** `<file-picker kind="image"
+  (change)="onFiles($event)">` (or `kind="file"`, `multiple`)
+  emits an array of `{ name, uri, size, type }`; cancelling emits
+  nothing. App side requirement: the Expo picker modules
+  (expo-image-picker, expo-document-picker) are loaded lazily, so
+  the app must carry the one its kind uses; Expo Go carries both.
+- **The mask is an attribute on input.** `mask="(999) 999-9999"`
+  with `9` a digit slot, `A` a letter slot, `*` any character and
+  literals that appear only once the next slot is filled. The
+  masked string is the model value; there is no raw channel.
+- **Rating, OTP and colour picker are plain controls.** Rating:
+  a number in and out, `max` default 5, icon set stars, no half
+  stars. OTP: one digit string across `length` boxes, 4 to 8
+  (a static length outside warns `GEN_OTP_LENGTH`); the class
+  checks completeness by length. Colour picker: a hex string in
+  and out, a swatch sheet over the shared data palette plus one
+  custom hex row.
+- **Carousel is the stepper contract as pages.** Projected
+  children are pages, `[index]` in, `(change)` out, dots under.
+  In the preview, dots and chevrons page it.
+- **Calendar is a month view, not a picker.** `<calendar
+  [value]="day" (change)="onDay($event)">` renders in the screen
+  and carries the selected day as an ISO string. It is a
+  different component from the wheel `<datetime-picker>` on
+  purpose: browsing days here, choosing a moment there.
+- **Timeline, avatars, empty state are display declarations.**
+  `<timeline>` of `<timeline-item title time>` on a rail; `<avatar
+  text="A B">` draws initials (first letters of two words) or a
+  `src` image, and `<avatar-group max="3">` overlaps with a +N
+  overflow; `<empty-state icon title text>` projects its action.
+- **Charts share one small engine.** `<chart type="bar|line|pie"
+  [data]="points">` where points are `{ label, value }` (a point
+  may carry `color`); any other static type is `GEN_CHART_TYPE`,
+  an error. Scope: one series, no axes, no animation; bar and pie
+  read negatives as 0. The app draws with react-native-svg, the
+  previews with inline SVG, from the same shape model.
+- **The editor's value is marked-up text.** `<editor>` has a
+  Bold, Italic and List toolbar acting on the selection; bold is
+  double star, italic single star, a list line starts with a dash
+  and a space. Scope limit, plainly: a marked-up text field with
+  helpers, not a WYSIWYG engine; the stored value is the marked
+  text.
+- **Image declares its size, and the lightbox is an overlay.**
+  `<image src width height resize="cover">`; the doctor enforces
+  the declared size (`DOC_IMG_SIZE`). `<lightbox [open] (close)
+  src>` follows the sheet contract, children as caption; a photo
+  normally opens it from its own `(click)`. Pinch zoom is the iOS
+  scroll view's; Android pinch zoom is not in this version.
+- **Masonry is a grid-list mode.** `mode="masonry"` keeps the
+  tag, tiles and `cols`; tiles deal into column stacks in the
+  app and CSS columns in the preview.
+- **Breadcrumbs close the list, deliberately last.** `<crumb>`
+  declarations join with chevron icons; the last crumb is the
+  current page and not a link. On a phone the back chevron does
+  most of this job, which is why the audit ranked it last.
+
 ## Child components (Stage 3, M5)
 
 - **Resolution is by import.** The compiler follows the entry component's

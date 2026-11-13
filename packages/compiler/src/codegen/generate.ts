@@ -1,5 +1,6 @@
 import { ICON_NAMES, ICON_PATHS, ICON_SIZES, DEFAULT_ICON_SIZE } from '../../../ui/src/icons';
 import { PICKER_MODES } from '../../../ui/src/datetime';
+import { CHART_TYPES } from '../../../ui/src/chart';
 import { ComponentInfo, DirectiveInfo, PipeInfo, ServiceInfo } from '../class/parseComponent';
 import { DirectiveStyleAssign, directiveStyles } from '../class/parseDirective';
 import { ResolvedRoute } from '../class/parseRoutes';
@@ -145,6 +146,34 @@ export const TAG_MAP: Record<string, TagMapping> = {
   tree: { component: 'RgTree', fromUi: true },
   'tree-node': { component: 'RgTreeNode', fromUi: true },
   divider: { component: 'RgDivider', fromUi: true },
+  // Stage 15: the pieces real apps use that Angular never shipped
+  // (the beyond-Angular audit). Screen and list patterns first:
+  // the bottom navigation bar and its destination declarations,
+  // the skeleton placeholder, and swipe actions declared inside a
+  // row (row itself is above; its action marker lives here).
+  'bottom-nav': { component: 'RgBottomNav', fromUi: true },
+  'nav-item': { component: 'RgNavItem', fromUi: true },
+  skeleton: { component: 'RgSkeleton', fromUi: true },
+  'row-action': { component: 'RgRowAction', fromUi: true },
+  // Controls, each on the Stage 6 [value] / (change) contract.
+  rating: { component: 'RgRating', fromUi: true },
+  otp: { component: 'RgOtp', fromUi: true },
+  'file-picker': { component: 'RgFilePicker', fromUi: true },
+  'color-picker': { component: 'RgColorPicker', fromUi: true },
+  editor: { component: 'RgEditor', fromUi: true },
+  // Containers and display.
+  carousel: { component: 'RgCarousel', fromUi: true },
+  timeline: { component: 'RgTimeline', fromUi: true },
+  'timeline-item': { component: 'RgTimelineItem', fromUi: true },
+  calendar: { component: 'RgCalendar', fromUi: true },
+  avatar: { component: 'RgAvatar', fromUi: true },
+  'avatar-group': { component: 'RgAvatarGroup', fromUi: true },
+  'empty-state': { component: 'RgEmptyState', fromUi: true },
+  chart: { component: 'RgChart', fromUi: true },
+  image: { component: 'RgImage', fromUi: true },
+  lightbox: { component: 'RgLightbox', fromUi: true },
+  breadcrumbs: { component: 'RgBreadcrumbs', fromUi: true },
+  crumb: { component: 'RgCrumb', fromUi: true },
 };
 
 /** True when an initializer source text is a plain literal we may hoist. */
@@ -239,6 +268,11 @@ export const EVENT_PROPS: Record<string, string> = {
   toggle: 'onToggle',
   remove: 'onRemove',
   optionSelected: 'onOptionSelected',
+  // Stage 15: the scroller events of screens and lists (pull to
+  // refresh, infinite scroll). Neither carries a value; the
+  // handler just runs.
+  refresh: 'onRefresh',
+  endReached: 'onEndReached',
 };
 
 /** Map a template (event) to its React Native prop name. */
@@ -928,6 +962,76 @@ class Generator {
             'Replace it with <option value="...">Label</option>, or move the element outside the select',
           ));
         }
+        // Stage 15 declarations: nav-item belongs in bottom-nav,
+        // row-action belongs in row, timeline-item belongs in
+        // timeline, avatar belongs in avatar-group (when grouped),
+        // crumb belongs in breadcrumbs; and bottom-nav, timeline,
+        // avatar-group and breadcrumbs accept only their own
+        // declarations.
+        if (tag === 'nav-item' && parentTag !== 'bottom-nav') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            '<nav-item> is outside <bottom-nav>; it declares one bottom navigation destination and has no meaning on its own',
+            node.pos.line, node.pos.column,
+            'Move the item inside a bottom navigation bar: <bottom-nav><nav-item icon="home" label="Home" routerLink="/home"></nav-item></bottom-nav>',
+          ));
+        }
+        if (parentTag === 'bottom-nav' && tag !== 'nav-item') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            `<${node.tag}> is inside <bottom-nav>; only <nav-item> declarations belong there`,
+            node.pos.line, node.pos.column,
+            'Replace it with <nav-item icon="..." label="..."></nav-item>, or move the element outside the bottom navigation bar',
+          ));
+        }
+        if (tag === 'row-action' && parentTag !== 'row') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            '<row-action> is outside <row>; it declares one swipe action for its row and has no meaning on its own',
+            node.pos.line, node.pos.column,
+            'Move the action inside its row: <row title="Mail"><row-action icon="delete" (click)="remove()">Delete</row-action></row>',
+          ));
+        }
+        if (tag === 'timeline-item' && parentTag !== 'timeline') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            '<timeline-item> is outside <timeline>; it declares one event on the rail and has no meaning on its own',
+            node.pos.line, node.pos.column,
+            'Move the item inside a timeline: <timeline><timeline-item title="Ordered">...</timeline-item></timeline>',
+          ));
+        }
+        if (parentTag === 'timeline' && tag !== 'timeline-item') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            `<${node.tag}> is inside <timeline>; only <timeline-item> declarations belong there`,
+            node.pos.line, node.pos.column,
+            'Replace it with <timeline-item title="...">...</timeline-item>, or move the element outside the timeline',
+          ));
+        }
+        if (parentTag === 'avatar-group' && tag !== 'avatar') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            `<${node.tag}> is inside <avatar-group>; only <avatar> declarations belong there`,
+            node.pos.line, node.pos.column,
+            'Replace it with <avatar text="..."></avatar>, or move the element outside the avatar group',
+          ));
+        }
+        if (tag === 'crumb' && parentTag !== 'breadcrumbs') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            '<crumb> is outside <breadcrumbs>; it declares one step of the path and has no meaning on its own',
+            node.pos.line, node.pos.column,
+            'Move the crumb inside breadcrumbs: <breadcrumbs><crumb routerLink="/settings">Settings</crumb><crumb>Profile</crumb></breadcrumbs>',
+          ));
+        }
+        if (parentTag === 'breadcrumbs' && tag !== 'crumb') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            `<${node.tag}> is inside <breadcrumbs>; only <crumb> declarations belong there`,
+            node.pos.line, node.pos.column,
+            'Replace it with <crumb>...</crumb>, or move the element outside the breadcrumbs',
+          ));
+        }
         if (tag === 'radio' && parentTag !== 'radio-group' && parentTag !== 'switcher') {
           diagnostics.push(warning(
             'GEN_CONTROL_NESTING',
@@ -1011,7 +1115,7 @@ class Generator {
       for (const node of nodes) {
         if (node.type !== 'element') continue;
         const tag = node.tag.toLowerCase();
-        if ((tag === 'sheet' || tag === 'dialog' || tag === 'menu' || tag === 'drawer')
+        if ((tag === 'sheet' || tag === 'dialog' || tag === 'menu' || tag === 'drawer' || tag === 'lightbox')
           && node.attrs['open'] === undefined
           && !node.booleanAttrs.includes('open')
           && !node.propBindings.some((b) => b.name === 'open')) {
@@ -1026,6 +1130,40 @@ class Generator {
       }
     };
     validateOverlays(ast.children);
+
+    // Stage 15 static checks, the picker mode pattern: a chart
+    // type outside the three the engine draws is an error (the
+    // primitive would otherwise silently draw bars), and an OTP
+    // length outside the 4 to 8 the control supports warns and
+    // clamps in the primitive, so the author hears about it here.
+    const validateStage15 = (nodes: TemplateNode[]): void => {
+      for (const node of nodes) {
+        if (node.type !== 'element') continue;
+        const tag = node.tag.toLowerCase();
+        if (tag === 'chart' && node.attrs['type'] !== undefined
+          && !(CHART_TYPES as readonly string[]).includes(node.attrs['type'])) {
+          diagnostics.push(error(
+            'GEN_CHART_TYPE',
+            `<chart> type '${node.attrs['type']}' is not a chart type; the chart would draw bars instead`,
+            node.pos.line, node.pos.column,
+            'Use type="bar", type="line" or type="pie" (bar is the default and can be omitted)',
+          ));
+        }
+        if (tag === 'otp' && node.attrs['length'] !== undefined) {
+          const raw = Number(node.attrs['length']);
+          if (!Number.isFinite(raw) || raw < 4 || raw > 8) {
+            diagnostics.push(warning(
+              'GEN_OTP_LENGTH',
+              `<otp> length '${node.attrs['length']}' is outside the supported 4 to 8; the generated control uses the nearest of the two`,
+              node.pos.line, node.pos.column,
+              'Use length="4", length="6" or length="8" (6 is the default); the control clamps anything else into 4 to 8',
+            ));
+          }
+        }
+        validateStage15(node.children);
+      }
+    };
+    validateStage15(ast.children);
 
     // Chips (Stage 11): a chip's leading icon names the Stage 7 icon
     // set, so a static icon attribute is validated exactly like an
@@ -2215,7 +2353,7 @@ class Generator {
           'GEN_UNKNOWN_TAG',
           `Unknown tag <${el.tag}>, emitted as <View>. Use a known block or a component tag.`,
           el.pos.line, el.pos.column,
-          'Known blocks: screen, appbar, card, list, row, fab, button, input, form, switch, switcher, checkbox, radio-group, tabs, accordion, panel, table, slider, progress-bar, spinner, chips, chip, sheet, dialog, datetime-picker, menu, menu-item, drawer, select, stepper, step, grid-list, grid-tile, tree, tree-node, divider, h1, h2, h3, p, span, label, div, section, header, or use a Capitalised component tag',
+          'Known blocks: screen, appbar, card, list, row, fab, button, input, form, switch, switcher, checkbox, radio-group, tabs, accordion, panel, table, slider, progress-bar, spinner, chips, chip, sheet, dialog, datetime-picker, menu, menu-item, drawer, select, stepper, step, grid-list, grid-tile, tree, tree-node, divider, bottom-nav, nav-item, skeleton, row-action, rating, otp, file-picker, color-picker, editor, carousel, timeline, timeline-item, calendar, avatar, avatar-group, empty-state, chart, image, lightbox, breadcrumbs, crumb, h1, h2, h3, p, span, label, div, section, header, or use a Capitalised component tag',
         ));
         componentName = 'View';
         this.usedRn.add('View');
@@ -2267,19 +2405,21 @@ class Generator {
       // are hosts (the third host, <icon>, is handled in renderIcon);
       // on them the generic attribute and binding loops below emit
       // badge as a prop untouched, and the primitives draw the dot.
-      // On any other element the badge has nowhere to sit: warn
-      // GEN_BADGE_HOST and strip it from both loops so no stray badge
-      // prop reaches the output.
+      // Stage 15 adds a fourth host: <nav-item>, whose bar draws the
+      // same dot over the item's icon. On any other element the badge
+      // has nowhere to sit: warn GEN_BADGE_HOST and strip it from
+      // both loops so no stray badge prop reaches the output.
       const badgeUsed = el.attrs['badge'] !== undefined
         || el.propBindings.some((b) => b.name === 'badge');
-      const badgeHost = el.tag.toLowerCase() === 'button' || el.tag.toLowerCase() === 'row';
+      const badgeHost = el.tag.toLowerCase() === 'button' || el.tag.toLowerCase() === 'row'
+        || el.tag.toLowerCase() === 'nav-item';
       const dropBadge = badgeUsed && !badgeHost;
       if (dropBadge) {
         diagnostics.push(warning(
           'GEN_BADGE_HOST',
-          `badge on <${el.tag}> cannot render; badges sit on <button>, <row> and <icon> in this version, so the badge was dropped`,
+          `badge on <${el.tag}> cannot render; badges sit on <button>, <row>, <icon> and <nav-item> in this version, so the badge was dropped`,
           el.pos.line, el.pos.column,
-          'Move the badge to a button, row or icon: <button badge="3">Inbox</button>, or bind it: <row [badge]="unread"></row>',
+          'Move the badge to a button, row, icon or nav item: <button badge="3">Inbox</button>, or bind it: <row [badge]="unread"></row>',
         ));
       }
 
@@ -2393,7 +2533,12 @@ class Generator {
           props.push(isBareRef ? `${cb}={${src}}` : `${cb}={($event) => ${codeExpr(src)}}`);
           continue;
         }
-        const controlTag = ['switch', 'checkbox', 'switcher', 'radio-group', 'tabs', 'select', 'stepper'].includes(el.tag.toLowerCase());
+        const controlTag = ['switch', 'checkbox', 'switcher', 'radio-group', 'tabs', 'select', 'stepper',
+          // Stage 15 controls carry (change) the same way: the value
+          // arrives as $event, so the handler must be wrapped to
+          // receive it (the Stage 14 lesson).
+          'bottom-nav', 'rating', 'otp', 'carousel', 'calendar', 'color-picker', 'file-picker', 'editor',
+        ].includes(el.tag.toLowerCase());
         if (controlTag && ev.name === 'change') {
           // Controls emit their next value as $event (Stage 6). Unlike
           // the generic event path, the generated wrapper must receive

@@ -180,9 +180,9 @@ export function runDoctor(input: DoctorInput): Diagnostic[] {
   }
 
   // DOC_IMG_SIZE: only when an image tag is part of the tag contract.
-  // TAG_MAP has no img or image entry today, so this check is skipped
-  // entirely (see the Stage 5 report); the moment an image tag is added
-  // to TAG_MAP this code starts enforcing declared dimensions on it.
+  // Stage 15 added <image> to TAG_MAP, so this check is live: an
+  // <image> must declare width and height so the layout does not
+  // jump when the picture lands.
   const imageTags = ['img', 'image'].filter((t) => t in TAG_MAP);
   if (imageTags.length) {
     const checkImages = (nodes: TemplateNode[], templateFile: string): void => {

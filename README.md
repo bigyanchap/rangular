@@ -795,6 +795,61 @@ handlers on the new controls generated an arrow that referenced
 same control list as switch, checkbox, switcher, radio group and
 tabs, with a regression test.
 
+## Stage 15: beyond Angular
+
+Version 0.1.1. A second audit (2026-11-13) listed the pieces real
+apps use constantly that Angular itself, core, Material and CDK
+together, never shipped, and that Rangular also lacked: twenty
+items in three tiers, all built in this stage, each with compiler
+support, preview parity in both renderers, tests, an example and a
+recipe card. The tour examples are `examples/feed/` (Tier 1),
+`examples/forms-plus/` (Tier 2) and `examples/insights/` (Tier 3).
+
+Tier 1, screen and list patterns. **Bottom navigation**,
+`<bottom-nav [index] (change)>` of `<nav-item icon label>`
+destinations with `routerLink`, `(click)` and `badge` support; the
+screen pins it under the scrolling content. **Pull to refresh**:
+`[refreshing]`, `(refresh)` and `(endReached)` on `<screen>` and
+`<list>`, wired to React Native's RefreshControl and the FlatList
+end callback in the app; the preview shows a spinner row for the
+flag and documented tap cues for the two events, the slider tick
+pattern. **Skeleton** placeholders (`shape` line, block or circle)
+pulse inside any container. **Swipe actions** are
+`<row-action icon color (click)>` declarations inside a row,
+revealed by a gesture in the app and a handle in the preview.
+
+Tier 2, controls on the Stage 6 contract. The **file and image
+picker** emits `{ name, uri, size, type }` arrays through
+`(change)`; it loads expo-image-picker or expo-document-picker
+lazily, so apps must carry the module for the kind they use (Expo
+Go carries both), stated plainly in its recipe card. The **input
+mask** is a `mask` attribute on `<input>` with a three character
+pattern language (`9` digit, `A` letter, `*` any); the masked
+string is the model value. **Rating** is a number in and out with
+icon set stars. **OTP** is one control, one digit string, `length`
+4 to 8. **Carousel** pages its projected children on the stepper's
+index contract.
+
+Tier 3, display. **Timeline** items on a rail, a **calendar** month
+view as a screen element (not the wheel picker; `[value]` and
+`(change)` carry an ISO day), **avatar** and **avatar-group** with
+a +N overflow, **empty state**, **charts** (bar, line, pie over
+`{ label, value }` points, one small geometry engine shared by the
+app and both previews; scope: one series, no axes, no animation),
+a **rich text editor** whose value is markdown style marked text
+with a Bold, Italic and List toolbar (a marked-up text field with
+helpers, not a WYSIWYG engine, stated plainly in its recipe card),
+**image** (the catalog's first image tag; declared size is the
+contract and the doctor enforces it) with a **lightbox** overlay,
+**masonry** as a `mode` of grid-list (the same tags and tiles,
+dealt into column stacks), a **colour picker** over a shared data
+palette with a custom hex row, and **breadcrumbs** with chevron
+icon separators. Two new diagnostics: `GEN_CHART_TYPE` (error) and
+`GEN_OTP_LENGTH` (warning); declaration nesting covers the new
+groups, and the badge gained a fourth host, the nav item. The
+catalog now stands at 74 tags, 68 primitives and 62 diagnostic
+codes.
+
 ## v1 is complete
 
 What v1 is: an Angular-style component, template, service and DI

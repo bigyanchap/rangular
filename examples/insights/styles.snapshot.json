@@ -1,0 +1,217 @@
+{
+  "example": "insights",
+  "themes": {
+    "light": {
+      "roles": {
+        "appbar": {
+          "background": "#f0f4f9",
+          "borderRadius": 9999,
+          "gap": 12
+        },
+        "avatar": {
+          "background": "#7b1fa2",
+          "color": "#ffffff"
+        },
+        "avatarFace": {
+          "background": "#7b1fa2",
+          "color": "#ffffff"
+        },
+        "avatarGroup": {
+          "ringColor": "#ffffff",
+          "overlap": -10
+        },
+        "breadcrumbs": {
+          "color": "#0b57d0",
+          "currentColor": "#1f1f1f",
+          "separatorColor": "#5f6368"
+        },
+        "button": {
+          "background": "#0b57d0",
+          "color": "#ffffff",
+          "borderRadius": 9999,
+          "minHeight": 48
+        },
+        "calendar": {
+          "selectedBackground": "#0b57d0",
+          "selectedColor": "#ffffff",
+          "todayColor": "#0b57d0",
+          "fontSize": 14
+        },
+        "chart": {
+          "labelColor": "#5f6368",
+          "labelFontSize": 12
+        },
+        "colorPicker": {
+          "borderColor": "#747775",
+          "borderRadius": 8,
+          "swatchSize": 44
+        },
+        "editor": {
+          "borderColor": "#dadce0",
+          "background": "#ffffff",
+          "minHeight": 96
+        },
+        "emptyState": {
+          "iconBackground": "#f0f4f9",
+          "titleColor": "#1f1f1f",
+          "textColor": "#5f6368"
+        },
+        "gridTile": {
+          "background": "#f0f4f9",
+          "borderRadius": 16,
+          "padding": 12
+        },
+        "image": {
+          "borderRadius": 12
+        },
+        "input": {
+          "background": "#ffffff",
+          "borderColor": "#747775",
+          "borderRadius": 8,
+          "color": "#1f1f1f",
+          "fontSize": 16
+        },
+        "lightbox": {
+          "closeBackground": "#ffffff",
+          "closeColor": "#1f1f1f"
+        },
+        "masonry": {
+          "gap": 8
+        },
+        "picker": {
+          "background": "#ffffff",
+          "borderColor": "#747775",
+          "borderRadius": 8,
+          "color": "#1f1f1f",
+          "fontSize": 16
+        },
+        "screen": {
+          "background": "#ffffff",
+          "color": "#1f1f1f"
+        },
+        "textBody": {
+          "fontSize": 16,
+          "lineHeight": 24,
+          "color": "#1f1f1f"
+        },
+        "textLabel": {
+          "fontSize": 14,
+          "lineHeight": 20,
+          "fontWeight": 600
+        },
+        "timeline": {
+          "dotBackground": "#0b57d0",
+          "lineBackground": "#dadce0",
+          "dotSize": 12
+        }
+      },
+      "styles": {}
+    },
+    "dark": {
+      "roles": {
+        "appbar": {
+          "background": "#282a2c",
+          "borderRadius": 9999,
+          "gap": 12
+        },
+        "avatar": {
+          "background": "#d0bcff",
+          "color": "#381e72"
+        },
+        "avatarFace": {
+          "background": "#d0bcff",
+          "color": "#381e72"
+        },
+        "avatarGroup": {
+          "ringColor": "#131314",
+          "overlap": -10
+        },
+        "breadcrumbs": {
+          "color": "#a8c7fa",
+          "currentColor": "#e3e3e3",
+          "separatorColor": "#9aa0a6"
+        },
+        "button": {
+          "background": "#a8c7fa",
+          "color": "#062e6f",
+          "borderRadius": 9999,
+          "minHeight": 48
+        },
+        "calendar": {
+          "selectedBackground": "#a8c7fa",
+          "selectedColor": "#062e6f",
+          "todayColor": "#a8c7fa",
+          "fontSize": 14
+        },
+        "chart": {
+          "labelColor": "#9aa0a6",
+          "labelFontSize": 12
+        },
+        "colorPicker": {
+          "borderColor": "#8e918f",
+          "borderRadius": 8,
+          "swatchSize": 44
+        },
+        "editor": {
+          "borderColor": "#444746",
+          "background": "#1e1f20",
+          "minHeight": 96
+        },
+        "emptyState": {
+          "iconBackground": "#282a2c",
+          "titleColor": "#e3e3e3",
+          "textColor": "#9aa0a6"
+        },
+        "gridTile": {
+          "background": "#282a2c",
+          "borderRadius": 16,
+          "padding": 12
+        },
+        "image": {
+          "borderRadius": 12
+        },
+        "input": {
+          "background": "#1e1f20",
+          "borderColor": "#8e918f",
+          "borderRadius": 8,
+          "color": "#e3e3e3",
+          "fontSize": 16
+        },
+        "lightbox": {
+          "closeBackground": "#1e1f20",
+          "closeColor": "#e3e3e3"
+        },
+        "masonry": {
+          "gap": 8
+        },
+        "picker": {
+          "background": "#1e1f20",
+          "borderColor": "#8e918f",
+          "borderRadius": 8,
+          "color": "#e3e3e3",
+          "fontSize": 16
+        },
+        "screen": {
+          "background": "#131314",
+          "color": "#e3e3e3"
+        },
+        "textBody": {
+          "fontSize": 16,
+          "lineHeight": 24,
+          "color": "#e3e3e3"
+        },
+        "textLabel": {
+          "fontSize": 14,
+          "lineHeight": 20,
+          "fontWeight": 600
+        },
+        "timeline": {
+          "dotBackground": "#a8c7fa",
+          "lineBackground": "#444746",
+          "dotSize": 12
+        }
+      },
+      "styles": {}
+    }
+  }
+}

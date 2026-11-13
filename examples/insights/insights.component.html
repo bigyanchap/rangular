@@ -1,0 +1,64 @@
+<screen>
+  <appbar title="Insights"></appbar>
+
+  <breadcrumbs>
+    <crumb (click)="goHome()">Home</crumb>
+    <crumb (click)="goHome()">Insights</crumb>
+    <crumb>This week</crumb>
+  </breadcrumbs>
+
+  <label>Your people</label>
+  <avatar-group max="3">
+    <avatar text="Sarju Chapagain"></avatar>
+    <avatar text="Bigyan Chapagain"></avatar>
+    <avatar text="Monika Sogam"></avatar>
+    <avatar text="Acharya Rajan"></avatar>
+    <avatar text="Maya Dev"></avatar>
+  </avatar-group>
+
+  <label>Sessions this week</label>
+  <chart type="bar" [data]="week"></chart>
+  <chart type="line" [data]="trend"></chart>
+  <chart type="pie" [data]="split"></chart>
+
+  <label>Pick a day</label>
+  <calendar [value]="day" (change)="onDay($event)"></calendar>
+  <p>Selected: {{ day }}</p>
+
+  <label>Journey</label>
+  <timeline>
+    <timeline-item title="Started" time="Mon">
+      <p>The week began with a sunrise session.</p>
+    </timeline-item>
+    <timeline-item title="Deep work" time="Wed">
+      <p>Two long sittings, notes below.</p>
+    </timeline-item>
+    <timeline-item title="Review" time="Today">
+      <p>Looking back over the week.</p>
+    </timeline-item>
+  </timeline>
+
+  <label>Field photo</label>
+  <image src="https://example.com/yard.jpg" width="320" height="180" (click)="openPhoto()"></image>
+  <lightbox [open]="photoOpen" (close)="closePhoto()" src="https://example.com/yard.jpg">
+    <p>The yard at sunrise.</p>
+  </lightbox>
+
+  <label>Notes</label>
+  <editor [value]="notes" (change)="onNotes($event)"></editor>
+
+  <color-picker label="Chart colour" [value]="brand" (change)="onBrand($event)"></color-picker>
+  <p>Colour: {{ brand }}</p>
+
+  <label>Uneven tiles</label>
+  <grid-list cols="2" mode="masonry">
+    <grid-tile><p>A short tile.</p></grid-tile>
+    <grid-tile><p>A taller tile, with a second line of text under the first, so the two columns end at different heights.</p></grid-tile>
+    <grid-tile><p>Third tile.</p></grid-tile>
+    <grid-tile><p>Fourth.</p></grid-tile>
+  </grid-list>
+
+  <empty-state icon="mail" title="No messages" text="When someone writes, it will land here.">
+    <button (click)="goHome()">Back to Home</button>
+  </empty-state>
+</screen>
