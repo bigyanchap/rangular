@@ -797,7 +797,10 @@ tabs, with a regression test.
 
 ## Stage 15: beyond Angular
 
-Version 0.1.1. A second audit (2026-11-13) listed the pieces real
+Version 0.1.2. The stage itself shipped as 0.1.1; 0.1.2 marks the
+file picker dependency fix that on-device testing found the same
+day (both Expo picker packages are required dependencies, and the
+scaffold now writes them into every new app). A second audit (2026-11-13) listed the pieces real
 apps use constantly that Angular itself, core, Material and CDK
 together, never shipped, and that Rangular also lacked: twenty
 items in three tiers, all built in this stage, each with compiler
