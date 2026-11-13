@@ -205,11 +205,16 @@ function fileDepOf(fromDir: string, toDir: string): string {
  * The dependency pins are the Expo SDK 58 set (expo ~58, react 19.3,
  * react-native 0.88, react-native-svg 15.16, babel-preset-expo ~58),
  * chosen for mutual compatibility per the SDK 58 release. The set
- * moved from SDK 54 to SDK 58 on 2026-11-12 because the store build
- * of Expo Go supports SDK 58 only and refused an SDK 54 app. The pins
- * come from the SDK's published compatibility set; they were not
- * installed or device-verified from this environment, and the app
- * README says so.
+ * also carries expo-image-picker ~58.0.10 and expo-document-picker
+ * ~58.0.5: RgFilePicker names both in literal requires, and Metro
+ * resolves every literal require when an app bundles, so both are
+ * required dependencies of any app built on @rangular/ui, not an
+ * option an app picks per kind. The set moved from SDK 54 to
+ * SDK 58 on 2026-11-12 because the store build of Expo Go supports
+ * SDK 58 only and refused an SDK 54 app. The pins come from the
+ * SDK's published compatibility set; they were not installed or
+ * device-verified from this environment, and the app README
+ * says so.
  */
 function initApp(dirArg: string): void {
   const repoRoot = rangularRepoRoot();
@@ -263,6 +268,8 @@ function initApp(dirArg: string): void {
       '@rangular/runtime': fileDepOf(appDir, path.join(repoRoot, 'packages', 'runtime')),
       '@rangular/ui': fileDepOf(appDir, path.join(repoRoot, 'packages', 'ui')),
       expo: '~58.0.0',
+      'expo-document-picker': '~58.0.5',
+      'expo-image-picker': '~58.0.10',
       react: '19.3.0',
       'react-native': '0.88.1',
       'react-native-svg': '15.16.0',
@@ -387,11 +394,18 @@ the generated app behaves.
   with it only if the relative layout is kept; edit them if you
   relocate the app on its own.
 - The Expo pins (expo ~58, react 19.3, react-native 0.88,
-  react-native-svg 15.16, babel-preset-expo ~58) are the Expo SDK 58
-  set, chosen for mutual compatibility. The set moved from SDK 54 to
-  SDK 58 because the store build of Expo Go supports SDK 58 only.
-  They were selected from the SDK's published compatibility, not
-  installed or device-verified when this scaffold was written.
+  react-native-svg 15.16, expo-image-picker ~58.0.10,
+  expo-document-picker ~58.0.5, babel-preset-expo ~58) are the Expo
+  SDK 58 set, chosen for mutual compatibility. The set moved from
+  SDK 54 to SDK 58 because the store build of Expo Go supports
+  SDK 58 only. They were selected from the SDK's published
+  compatibility, not installed or device-verified when this
+  scaffold was written.
+- \`expo-image-picker\` and \`expo-document-picker\` are required
+  dependencies, not extras: \`RgFilePicker\` in \`@rangular/ui\`
+  names both in literal requires, and Metro resolves every literal
+  require when the app bundles, so the bundle fails without either
+  one. Keep both even if this app never shows a file picker.
 - \`metro.config.js\` is the standard monorepo config: it watches the
   Rangular repo root (so the file: packages resolve) and looks for
   node_modules in both the app and the repo root.

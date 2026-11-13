@@ -820,8 +820,10 @@ revealed by a gesture in the app and a handle in the preview.
 
 Tier 2, controls on the Stage 6 contract. The **file and image
 picker** emits `{ name, uri, size, type }` arrays through
-`(change)`; it loads expo-image-picker or expo-document-picker
-lazily, so apps must carry the module for the kind they use (Expo
+`(change)`; both expo-image-picker and expo-document-picker are
+required dependencies of any app using `@rangular/ui`, because
+Metro resolves the picker's literal requires when the app bundles
+(the scaffold writes both into the app's `package.json`, and Expo
 Go carries both), stated plainly in its recipe card. The **input
 mask** is a `mask` attribute on `<input>` with a three character
 pattern language (`9` digit, `A` letter, `*` any); the masked

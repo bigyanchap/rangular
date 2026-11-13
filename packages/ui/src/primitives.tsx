@@ -2507,12 +2507,17 @@ export interface RgPickedFile {
  * `kind="file"` picks a document. `multiple` allows several at
  * once. Cancelling emits nothing.
  *
- * App side requirement, stated plainly: the picker modules are
- * Expo modules the app must carry, expo-image-picker for images
- * and expo-document-picker for files. They are loaded lazily here
- * so an app without them still runs; the tap then only logs a
- * warning naming the missing module. Expo Go carries both for
- * SDK 58, so Expo Go runs work with no setup.
+ * App side requirement, stated plainly: both picker modules are
+ * required dependencies of any app that uses @rangular/ui,
+ * expo-image-picker and expo-document-picker alike. The requires
+ * below sit inside the tap handler, so the native call happens at
+ * tap time, but Metro resolves every literal require when the app
+ * bundles: an app without either package does not bundle at all,
+ * and the warning below covers only runtimes where a require can
+ * fail after bundling. The scaffold writes both into the app's
+ * package.json; an app that vendors @rangular/ui by hand must add
+ * both itself. Expo Go carries both for SDK 58, so Expo Go runs
+ * work with no setup.
  */
 export function RgFilePicker({ label, kind = 'image', multiple, placeholder, disabled, onChange, children, style }: any) {
   const styles = stylesFor(useRgTheme());
@@ -2545,8 +2550,8 @@ export function RgFilePicker({ label, kind = 'image', multiple, placeholder, dis
       })));
     } catch {
       console.warn(
-        'RgFilePicker: the picker module is not available in this app. '
-        + 'Add expo-image-picker (kind="image") or expo-document-picker (kind="file") to the app.',
+        'RgFilePicker: a picker module is not available in this app. '
+        + 'Both expo-image-picker and expo-document-picker are required dependencies of @rangular/ui; add both to the app.',
       );
     }
   };

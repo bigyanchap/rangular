@@ -882,7 +882,11 @@ See `examples/mailbox-pro/` and its recipe card.
   scaffolded from.
 - **The pins are the Expo SDK 58 set**: `expo ~58.0.0`,
   `react 19.3.0`, `react-native 0.88.1`, `react-native-svg 15.16.0`,
-  `babel-preset-expo ~58.0.0` (dev). They were chosen for mutual
+  `expo-image-picker ~58.0.10`, `expo-document-picker ~58.0.5`,
+  `babel-preset-expo ~58.0.0` (dev). The two picker packages are in
+  the set because they are required dependencies of any app built
+  on `@rangular/ui`: `RgFilePicker` names both in literal requires
+  and Metro resolves those at bundle time. They were chosen for mutual
   compatibility from the SDK's published set, not installed or
   device-verified from the build environment. The set moved from
   SDK 54 to SDK 58 on 2026-11-12 because the store build of Expo Go
@@ -990,9 +994,13 @@ built, in three tour examples: `examples/feed/` (Tier 1),
 - **The picker emits file info.** `<file-picker kind="image"
   (change)="onFiles($event)">` (or `kind="file"`, `multiple`)
   emits an array of `{ name, uri, size, type }`; cancelling emits
-  nothing. App side requirement: the Expo picker modules
-  (expo-image-picker, expo-document-picker) are loaded lazily, so
-  the app must carry the one its kind uses; Expo Go carries both.
+  nothing. App side requirement: both Expo picker modules
+  (expo-image-picker, expo-document-picker) are required
+  dependencies of any app using `@rangular/ui`, because Metro
+  resolves the picker's literal requires when the app bundles, so
+  an app without either package does not bundle at all. The
+  scaffold writes both into the app's `package.json`; a hand
+  vendored app adds both itself. Expo Go carries both.
 - **The mask is an attribute on input.** `mask="(999) 999-9999"`
   with `9` a digit slot, `A` a letter slot, `*` any character and
   literals that appear only once the next slot is filled. The

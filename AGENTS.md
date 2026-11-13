@@ -214,9 +214,13 @@ node dist/packages/cli/src/cli.js doctor examples/showcase/showcase.component.ts
   page runtime mirrors them in plain JS and parity tests pin the
   mirrors. Data colours live in `palette.ts`, never in
   `primitives.tsx` (the hex guard).
-- **The picker is lazy.** `RgFilePicker` requires the Expo picker
-  modules at tap time, so an app without them still runs; the
-  recipe card states the app-side requirement.
+- **The picker needs both Expo modules installed.** `RgFilePicker`
+  requires expo-image-picker and expo-document-picker inside its
+  tap handler, so the native call happens at tap time, but Metro
+  resolves every literal require at bundle time: both packages are
+  required dependencies of any app using `@rangular/ui`, and the
+  scaffold writes both into the app's `package.json`. The recipe
+  card states the app-side requirement.
 - **`DOC_IMG_SIZE` is live.** Stage 15 added the `<image>` tag,
   so the doctor now enforces declared width and height on it.
 

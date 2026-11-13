@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vm from 'node:vm';
+import { spawnSync } from 'node:child_process';
 import { compileComponent, CompileResult, hasErrors } from '../packages/compiler/src/compile';
 import { TAG_MAP } from '../packages/compiler/src/codegen/generate';
 import { DIAGNOSTIC_CODES } from '../packages/compiler/src/diagnostics';
@@ -15,6 +17,7 @@ import { chartModel, normalizeChartData } from '../packages/ui/src/chart';
 import { COLOR_SWATCHES } from '../packages/ui/src/palette';
 
 const ROOT = path.join(__dirname, '..', '..');
+const cliPath = path.join(ROOT, 'dist', 'packages', 'cli', 'src', 'cli.js');
 const normalize = (s: string) => s.replace(/\s+/g, ' ').trim();
 
 function compileExample(name: string): { dir: string; entry: string; result: CompileResult } {
@@ -583,4 +586,27 @@ test('preview behaviour: masonry carries its class, and the server paint covers 
   assert.ok(paint.includes('No mail'), 'the empty state paints its title');
   assert.ok(paint.includes('<img class="rg-image"'), 'the image paints');
   assert.ok(paint.includes('class="crumb current"'), 'the last crumb paints as current');
+});
+
+// --- F: the file picker dependency regression --------------------------------
+// RgFilePicker names both Expo picker packages in literal requires
+// inside its tap handler. The Stage 15 docs first described those
+// requires as lazy and the packages as optional extras an app
+// could skip. That is false on React Native: Metro resolves every
+// literal require when the app bundles, and the tutorial app
+// failed to bundle on a real device for exactly that reason. Both packages
+// are required dependencies of any app using @rangular/ui, so the
+// scaffold must write both into the generated package.json; this
+// pin fails if either one is ever dropped again.
+
+test('scaffold regression: init --app writes both picker packages as required dependencies', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rangular-s15-picker-'));
+  const appDir = path.join(tmp, 'picker-app');
+  const run = spawnSync(process.execPath, [cliPath, 'init', appDir, '--app'], { cwd: ROOT, encoding: 'utf8' });
+  assert.equal(run.status, 0, run.stderr);
+  const pkg = JSON.parse(fs.readFileSync(path.join(appDir, 'package.json'), 'utf8'));
+  assert.equal(pkg.dependencies['expo-image-picker'], '~58.0.10',
+    'the scaffold must carry expo-image-picker; Metro resolves the RgFilePicker require at bundle time');
+  assert.equal(pkg.dependencies['expo-document-picker'], '~58.0.5',
+    'the scaffold must carry expo-document-picker; Metro resolves the RgFilePicker require at bundle time');
 });
