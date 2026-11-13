@@ -1,4 +1,5 @@
 import {
+  CarriedImportBinding,
   ClassFileInfo,
   ComponentInfo,
   DirectiveInfo,
@@ -239,6 +240,8 @@ export function compileComponent(options: CompileOptions): CompileResult {
   const stack: string[] = [];
   /** Source text per visited file, kept for source map sourcesContent. */
   const fileSources = new Map<string, string>();
+  /** The parsed view of every visited file, kept for the import pass below. */
+  const parsedByFile = new Map<string, ClassFileInfo>();
   let entryParsed: ClassFileInfo | undefined;
 
   const visitFile = (fileName: string, source: string): void => {
@@ -256,6 +259,7 @@ export function compileComponent(options: CompileOptions): CompileResult {
     visited.add(fileName);
     stack.push(fileName);
     const parsed = parseClassFile(source, fileName);
+    parsedByFile.set(fileName, parsed);
     if (fileName === entryKey) entryParsed = parsed;
     for (const info of parsed.components) {
       if (!info.selector) continue;
@@ -562,12 +566,95 @@ export function compileComponent(options: CompileOptions): CompileResult {
   if (options.sourceMap) fileSources.set(entryTemplateFile, templateSource);
   const pipes = [...pipesByName.values()];
   const directives = [...directivesByAttr.values()];
+
+  // --- Third-party imports ---------------------------------------------------
+  // The generated module inlines the classes of the contributing files
+  // (the entry component, the child components, the providedIn: 'root'
+  // services, the custom pipes), so an import of a bare third-party
+  // module in one of those files must be carried into the generated
+  // module, merged across files, or the generated code references a
+  // name nothing binds (a runtime ReferenceError, found in the wild
+  // with AsyncStorage in a service). Framework specifiers are consumed
+  // semantically (@angular/*, @rangular/*) or emitted by codegen
+  // itself (react, react-native) and keep their old behaviour, and
+  // relative imports keep theirs (followed above, classes inlined).
+  // Directive files contribute no module code (their expressions admit
+  // only inputs and locals, anything else is DIR_UNSUPPORTED), so they
+  // are not contributing files here.
+  const isFrameworkSpecifier = (spec: string): boolean => spec === 'react'
+    || spec === 'react-native'
+    || spec.startsWith('@angular/')
+    || spec.startsWith('@rangular/');
+  const contributingFiles: string[] = [];
+  const addContributing = (f: string | undefined): void => {
+    if (f && !contributingFiles.includes(f)) contributingFiles.push(f);
+  };
+  addContributing(entryKey);
+  for (const c of children) addContributing(c.fileName);
+  for (const s of services) if (s.providedInRoot) addContributing(s.fileName);
+  for (const p of pipes) addContributing(p.fileName);
+  const carriedBindings: CarriedImportBinding[] = [];
+  const carriedSideEffects: { from: string; file: string }[] = [];
+  const boundLocals = new Map<string, CarriedImportBinding>();
+  const sideEffectSeen = new Set<string>();
+  for (const file of contributingFiles) {
+    const parsed = parsedByFile.get(file);
+    if (!parsed) continue;
+    for (const eq of parsed.importEquals) {
+      diagnostics.push({
+        ...warning(
+          'CMP_IMPORT_FORM',
+          `'${file}' declares 'import ${eq.local} = ...', a form the generated module cannot carry; the declaration was dropped, so code using '${eq.local}' has no binding`,
+          eq.line, undefined,
+          `Write it as an ES module import: import ${eq.local} from '<module>'; (or import { ... } from '<module>';) and the import is carried into the generated module`,
+        ),
+        file,
+      });
+    }
+    for (const imp of parsed.imports) {
+      if (imp.from.startsWith('.') || isFrameworkSpecifier(imp.from)) continue;
+      if (!imp.bindings.length) {
+        if (!sideEffectSeen.has(imp.from)) {
+          sideEffectSeen.add(imp.from);
+          carriedSideEffects.push({ from: imp.from, file });
+        }
+        continue;
+      }
+      for (const b of imp.bindings) {
+        const prev = boundLocals.get(b.local);
+        if (prev) {
+          if (prev.from === imp.from && prev.imported === b.imported) {
+            // The same binding declared again in another contributing
+            // file: its effect already exists, carry it once. A value
+            // binding subsumes a type-only one of the same origin.
+            if (prev.typeOnly && !b.typeOnly) prev.typeOnly = false;
+            continue;
+          }
+          diagnostics.push({
+            ...warning(
+              'GEN_IMPORT_COLLISION',
+              `Import of '${b.local}' from '${imp.from}' in '${file}' was dropped: the name '${b.local}' is already bound by the import from '${prev.from}' in '${prev.file}', and the generated module can hold only one binding of that name (the first wins)`,
+              imp.line, undefined,
+              `Give one of the two imports of the name '${b.local}' a different local name (an 'as' alias on a named import, or a different name on a default import) so both survive in the generated module`,
+            ),
+            file,
+          });
+          continue;
+        }
+        const carried: CarriedImportBinding = { ...b, from: imp.from, file };
+        boundLocals.set(b.local, carried);
+        carriedBindings.push(carried);
+      }
+    }
+  }
+
   const { code, diagnostics: genDiags, sourceMap } = generateComponent(component, root, css, {
     children,
     services,
     pipes,
     directives,
     routes,
+    externalImports: { bindings: carriedBindings, sideEffects: carriedSideEffects },
     ...(options.sourceMap
       ? { sourceMap: { entryTsFile: entryKey, entryTemplateFile, contents: fileSources } }
       : {}),

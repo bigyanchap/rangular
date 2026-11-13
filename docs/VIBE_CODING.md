@@ -66,6 +66,7 @@ the repo's actual behaviour today (through Stage 12), not aspirations.
 | Content projection (`<ng-content></ng-content>` in a child template) | Wired (Stage 12) for the single default slot: children written inside a child component's tag render where the child places `<ng-content>`. A `select` attribute warns `PROJECTION_SELECT_UNSUPPORTED` and behaves as the default slot. See the Content projection section below |
 | Class fields as state, methods as actions | Same. This is the core model |
 | `@Injectable({ providedIn: 'root' })` services + constructor injection | Wired (Stage 3): services are reactive singletons in a generated container; constructor *parameter properties* (`constructor(private mail: MailService)`) are the injection form; services may inject services |
+| Third-party module imports (npm packages, in a component, child, root service or `@Pipe` file) | Wired: the import is carried into the generated module, specifier and bindings as written (default, named with aliases, namespace, type-only, side-effect), merged across the contributing files and carried once, so generated code may use the imported names freely. A binding whose local name the generated module already defines is dropped with a `GEN_IMPORT_COLLISION` warning. See the Third-party imports section below |
 | Lifecycle hooks (`ngOnInit`, `ngOnDestroy`) | Wired (Stage 3): `ngOnInit` runs once after first render, `ngOnDestroy` on unmount, `useEffect(..., [])` and its cleanup in generated code |
 | `HttpClient.get(url)` returning an Observable you `subscribe` to | Wired with a subset (Stage 3): an Observable-lite with `subscribe(next?, error?)` only; the supported component shape is `this.http.get(url).subscribe((data) => { this.field = data; });` |
 | Angular Material selection controls | Wired (Stage 6): `switch` mirrors `mat-slide-toggle`, `checkbox` mirrors `mat-checkbox`, `switcher` with `option` mirrors `mat-button-toggle-group`, and `radio-group` with `radio` mirrors `mat-radio-group`; all use `[checked]` or `[value]` in and `(change)` out with the next value as `$event` |
@@ -91,6 +92,7 @@ the repo's actual behaviour today (through Stage 12), not aspirations.
 | `[class]` / `[ngClass]` whole-value class bindings | Detected, warns `GEN_CLASS_BINDING`, binding dropped: a dynamic class string cannot be resolved to StyleSheet entries at compile time. Toggle one declared class with `[class.name]="cond"` instead (supported, see the styling notes) | Not planned |
 | `[style]` / `[style.prop]` / `[ngStyle]` bindings, and static `style="..."` attributes | Detected, warns `GEN_STYLE_BINDING`, dropped: raw CSS values bypass the token-snapped component styles, and a static style attribute has no StyleSheet entry to attach to. Declare a class in the component styles instead | Not planned |
 | `[attr.x]` bindings | Detected, warns `GEN_ATTR_BINDING`, dropped: React Native elements have no arbitrary HTML attributes. Use the plain attribute or the specific `[prop]` binding the block documents | Not planned |
+| `import A = require('x')` / `import A = B.C` declarations | Detected, warns `CMP_IMPORT_FORM`, dropped: the generated module is an ES module and cannot carry the form. Write an ES module import instead; third-party ES imports are carried (see the Third-party imports section) | Not planned |
 | Full CSS (cascade, inheritance, descendant/id/pseudo selectors, unsupported properties) | Subset only: element and `.class` selectors, a fixed property list; anything else warns (`CSS_SELECTOR` / `CSS_UNSUPPORTED`) and is dropped. Styles apply per element, no cascade | Subset may grow per stage |
 
 ### Rangular source vs React
@@ -1165,6 +1167,42 @@ framework first so the app only consumes them.
   makes those fields state, as for any method. In the preview, ngOnInit
   runs once when a component instance is created; the static first paint
   shows pre-init state.
+
+## Third-party imports
+
+- **Bare module imports are carried.** An import of a third-party
+  module (a specifier that is not relative and not a framework
+  specifier) in a file that contributes classes to the generated
+  module (the entry component's file, a child component's file, a
+  `providedIn: 'root'` service's file, a `@Pipe` file) is carried
+  into the generated module's import block, specifier and bindings
+  as written: default, named (aliases kept), namespace, type-only
+  (as `import type`, or as `type` entries when the same specifier
+  also carries values) and side-effect imports all carry. The same
+  binding declared by two contributing files is carried once.
+  Generated code may then use the imported names freely, e.g. a
+  service calling `AsyncStorage.setItem(...)` from
+  `@react-native-async-storage/async-storage`. Before this round
+  such imports were silently dropped while their uses were emitted,
+  which left the generated app throwing a ReferenceError at runtime.
+- **Name collisions drop with a warning.** When a carried binding's
+  local name is already taken in the generated module (the same
+  name imported from a different module, or a name the module
+  itself defines: a generated class or component function, a
+  module-level value, or one of its framework imports), the later
+  binding is dropped with a `GEN_IMPORT_COLLISION` warning and a
+  TODO note in the generated file; the first binding of the name
+  wins. Give the import a different local name to carry both.
+- **`import A = require('x')` cannot be carried.** The generated
+  module is an ES module; the declaration is dropped with a
+  `CMP_IMPORT_FORM` warning. Write an ES module import instead.
+- **Framework and relative imports are unchanged.** `@angular/*`
+  and `@rangular/*` names are consumed semantically and never
+  emitted; `react` and `react-native` imports are codegen's own.
+  Relative imports are followed and their classes inlined, as
+  before. One standing limit of that rule: only classes resolve
+  through relative imports, so a relative import of a file holding
+  no classes (a plain exported const, say) is not inlined.
 
 ## HttpClient (Stage 3, M6)
 

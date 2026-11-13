@@ -2587,12 +2587,20 @@
       "meaning": "An [attr.x] binding was dropped: it targets an HTML attribute, and React Native elements have no arbitrary attributes. Use the plain attribute when the block supports one, or the specific [prop] binding the block documents."
     },
     {
+      "code": "GEN_IMPORT_COLLISION",
+      "meaning": "A third-party import binding was dropped because its local name is already taken in the generated module: by the same name imported from a different module, or by a name the generated module itself defines (a generated class or component function, or one of its own framework imports). Emitting it would duplicate the name and break the module; the first binding of the name wins."
+    },
+    {
       "code": "METHOD_UNSUPPORTED",
       "meaning": "A statement in a component method is outside the supported translation subset; it was left as a TODO."
     },
     {
       "code": "CMP_IMPORT_UNRESOLVED",
       "meaning": "A relative import in a compiled file could not be resolved to a source file."
+    },
+    {
+      "code": "CMP_IMPORT_FORM",
+      "meaning": "An import = require(...) (or import = Some.Name) declaration sits in a file that contributes classes to the generated module; the generated module is an ES module and cannot carry that form, so the declaration was dropped. Write the import as an ES module import instead."
     },
     {
       "code": "CMP_PATH_ESCAPE",

@@ -124,11 +124,56 @@ export interface DirectiveInfo {
   fileName: string;
 }
 
+/** One binding an import declaration introduces in the importing file. */
+export interface ImportBinding {
+  /** Local name bound in the importing file, e.g. 'fmt'. */
+  local: string;
+  /**
+   * The exported name in the source module: 'default' for a default
+   * import, '*' for a namespace import, or the named export as written
+   * before any `as`.
+   */
+  imported: string;
+  /** Type-only binding (an `import type` clause or an inline `type` modifier). */
+  typeOnly: boolean;
+}
+
 export interface ImportInfo {
-  /** Named imports, e.g. ['Component', 'Input']. */
+  /** Named imports by local name, e.g. ['Component', 'Input']. */
   names: string[];
   /** Module specifier as written, e.g. './mail.service' or '@angular/core'. */
   from: string;
+  /**
+   * Every binding the declaration introduces (default, named,
+   * namespace). Empty for a side-effect import (`import 'x';`).
+   */
+  bindings: ImportBinding[];
+  /** 1-based line of the declaration in its file. */
+  line: number;
+}
+
+/**
+ * An `import A = require('x')` or `import A = B.C` declaration
+ * (Stage: third-party imports). Recorded so the pipeline can diagnose
+ * it: the form cannot be carried into the generated module.
+ */
+export interface ImportEqualsInfo {
+  /** The local name the declaration binds, e.g. 'AS'. */
+  local: string;
+  /** 1-based line of the declaration in its file. */
+  line: number;
+}
+
+/**
+ * A third-party import binding compile.ts hands to codegen for
+ * carrying into the generated module (merged across contributing
+ * files: the same binding declared twice is carried once).
+ */
+export interface CarriedImportBinding extends ImportBinding {
+  /** Module specifier as written in the source, carried verbatim. */
+  from: string;
+  /** The contributing source file that declared the binding. */
+  file: string;
 }
 
 /** Everything one TypeScript file contributes to a compilation. */
@@ -140,6 +185,8 @@ export interface ClassFileInfo {
   /** Attribute @Directive classes (Stage 12). */
   directives: DirectiveInfo[];
   imports: ImportInfo[];
+  /** `import A = require(...)` / `import A = B.C` declarations. */
+  importEquals: ImportEqualsInfo[];
 }
 
 export interface ParseComponentResult {
@@ -398,15 +445,43 @@ function readDirectiveClass(node: ts.ClassDeclaration, sf: ts.SourceFile, fileNa
  */
 export function parseClassFile(tsSource: string, fileName = 'component.ts'): ClassFileInfo {
   const sf = ts.createSourceFile(fileName, tsSource, ts.ScriptTarget.Latest, /* setParentNodes */ true);
-  const result: ClassFileInfo = { components: [], services: [], pipes: [], directives: [], imports: [] };
+  const result: ClassFileInfo = { components: [], services: [], pipes: [], directives: [], imports: [], importEquals: [] };
   const visit = (node: ts.Node): void => {
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
       const names: string[] = [];
-      const bindings = node.importClause?.namedBindings;
-      if (bindings && ts.isNamedImports(bindings)) {
-        for (const el of bindings.elements) names.push(el.name.text);
+      const bindings: ImportBinding[] = [];
+      const clause = node.importClause;
+      if (clause) {
+        if (clause.name) {
+          bindings.push({ local: clause.name.text, imported: 'default', typeOnly: clause.isTypeOnly });
+        }
+        const named = clause.namedBindings;
+        if (named && ts.isNamedImports(named)) {
+          for (const el of named.elements) {
+            names.push(el.name.text);
+            bindings.push({
+              local: el.name.text,
+              imported: el.propertyName ? el.propertyName.text : el.name.text,
+              typeOnly: clause.isTypeOnly || el.isTypeOnly,
+            });
+          }
+        } else if (named && ts.isNamespaceImport(named)) {
+          bindings.push({ local: named.name.text, imported: '*', typeOnly: clause.isTypeOnly });
+        }
       }
-      result.imports.push({ names, from: node.moduleSpecifier.text });
+      result.imports.push({
+        names,
+        from: node.moduleSpecifier.text,
+        bindings,
+        line: sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1,
+      });
+      return;
+    }
+    if (ts.isImportEqualsDeclaration(node)) {
+      result.importEquals.push({
+        local: node.name.text,
+        line: sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1,
+      });
       return;
     }
     if (ts.isClassDeclaration(node) && node.name) {
