@@ -350,7 +350,7 @@ export default function App() {
 
   write('README.md', `# ${appName}
 
-A real Expo app scaffolded by Rangular (Stage 12). You write
+A real Expo app scaffolded by the Rangular framework (Stage 12). You write
 Angular-style components in \`src/\`; the Rangular compiler turns them
 into React Native code, and Expo runs the result.
 

@@ -1,6 +1,6 @@
 # Installation and your first app
 
-Rangular is installed and used the Angular way: install the CLI once,
+The Rangular framework is installed and used the Angular way: install the CLI once,
 create an app with one command, then serve it and watch it run. In
 Angular the app runs in a browser; here it runs in Expo Go on your
 phone, which plays the browser's role.
@@ -114,6 +114,22 @@ folder, and there is no single `serve` command yet, so Expo is
 started directly and components are recompiled with the build
 command spelled out in the created app's own README.
 
+## What the created app carries
+
+The create command writes the app's whole dependency set into its
+`package.json`; there is nothing else to install by hand.
+Dependencies: `@rangular/ui` and `@rangular/runtime` (from this
+repo), `expo ~58.0.0`, `react 19.3.0`, `react-native 0.88.1`,
+`react-native-svg 15.16.0`, `expo-image-picker ~58.0.10` and
+`expo-document-picker ~58.0.5`. Dev dependencies: `@babel/core`,
+`babel-preset-expo ~58.0.0` and `typescript ~5.9.2`. Both picker
+packages are required, not extras: the file picker in
+`@rangular/ui` names them in `require` calls, and Metro resolves
+every such call when an app bundles, so an app missing either one
+does not bundle at all. An app assembled by hand around a copied
+`@rangular/ui` must add `react-native-svg` and both pickers
+itself, for the same reason.
+
 ## Temporary step: apps scaffolded before the SDK 58 move
 
 The store build of Expo Go supports Expo SDK 58 only. Apps
@@ -128,6 +144,7 @@ npx expo start
 ```
 
 The `--fix` step moves Expo to SDK 58 and aligns the rest of the
-app's dependencies (React, React Native, SVG, the Babel preset) to
+app's dependencies (React, React Native, SVG, both picker
+packages, the Babel preset) to
 the versions SDK 58 expects. This section is temporary: it comes
 out when Rangular is published on npm.

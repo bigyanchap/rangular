@@ -1,4 +1,4 @@
-# Rangular: Vibe-Coding Layer
+# Rangular framework: Vibe-Coding Layer
 
 Bigyan's directive, 2026-11-12: *"We want our whole system to be vibe coding conducive."*
 

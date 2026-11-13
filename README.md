@@ -1,8 +1,8 @@
-# Rangular
+# Rangular framework
 
 **Write Angular code, compile React Native code.**
 
-Rangular is a standalone transpiler: you write Angular-style code, TypeScript
+The Rangular framework is a standalone transpiler: you write Angular-style code, TypeScript
 classes with `@Component`, HTML-like templates, dependency injection, and
 Rangular compiles it to React Native `.tsx`. The transpiler's target is React
 Native JavaScript/JSX; **Hermes compiles that JavaScript to bytecode itself**,
@@ -27,7 +27,7 @@ tag, or an out-of-subset style property leaks into generated code.
 
 ## Install and your first app
 
-Rangular is installed and used the Angular way: install the CLI once,
+The Rangular framework is installed and used the Angular way: install the CLI once,
 create an app with one command, then serve it and watch it run. Expo
 Go on your phone plays the browser's role.
 
@@ -108,6 +108,19 @@ checkout, carries the Expo SDK 58 pin set, and its starter component
 (`src/app.component.ts`) is already compiled into `src/AppRoot.tsx`
 by the real compiler. Edit the component, recompile it with
 `rangular build` as the app README spells out, and Expo reloads.
+
+What the scaffold installs for you, in full: the created app's
+`package.json` carries `@rangular/ui` and `@rangular/runtime`
+(through `file:` specifiers to this checkout), `expo ~58.0.0`,
+`react 19.3.0`, `react-native 0.88.1`, `react-native-svg 15.16.0`,
+`expo-image-picker ~58.0.10` and `expo-document-picker ~58.0.5`,
+with `@babel/core`, `babel-preset-expo ~58.0.0` and
+`typescript ~5.9.2` as dev dependencies. You install nothing else
+by hand. If you ever copy `@rangular/ui` into an existing app
+yourself instead of scaffolding, add `react-native-svg` and both
+picker packages to that app yourself: the UI primitives name them
+in `require` calls, and Metro resolves every such call when the
+app bundles, so the bundle fails without them.
 
 Two honest notes. The scaffold's structure and compilation are
 covered by the test suite; an actual Expo Go launch on a device was
