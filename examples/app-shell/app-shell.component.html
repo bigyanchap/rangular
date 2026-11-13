@@ -1,0 +1,35 @@
+<screen>
+  <appbar title="App Shell" menu (menu)="openNav()"></appbar>
+
+  <drawer [open]="navOpen" (close)="closeNav()">
+    <h3>App Shell</h3>
+    <p>Navigation lives in the drawer. A backdrop tap closes it, like every Rangular overlay.</p>
+    <button variant="text" (click)="closeNav()">Close the drawer</button>
+  </drawer>
+
+  <p>The app bar menu button opens the drawer. The button below opens a menu: a small panel of actions for one message, with a divider before the destructive one.</p>
+  <button (click)="openMenu()">Message actions</button>
+  <menu [open]="menuOpen" (close)="closeMenu()">
+    <menu-item icon="edit" (click)="act('Rename')">Rename</menu-item>
+    <menu-item icon="share" (click)="act('Share')">Share</menu-item>
+    <divider></divider>
+    <menu-item icon="delete" (click)="act('Delete')">Delete</menu-item>
+  </menu>
+  <p *ngIf="lastAction">Last action: {{ lastAction }}</p>
+
+  <divider></divider>
+
+  <label>Checkout, in three steps</label>
+  <stepper [index]="stepIndex" (change)="onStep($event)">
+    <step label="Cart">
+      <p>Your cart page. The Continue button moves the stepper from the class, the same [index] the header taps update.</p>
+      <button (click)="next()">Continue</button>
+    </step>
+    <step label="Address">
+      <p>Your address page.</p>
+    </step>
+    <step label="Done">
+      <p>All done. Steps before this one carry a check in the header.</p>
+    </step>
+  </stepper>
+</screen>

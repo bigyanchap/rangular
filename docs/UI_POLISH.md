@@ -238,3 +238,12 @@ Tutorial app, from screenshots on a real phone:
 - Buttons gained a quiet form, `variant="text"`, for back links
   and secondary actions, so not every action has to shout like a
   primary button.
+- Stage 14 (2026-11-13) added the Material pieces the audit found
+  missing, all in the same polish language: the menu panel and the
+  drawer reuse the overlay scrim and surface, the select reuses the
+  picker field and the bottom sheet, the stepper header reuses the
+  tabs rhythm with numbered circles, grid tiles are surface cards
+  on the spacing scale, tree rows ride the row rhythm, the divider
+  is the same hairline the panels and tables use, and tooltips are
+  small dark bubbles in the snackbar's colours. No new colours, no
+  new radii, no springs.

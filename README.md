@@ -683,7 +683,8 @@ direct panels coordinate single-open, like mat-accordion with
 header="Messages">` declarations: the name (Material's
 matColumnDef name; `key` is an alias, because React reserves
 `key`) reads that property of each row object. No column
-templates, sorting or pagination in this version, and empty data
+templates in this version (sorting and pagination arrived in
+Stage 14), and empty data
 shows nothing unless the table carries `emptyText`.
 
 **Autocomplete** is an `<input>` with `[options]` bound to a
@@ -758,6 +759,41 @@ paths each fixture-tested clean. The full record is in
 [SECURITY.md](SECURITY.md). The exact limits of everything in this
 stage are the Pipes, Attribute directives, Content projection and
 Expo app scaffold sections of [docs/VIBE_CODING.md](docs/VIBE_CODING.md).
+
+## Stage 14: the missing Material pieces
+
+An audit against the Angular Material component list (2026-11-13)
+found ten pieces missing. They are built now, each with compiler
+support, tests, an example and a recipe card, in two tour examples:
+`examples/app-shell/` (drawer, menu, stepper, divider) and
+`examples/explorer/` (select, tree, grid list, sortable paged
+table, tooltip).
+
+**Menu** is an overlay with the sheet contract:
+`<menu [open]="menuOpen" (close)="closeMenu()">` holds
+`<menu-item icon="edit" (click)="rename()">Rename</menu-item>`
+rows (and `<divider>` between them); choosing an item runs its
+handler and closes the menu. **Drawer** (MatSidenav, over mode) is
+the same contract with a full height panel from the left.
+**Select** (MatSelect) is a control: `[value]` in, `(change)` out,
+`<option>` declarations, and a bottom sheet of choices with a
+check on the current one. **Stepper** (MatStepper) follows the
+tabs contract, `[index]` and `(change)`, each `<step label="...">`
+owning its page, completed steps carrying a check. **Grid list**
+lays `<grid-tile>` children out in `cols` columns. **Tree** nodes
+nest `<tree-node label="...">` inside each other and manage their
+own expansion, `expanded` as the seed. **Divider** is one
+hairline. **Tooltip** is an attribute on button, row and
+icon-button, shown on long press (the mobile form of matTooltip);
+anywhere else the compiler warns `GEN_TOOLTIP_HOST` and drops it.
+And the **table** grew its two missing pieces: a `sortable`
+column whose header cycles ascending, descending, unsorted, and a
+`pageSize` that pages the rows with a range and chevron pager.
+One compiler bug was found and fixed on the way: `(change)`
+handlers on the new controls generated an arrow that referenced
+`$event` without receiving it; select and stepper now sit in the
+same control list as switch, checkbox, switcher, radio group and
+tabs, with a regression test.
 
 ## v1 is complete
 

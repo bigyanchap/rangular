@@ -1,0 +1,50 @@
+<screen>
+  <appbar title="Explorer"></appbar>
+
+  <select label="City" [value]="city" (change)="onCity($event)" placeholder="Pick a city">
+    <option value="ktm">Kathmandu</option>
+    <option value="pkr">Pokhara</option>
+    <option value="bkt">Bhaktapur</option>
+  </select>
+  <p>Selected city code: {{ city }}</p>
+
+  <label>Folders</label>
+  <tree>
+    <tree-node label="Inbox" expanded>
+      <tree-node label="Work"></tree-node>
+      <tree-node label="Personal"></tree-node>
+    </tree-node>
+    <tree-node label="Archive">
+      <tree-node label="2025"></tree-node>
+    </tree-node>
+  </tree>
+
+  <label>Places</label>
+  <grid-list cols="2">
+    <grid-tile>
+      <h3>Swayambhu</h3>
+      <p>The monkey temple hill</p>
+    </grid-tile>
+    <grid-tile>
+      <h3>Boudha</h3>
+      <p>The great stupa</p>
+    </grid-tile>
+    <grid-tile>
+      <h3>Patan</h3>
+      <p>Durbar square and workshops</p>
+    </grid-tile>
+    <grid-tile>
+      <h3>Thamel</h3>
+      <p>Bookshops and cafes</p>
+    </grid-tile>
+  </grid-list>
+
+  <label>People, two to a page, sortable</label>
+  <table [data]="people" pageSize="2">
+    <column name="name" header="Name" sortable></column>
+    <column name="age" header="Age" sortable></column>
+  </table>
+
+  <button (click)="save()" tooltip="Saves the current list">Save the list</button>
+  <p *ngIf="saved">Saved.</p>
+</screen>

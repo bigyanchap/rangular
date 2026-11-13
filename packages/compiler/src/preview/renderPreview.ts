@@ -745,20 +745,69 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
         .filter((n): n is ElementNode => n.type === 'element' && n.tag === 'column')
         .map((c) => {
           const name = c.attrs['name'] ?? c.attrs['key'] ?? '';
-          return { name, header: c.attrs['header'] ?? name };
+          return { name, header: c.attrs['header'] ?? name, sortable: c.booleanAttrs.includes('sortable') };
         })
         .filter((c) => c.name !== '');
       const dataBinding = el.propBindings.find((b) => b.name === 'data');
       const dataVal = dataBinding ? evalSafe(dataBinding.expression, scope, currentRefs) : UNSET;
-      const rows = Array.isArray(dataVal) ? dataVal : [];
-      const head = `<div class="table-row">${cols.map((c) => `<span class="table-cell head">${escapeHtml(c.header)}</span>`).join('')}</div>`;
+      const allRows = Array.isArray(dataVal) ? dataVal : [];
+      // Stage 14: the server paint is the table's first page,
+      // unsorted; sorting and paging are runtime interactions.
+      const sizeRaw = Number(el.attrs['pageSize']);
+      const pageSize = Number.isFinite(sizeRaw) && sizeRaw > 0 ? Math.floor(sizeRaw) : 0;
+      const rows = pageSize ? allRows.slice(0, pageSize) : allRows;
+      const head = `<div class="table-row">${cols.map((c) => `<span class="table-cell head${c.sortable ? ' sortable' : ''}">${escapeHtml(c.header)}</span>`).join('')}</div>`;
       const bodyRows = rows.map((row) =>
         `<div class="table-row">${cols.map((c) => `<span class="table-cell">${escapeHtml(String((row as Record<string, unknown> | null)?.[c.name] ?? ''))}</span>`).join('')}</div>`,
       ).join('');
       const emptyText = el.attrs['emptyText'];
-      const empty = !rows.length && emptyText
+      const empty = !allRows.length && emptyText
         ? `<div class="table-empty">${escapeHtml(emptyText)}</div>` : '';
-      return `<div class="table">${head}${bodyRows}${empty}</div>`;
+      const pager = pageSize && allRows.length > pageSize
+        ? `<div class="table-pager"><span class="table-pager-text">1-${rows.length} of ${allRows.length}</span></div>` : '';
+      return `<div class="table">${head}${bodyRows}${empty}${pager}</div>`;
+    }
+    // Stage 14: stepper, select and tree-node read their own
+    // declarations or children, like tabs and panel above.
+    if (el.tag === 'stepper') {
+      const stepEls = el.children.filter(
+        (n): n is ElementNode => n.type === 'element' && n.tag === 'step',
+      );
+      const idxRaw = rawBound(el, 'index', scope);
+      const idx = typeof idxRaw === 'number' ? idxRaw : 0;
+      const active = Math.min(Math.max(idx, 0), Math.max(stepEls.length - 1, 0));
+      const headers = stepEls.map((step, i) => {
+        const stepLabel = bound(step, 'label', scope) ?? '';
+        const cls = i === active ? ' active' : i < active ? ' done' : '';
+        const circle = i < active ? iconSvg('check', 20, 'primary') : `<span>${i + 1}</span>`;
+        return `${i > 0 ? '<span class="step-connector"></span>' : ''}<div class="step-head${cls}"><span class="step-circle">${circle}</span>${stepLabel ? `<span class="step-label">${escapeHtml(stepLabel)}</span>` : ''}</div>`;
+      }).join('');
+      const content = stepEls[active] ? renderNodes(stepEls[active].children, scope) : '';
+      return `<div class="stepper"><div class="stepper-headers">${headers}</div>${content}</div>`;
+    }
+    if (el.tag === 'select') {
+      const optionEls = el.children.filter(
+        (n): n is ElementNode => n.type === 'element' && n.tag === 'option',
+      );
+      const current = rawBound(el, 'value', scope);
+      const chosen = optionEls.find((o) => String(rawBound(o, 'value', scope) ?? '') === String(current ?? ''));
+      const labelText = bound(el, 'label', scope);
+      const shown = chosen ? renderNodes(chosen.children, scope) : '';
+      const placeholder = bound(el, 'placeholder', scope) ?? 'Choose';
+      return `<div class="field">` +
+        (labelText ? `<span class="field-label">${escapeHtml(labelText)}</span>` : '') +
+        `<div class="picker-box"><span class="picker-value">${shown || escapeHtml(placeholder)}</span><span class="select-chevron">${iconSvg('chevron-right', 24, 'textMuted')}</span></div>` +
+        `</div>`;
+    }
+    if (el.tag === 'tree-node') {
+      const nodeLabel = bound(el, 'label', scope) ?? '';
+      const hasKids = el.children.some((n) => n.type === 'element' && n.tag === 'tree-node');
+      const open = truthy(rawBound(el, 'expanded', scope));
+      const chevron = hasKids
+        ? `<span class="tree-chevron${open ? ' open' : ''}">${iconSvg('chevron-right', 24, 'textMuted')}</span>`
+        : '<span class="tree-chevron-spacer"></span>';
+      const kids = hasKids && open ? `<div class="tree-children">${renderNodes(el.children, scope)}</div>` : '';
+      return `<div class="tree-node"><div class="tree-node-header">${chevron}<span class="tree-node-label">${escapeHtml(nodeLabel)}</span></div>${kids}</div>`;
     }
     const inner = renderNodes(el.children, scope);
     const title = bound(el, 'title', scope) ?? '';
@@ -796,11 +845,36 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
         return `<div class="overlay overlay-center"><div class="overlay-backdrop"></div><section class="dialog">${title ? `<div class="dialog-title">${escapeHtml(title)}</div>` : ''}${inner}</section></div>`;
       }
       case 'actions': return `<div class="actions">${inner}</div>`;
+      case 'menu': {
+        const open = rawBound(el, 'open', scope);
+        if (open !== undefined && !truthy(open)) return '';
+        return `<div class="overlay overlay-top"><div class="overlay-backdrop"></div><section class="menu">${inner}</section></div>`;
+      }
+      case 'menu-item': {
+        const iconName = el.attrs['icon'];
+        const icon = iconName ? iconSvg(iconName, 24, 'textMuted') : '';
+        return `<div class="menu-item">${icon}<span>${inner}</span></div>`;
+      }
+      case 'drawer': {
+        const open = rawBound(el, 'open', scope);
+        if (open !== undefined && !truthy(open)) return '';
+        return `<div class="overlay overlay-left"><div class="overlay-backdrop"></div><section class="drawer">${inner}</section></div>`;
+      }
+      case 'divider': return `<div class="divider"></div>`;
+      case 'grid-list': {
+        const colsRaw = Number(el.attrs['cols']);
+        const cols = Number.isFinite(colsRaw) && colsRaw > 0 ? Math.floor(colsRaw) : 2;
+        return `<div class="grid-list" style="grid-template-columns: repeat(${cols}, 1fr)">${inner}</div>`;
+      }
+      case 'grid-tile': return `<div class="grid-tile">${inner}</div>`;
+      case 'tree': return `<div class="tree">${inner}</div>`;
+      case 'step': return '';
       case 'button': {
         const dis = el.propBindings.find((b) => b.name === 'disabled');
         const disabled = dis ? evalSafe(dis.expression, scope) === true : false;
         const cls = el.attrs['variant'] === 'text' ? 'btn btn-text' : 'btn';
-        return `<button class="${cls}" ${disabled ? 'disabled' : ''}>${inner}${badgeHtml(el, scope)}</button>`;
+        const tip = bound(el, 'tooltip', scope);
+        return `<button class="${cls}" ${disabled ? 'disabled' : ''}${tip ? ` title="${escapeHtml(tip)}"` : ''}>${inner}${badgeHtml(el, scope)}</button>`;
       }
       case 'slider': {
         const min = numOf(el, 'min', scope, 0);
@@ -887,7 +961,8 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
         const detail = bound(el, 'detail', scope) ?? '';
         const time = bound(el, 'time', scope) ?? '';
         const initial = (rowTitle || '•').charAt(0);
-        return `<div class="row">${el.booleanAttrs.includes('avatar') ? `<span class="avatar-lg">${escapeHtml(initial)}</span>` : ''}` +
+        const rowTip = bound(el, 'tooltip', scope);
+        return `<div class="row"${rowTip ? ` title="${escapeHtml(rowTip)}"` : ''}>${el.booleanAttrs.includes('avatar') ? `<span class="avatar-lg">${escapeHtml(initial)}</span>` : ''}` +
           `<span class="row-main"><span class="row-title">${escapeHtml(rowTitle)}</span>` +
           (sub ? `<span class="row-sub">${escapeHtml(sub)}</span>` : '') +
           (detail ? `<span class="row-detail">${escapeHtml(detail)}</span>` : '') +
@@ -907,7 +982,8 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
       case 'icon-button': {
         const name = bound(el, 'name', scope);
         if (!name) return '';
-        return `<button class="icon-btn">${iconSvg(name, iconSizeOf(el, scope), bound(el, 'color', scope))}</button>`;
+        const tip = bound(el, 'tooltip', scope);
+        return `<button class="icon-btn"${tip ? ` title="${escapeHtml(tip)}"` : ''}>${iconSvg(name, iconSizeOf(el, scope), bound(el, 'color', scope))}</button>`;
       }
       case 'fab': return `<div class="fab">${inner || escapeHtml(bound(el, 'label', scope) ?? 'Compose')}</div>`;
       case 'header': return `<header class="stack"${dirStyle}>${inner}</header>`;
@@ -1061,6 +1137,39 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .snackbar { position: absolute; left: ${t.spacing.lg}px; right: ${t.spacing.lg}px; bottom: ${t.spacing.xxxl}px; z-index: 20; display: flex; align-items: center; gap: ${t.spacing.md}px; background: var(--text); color: var(--screen-bg); border-radius: ${t.radius.sm}px; padding: ${t.spacing.md}px ${t.spacing.lg}px; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
   .snackbar-text { flex: 1; font-size: ${t.typography.body.fontSize}px; }
   .snackbar-action { border: none; background: transparent; color: var(--primary-container); font: inherit; font-size: ${t.typography.label.fontSize}px; font-weight: 600; text-transform: uppercase; cursor: pointer; padding: 0; }
+  /* Stage 14: menu, drawer, select, stepper, grid list, tree, divider. */
+  .divider { border-bottom: 1px solid var(--border); margin: ${t.spacing.xs}px 0; }
+  .overlay-top { align-items: flex-start; justify-content: flex-end; padding: 64px ${t.spacing.lg}px 0 0; }
+  .menu { position: relative; min-width: 200px; background: var(--role-surface); border-radius: ${t.radius.md}px; padding: ${t.spacing.sm}px 0; box-shadow: 0 10px 28px rgba(0,0,0,.25); animation: dialog-in .15s linear; }
+  .menu-item { display: flex; align-items: center; gap: ${t.spacing.md}px; min-height: 48px; padding: 0 ${t.spacing.lg}px; font-size: ${t.typography.body.fontSize}px; color: var(--text); cursor: pointer; }
+  .menu-item:hover { background: var(--surface-variant); }
+  .overlay-left { align-items: stretch; justify-content: flex-start; }
+  .drawer { position: relative; width: 280px; max-width: 85%; background: var(--role-surface); padding: ${t.spacing.xxl}px ${t.spacing.lg}px ${t.spacing.lg}px; box-shadow: 4px 0 18px rgba(0,0,0,.18); animation: drawer-in .22s linear; overflow-y: auto; }
+  @keyframes drawer-in { from { transform: translateX(-40px); } to { transform: translateX(0); } }
+  .select-options { display: block; }
+  .select-option { display: flex; align-items: center; gap: ${t.spacing.md}px; min-height: 48px; padding: 0 ${t.spacing.sm}px; font-size: ${t.typography.bodyLarge.fontSize}px; color: var(--text); cursor: pointer; }
+  .select-option-text { flex: 1; }
+  .select-chevron { display: inline-flex; transform: rotate(90deg); }
+  .stepper-headers { display: flex; align-items: flex-start; margin: 0 0 ${t.spacing.md}px; }
+  .step-head { width: 72px; display: flex; flex-direction: column; align-items: center; cursor: pointer; background: none; border: none; font: inherit; padding: 0; }
+  .step-circle { width: 32px; height: 32px; border-radius: ${t.radius.full}px; border: 1px solid var(--border); background: var(--role-surface); display: inline-flex; align-items: center; justify-content: center; font-size: ${t.typography.label.fontSize}px; font-weight: 600; color: var(--text-muted); }
+  .step-head.active .step-circle { background: var(--primary); border-color: var(--primary); color: var(--role-on-primary); }
+  .step-head.done .step-circle { background: var(--primary-container); border-color: var(--primary-container); }
+  .step-label { font-size: ${t.typography.caption.fontSize}px; color: var(--text-muted); margin-top: ${t.spacing.xs}px; text-align: center; }
+  .step-head.active .step-label { color: var(--text); font-weight: 600; }
+  .step-connector { flex: 1; height: 1px; background: var(--border); margin: 16px -8px 0; }
+  .grid-list { display: grid; gap: ${t.spacing.sm}px; margin: 0; }
+  .grid-tile { background: var(--surface-variant); border-radius: ${t.radius.lg}px; padding: ${t.spacing.md}px; }
+  .tree-node-header { display: flex; align-items: center; gap: ${t.spacing.sm}px; min-height: 40px; cursor: pointer; }
+  .tree-node-label { font-size: ${t.typography.body.fontSize}px; color: var(--text); }
+  .tree-children { padding-left: ${t.spacing.xl}px; }
+  .tree-chevron { display: inline-flex; }
+  .tree-chevron.open { transform: rotate(90deg); }
+  .tree-chevron-spacer { width: 24px; }
+  .table-cell.sortable { cursor: pointer; }
+  .table-pager { display: flex; align-items: center; justify-content: flex-end; gap: ${t.spacing.sm}px; padding-top: ${t.spacing.sm}px; }
+  .table-pager-text { font-size: ${t.typography.caption.fontSize}px; color: var(--text-muted); }
+  .table-pager-btn { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: none; background: transparent; cursor: pointer; padding: 0; }
 </style>
 </head>
 <body>
@@ -2151,7 +2260,7 @@ function __overlayShell(el, scope, path, form, kids, kind) {
   var open = __controlValue(el, 'open', scope);
   if (open !== undefined && !__truthy(open)) return [];
   var overlay = document.createElement('div');
-  overlay.className = 'overlay' + (kind === 'dialog' ? ' overlay-center' : '');
+  overlay.className = 'overlay' + (kind === 'dialog' ? ' overlay-center' : kind === 'drawer' ? ' overlay-left' : '');
   var backdrop = document.createElement('div');
   backdrop.className = 'overlay-backdrop';
   backdrop.addEventListener('click', function () { __runClose(el, scope); });
@@ -2814,7 +2923,17 @@ function __buildPanel(el, scope, path, form) {
   }
   return wrap;
 }
-function __buildTable(el, scope) {
+var __tableStates = {};
+function __compareCells(a, b) {
+  var aEmpty = a === undefined || a === null || a === '';
+  var bEmpty = b === undefined || b === null || b === '';
+  if (aEmpty && bEmpty) return 0;
+  if (aEmpty) return 1;
+  if (bEmpty) return -1;
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  return String(a).localeCompare(String(b));
+}
+function __buildTable(el, scope, path) {
   var wrap = document.createElement('div');
   wrap.className = 'table';
   var cols = [];
@@ -2822,19 +2941,49 @@ function __buildTable(el, scope) {
     if (c.type !== 'element' || c.tag !== 'column') return;
     var name = c.attrs['name'] !== undefined ? c.attrs['name'] : c.attrs['key'];
     if (!name) return;
-    cols.push({ name: name, header: c.attrs['header'] !== undefined ? c.attrs['header'] : name });
+    cols.push({ name: name, header: c.attrs['header'] !== undefined ? c.attrs['header'] : name, sortable: c.booleanAttrs.indexOf('sortable') >= 0 });
   });
+  // Sorting and paging are the table's own view state (Stage 14),
+  // keyed by template path like the tab and panel states.
+  var st = __tableStates[path];
+  if (!st) { st = { sortName: null, dir: 1, page: 0 }; __tableStates[path] = st; }
+  var data = __binding(el, 'data', scope);
+  var allRows = Array.isArray(data) ? data.slice() : [];
+  if (st.sortName) {
+    allRows.sort(function (ra, rb) {
+      return st.dir * __compareCells(ra ? ra[st.sortName] : undefined, rb ? rb[st.sortName] : undefined);
+    });
+  }
+  var sizeRaw = Number(el.attrs['pageSize']);
+  var size = isFinite(sizeRaw) && sizeRaw > 0 ? Math.floor(sizeRaw) : 0;
+  var pageCount = size ? Math.max(1, Math.ceil(allRows.length / size)) : 1;
+  if (st.page > pageCount - 1) st.page = pageCount - 1;
+  var rows = size ? allRows.slice(st.page * size, st.page * size + size) : allRows;
   var head = document.createElement('div');
   head.className = 'table-row';
   cols.forEach(function (col) {
     var cell = document.createElement('span');
-    cell.className = 'table-cell head';
+    cell.className = 'table-cell head' + (col.sortable ? ' sortable' : '');
     cell.textContent = col.header;
+    if (col.sortable) {
+      var active = st.sortName === col.name;
+      var arrow = document.createElement('span');
+      arrow.className = 'tree-chevron';
+      arrow.style.transform = active && st.dir === -1 ? 'rotate(90deg)' : 'rotate(-90deg)';
+      arrow.style.opacity = active ? '1' : '0.35';
+      arrow.appendChild(__icon('chevron-right', 20, 'textMuted'));
+      cell.appendChild(arrow);
+      cell.addEventListener('click', function () {
+        if (st.sortName !== col.name) { st.sortName = col.name; st.dir = 1; }
+        else if (st.dir === 1) st.dir = -1;
+        else st.sortName = null;
+        st.page = 0;
+        __render();
+      });
+    }
     head.appendChild(cell);
   });
   wrap.appendChild(head);
-  var data = __binding(el, 'data', scope);
-  var rows = Array.isArray(data) ? data : [];
   rows.forEach(function (row) {
     var r = document.createElement('div');
     r.className = 'table-row';
@@ -2847,11 +2996,213 @@ function __buildTable(el, scope) {
     });
     wrap.appendChild(r);
   });
-  if (!rows.length && el.attrs['emptyText']) {
+  if (!allRows.length && el.attrs['emptyText']) {
     var empty = document.createElement('div');
     empty.className = 'table-empty';
     empty.textContent = el.attrs['emptyText'];
     wrap.appendChild(empty);
+  }
+  if (size && pageCount > 1) {
+    var pager = document.createElement('div');
+    pager.className = 'table-pager';
+    var range = document.createElement('span');
+    range.className = 'table-pager-text';
+    range.textContent = (allRows.length === 0 ? 0 : st.page * size + 1) + '-' + Math.min(allRows.length, st.page * size + size) + ' of ' + allRows.length;
+    pager.appendChild(range);
+    var prev = document.createElement('button');
+    prev.className = 'table-pager-btn';
+    prev.appendChild(__icon('chevron-left', 24, 'textMuted'));
+    prev.addEventListener('click', function () { if (st.page > 0) { st.page--; __render(); } });
+    pager.appendChild(prev);
+    var next = document.createElement('button');
+    next.className = 'table-pager-btn';
+    next.appendChild(__icon('chevron-right', 24, 'textMuted'));
+    next.addEventListener('click', function () { if (st.page < pageCount - 1) { st.page++; __render(); } });
+    pager.appendChild(next);
+    wrap.appendChild(pager);
+  }
+  return wrap;
+}
+// Stage 14 builders: menu, stepper, select, tree. Internal open
+// and selection state is keyed by template path, like Stage 11.
+var __menuStack = [];
+var __stepStates = {};
+var __selectStates = {};
+var __treeStates = {};
+function __buildMenu(el, scope, path, form) {
+  var open = __controlValue(el, 'open', scope);
+  if (open !== undefined && !__truthy(open)) return [];
+  var overlay = document.createElement('div');
+  overlay.className = 'overlay overlay-top';
+  var backdrop = document.createElement('div');
+  backdrop.className = 'overlay-backdrop';
+  backdrop.addEventListener('click', function () { __runClose(el, scope); });
+  overlay.appendChild(backdrop);
+  var panel = document.createElement('section');
+  panel.className = 'menu';
+  __menuStack.push({ el: el, scope: scope });
+  try {
+    __buildNodes(el.children, scope, path, form).forEach(function (k) { panel.appendChild(k); });
+  } finally {
+    __menuStack.pop();
+  }
+  overlay.appendChild(panel);
+  return [overlay];
+}
+function __buildStepper(el, scope, path, form) {
+  var wrap = document.createElement('div');
+  wrap.className = 'stepper';
+  var stepEls = el.children.filter(function (c) { return c.type === 'element' && c.tag === 'step'; });
+  var boundIndex = __controlValue(el, 'index', scope);
+  var controlled = typeof boundIndex === 'number';
+  var active = controlled ? boundIndex : (__stepStates[path] || 0);
+  active = Math.min(Math.max(active, 0), Math.max(stepEls.length - 1, 0));
+  var headers = document.createElement('div');
+  headers.className = 'stepper-headers';
+  stepEls.forEach(function (step, i) {
+    if (i > 0) {
+      var conn = document.createElement('span');
+      conn.className = 'step-connector';
+      headers.appendChild(conn);
+    }
+    var h = document.createElement('button');
+    h.className = 'step-head' + (i === active ? ' active' : i < active ? ' done' : '');
+    var circle = document.createElement('span');
+    circle.className = 'step-circle';
+    if (i < active) circle.appendChild(__icon('check', 20, 'primary'));
+    else circle.textContent = String(i + 1);
+    h.appendChild(circle);
+    var lt = __attr(step, 'label', scope);
+    if (lt) {
+      var label = document.createElement('span');
+      label.className = 'step-label';
+      label.textContent = String(lt);
+      h.appendChild(label);
+    }
+    h.addEventListener('click', function () {
+      if (!controlled) __stepStates[path] = i;
+      __runChange(el, scope, i);
+      __render();
+    });
+    headers.appendChild(h);
+  });
+  wrap.appendChild(headers);
+  var activeStep = stepEls[active];
+  if (activeStep) {
+    __buildNodes(activeStep.children, scope, path + '/step' + active, form).forEach(function (k) { wrap.appendChild(k); });
+  }
+  return wrap;
+}
+function __buildSelect(el, scope, path, form) {
+  var field = document.createElement('div');
+  field.className = 'field';
+  var labelText = __attr(el, 'label', scope);
+  if (labelText) {
+    var fl = document.createElement('span');
+    fl.className = 'field-label';
+    fl.textContent = String(labelText);
+    field.appendChild(fl);
+  }
+  var optionEls = el.children.filter(function (c) { return c.type === 'element' && c.tag === 'option'; });
+  var current = __controlValue(el, 'value', scope);
+  var chosenLabel = null;
+  optionEls.forEach(function (o) {
+    var v = __controlValue(o, 'value', scope);
+    if (String(v === undefined || v === null ? '' : v) === String(current === undefined || current === null ? '' : current)) {
+      var tmp = document.createElement('span');
+      __buildNodes(o.children, scope, path, form).forEach(function (k) { tmp.appendChild(k); });
+      chosenLabel = tmp.textContent;
+    }
+  });
+  var box = document.createElement('div');
+  box.className = 'picker-box';
+  var val = document.createElement('span');
+  val.className = 'picker-value';
+  var placeholder = __attr(el, 'placeholder', scope);
+  val.textContent = chosenLabel !== null ? chosenLabel : (placeholder ? String(placeholder) : 'Choose');
+  if (chosenLabel === null) val.style.color = 'var(--text-muted)';
+  box.appendChild(val);
+  var chev = document.createElement('span');
+  chev.className = 'select-chevron';
+  chev.appendChild(__icon('chevron-right', 24, 'textMuted'));
+  box.appendChild(chev);
+  var disabled = __truthy(__controlValue(el, 'disabled', scope));
+  if (!disabled) {
+    box.addEventListener('click', function () { __selectStates[path] = true; __render(); });
+  }
+  field.appendChild(box);
+  if (__selectStates[path]) {
+    var overlay = document.createElement('div');
+    overlay.className = 'overlay';
+    var backdrop = document.createElement('div');
+    backdrop.className = 'overlay-backdrop';
+    backdrop.addEventListener('click', function () { __selectStates[path] = false; __render(); });
+    overlay.appendChild(backdrop);
+    var sheet = document.createElement('section');
+    sheet.className = 'sheet';
+    var handle = document.createElement('div');
+    handle.className = 'sheet-handle';
+    sheet.appendChild(handle);
+    var list = document.createElement('div');
+    list.className = 'select-options';
+    optionEls.forEach(function (o) {
+      var v = __controlValue(o, 'value', scope);
+      var rowEl = document.createElement('div');
+      rowEl.className = 'select-option';
+      var txt = document.createElement('span');
+      txt.className = 'select-option-text';
+      __buildNodes(o.children, scope, path, form).forEach(function (k) { txt.appendChild(k); });
+      rowEl.appendChild(txt);
+      if (String(v === undefined || v === null ? '' : v) === String(current === undefined || current === null ? '' : current)) {
+        rowEl.appendChild(__icon('check', 24, 'primary'));
+      }
+      rowEl.addEventListener('click', function () {
+        __selectStates[path] = false;
+        __runChange(el, scope, v);
+        __render();
+      });
+      list.appendChild(rowEl);
+    });
+    sheet.appendChild(list);
+    overlay.appendChild(sheet);
+    field.appendChild(overlay);
+  }
+  return field;
+}
+function __buildTreeNode(el, scope, path, form) {
+  var wrap = document.createElement('div');
+  wrap.className = 'tree-node';
+  var kidEls = el.children.filter(function (c) { return c.type === 'element' && c.tag === 'tree-node'; });
+  var hasKids = kidEls.length > 0;
+  if (__treeStates[path] === undefined) {
+    var seed = __controlValue(el, 'expanded', scope);
+    __treeStates[path] = seed === true || seed === 'true';
+  }
+  var open = !!__treeStates[path];
+  var header = document.createElement('div');
+  header.className = 'tree-node-header';
+  if (hasKids) {
+    var chev = document.createElement('span');
+    chev.className = 'tree-chevron' + (open ? ' open' : '');
+    chev.appendChild(__icon('chevron-right', 24, 'textMuted'));
+    header.appendChild(chev);
+    header.addEventListener('click', function () { __treeStates[path] = !open; __render(); });
+  } else {
+    var spacer = document.createElement('span');
+    spacer.className = 'tree-chevron-spacer';
+    header.appendChild(spacer);
+  }
+  var label = document.createElement('span');
+  label.className = 'tree-node-label';
+  var lt = __attr(el, 'label', scope);
+  label.textContent = lt ? String(lt) : '';
+  header.appendChild(label);
+  wrap.appendChild(header);
+  if (hasKids && open) {
+    var kids = document.createElement('div');
+    kids.className = 'tree-children';
+    __buildNodes(el.children, scope, path, form).forEach(function (k) { kids.appendChild(k); });
+    wrap.appendChild(kids);
   }
   return wrap;
 }
@@ -2975,8 +3326,12 @@ function __buildCore(el, scope, path, form) {
   if (el.tag === 'tabs') return [__buildTabs(el, scope, path, form)];
   if (el.tag === 'accordion') return [__buildAccordion(el, scope, path, form)];
   if (el.tag === 'panel') return [__buildPanel(el, scope, path, form)];
-  if (el.tag === 'table') return [__buildTable(el, scope)];
-  if (el.tag === 'column' || el.tag === 'tab') return [];
+  if (el.tag === 'table') return [__buildTable(el, scope, path)];
+  if (el.tag === 'menu') return __buildMenu(el, scope, path, form);
+  if (el.tag === 'stepper') return [__buildStepper(el, scope, path, form)];
+  if (el.tag === 'select') return [__buildSelect(el, scope, path, form)];
+  if (el.tag === 'tree-node') return [__buildTreeNode(el, scope, path, form)];
+  if (el.tag === 'column' || el.tag === 'tab' || el.tag === 'step') return [];
   if (el.tag === 'slider') return [__buildSlider(el, scope, path)];
   if (el.tag === 'progress-bar') return [__buildProgress(el, scope)];
   if (el.tag === 'spinner') return [__buildSpinner(el, scope)];
@@ -3024,6 +3379,40 @@ function __buildCore(el, scope, path, form) {
     case 'card': return wrap('section', 'card');
     case 'sheet': return __overlayShell(el, scope, path, form, kids, 'sheet');
     case 'dialog': return __overlayShell(el, scope, path, form, kids, 'dialog');
+    case 'drawer': return __overlayShell(el, scope, path, form, kids, 'drawer');
+    case 'menu-item': {
+      var mi = document.createElement('div');
+      mi.className = 'menu-item';
+      var miIcon = el.attrs['icon'];
+      if (miIcon) mi.appendChild(__icon(miIcon, 24, 'textMuted'));
+      var miLabel = document.createElement('span');
+      kids.forEach(function (k) { miLabel.appendChild(k); });
+      mi.appendChild(miLabel);
+      __attachEvents(mi, el, scope);
+      // The owning menu is captured at build time: the stack only
+      // holds it while __buildMenu is building its items, which is
+      // exactly when this case runs. Choosing the item closes it.
+      var menuCtx = __menuStack[__menuStack.length - 1];
+      mi.addEventListener('click', function () {
+        if (menuCtx) __runClose(menuCtx.el, menuCtx.scope);
+      });
+      if (__truthy(__controlValue(el, 'disabled', scope))) mi.style.opacity = '0.38';
+      return [mi];
+    }
+    case 'divider': {
+      var dv = document.createElement('div');
+      dv.className = 'divider';
+      return [dv];
+    }
+    case 'grid-list': {
+      var gl = wrap('div', 'grid-list')[0];
+      var colsRaw = Number(el.attrs['cols']);
+      var cols = isFinite(colsRaw) && colsRaw > 0 ? Math.floor(colsRaw) : 2;
+      gl.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+      return [gl];
+    }
+    case 'grid-tile': return wrap('div', 'grid-tile');
+    case 'tree': return wrap('div', 'tree');
     case 'actions': return wrap('div', 'actions');
     case 'form': return wrap('div', 'form');
     case 'input': return [__buildInput(el, scope, form, path)];
@@ -3031,6 +3420,8 @@ function __buildCore(el, scope, path, form) {
     case 'button': {
       var b = document.createElement('button');
       b.className = el.attrs['variant'] === 'text' ? 'btn btn-text' : 'btn';
+      var bTip = __controlValue(el, 'tooltip', scope);
+      if (bTip) b.title = String(bTip);
       if (__binding(el, 'disabled', scope)) b.disabled = true;
       kids.forEach(function (k) { b.appendChild(k); });
       var btnDot = __badgeDot(el, scope);
@@ -3184,6 +3575,8 @@ function __buildCore(el, scope, path, form) {
       }
       var rowDot = __badgeDot(el, scope);
       if (rowDot) row.appendChild(rowDot);
+      var rTip = __controlValue(el, 'tooltip', scope);
+      if (rTip) row.title = String(rTip);
       __attachEvents(row, el, scope);
       __attachNav(row, el, scope);
       return [row];
@@ -3205,6 +3598,8 @@ function __buildCore(el, scope, path, form) {
       if (!ibName) return [];
       var ib = document.createElement('button');
       ib.className = 'icon-btn';
+      var ibTip = __controlValue(el, 'tooltip', scope);
+      if (ibTip) ib.title = String(ibTip);
       ib.appendChild(__icon(String(ibName), __iconSize(el, scope), __attr(el, 'color', scope)));
       __attachEvents(ib, el, scope);
       __attachNav(ib, el, scope);

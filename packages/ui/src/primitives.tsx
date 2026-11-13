@@ -447,6 +447,90 @@ function buildStyles(t: Theme) {
       borderRadius: t.radius.full, paddingHorizontal: t.spacing.md, paddingVertical: 6,
     },
     chipLabel: { fontSize: t.typography.label.fontSize, color: c.text },
+    // Stage 14: the components Angular Material ships that Rangular
+    // was missing. Divider is one hairline; the menu panel hangs at
+    // the top right over the scrim; the drawer panel is a full
+    // height sheet from the left; the select list reuses the sheet.
+    divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border },
+    overlayRootTop: {
+      position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
+      alignItems: 'flex-end', paddingTop: 64, paddingRight: t.spacing.lg, zIndex: 10,
+    },
+    menuPanel: {
+      backgroundColor: c.surface, borderRadius: t.radius.md,
+      paddingVertical: t.spacing.sm, minWidth: 200, ...t.elevation.level2,
+    },
+    menuItem: {
+      flexDirection: 'row', alignItems: 'center', gap: t.spacing.md,
+      paddingHorizontal: t.spacing.lg, minHeight: 48,
+    },
+    menuItemLabel: { fontSize: t.typography.body.fontSize, color: c.text },
+    overlayRootLeft: {
+      position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
+      flexDirection: 'row', zIndex: 10,
+    },
+    drawerPanel: {
+      width: 280, maxWidth: '85%', height: '100%', backgroundColor: c.surface,
+      paddingHorizontal: t.spacing.lg, paddingTop: t.spacing.xxl, paddingBottom: t.spacing.lg,
+      ...t.elevation.level2,
+    },
+    selectOption: {
+      flexDirection: 'row', alignItems: 'center', gap: t.spacing.md,
+      paddingHorizontal: t.spacing.sm, minHeight: 48,
+    },
+    selectOptionText: { flex: 1, fontSize: t.typography.bodyLarge.fontSize, color: c.text },
+    selectPlaceholder: { color: c.textMuted },
+    // Stepper (Stage 14): a header row of numbered circles joined
+    // by hairlines, the selected step in the primary colour, a
+    // completed step carrying a check.
+    stepperHeader: { flexDirection: 'row', alignItems: 'flex-start' },
+    stepHead: { alignItems: 'center', width: 72 },
+    stepCircle: {
+      width: 32, height: 32, borderRadius: t.radius.full,
+      borderWidth: 1, borderColor: c.outline,
+      alignItems: 'center', justifyContent: 'center', backgroundColor: c.surface,
+    },
+    stepCircleActive: { backgroundColor: c.primary, borderColor: c.primary },
+    stepCircleDone: { backgroundColor: c.primaryContainer, borderColor: c.primaryContainer },
+    stepNumber: { fontSize: t.typography.label.fontSize, color: c.textMuted, fontWeight: '600' },
+    stepNumberActive: { color: c.onPrimary },
+    stepLabel: { fontSize: t.typography.caption.fontSize, color: c.textMuted, marginTop: t.spacing.xs, textAlign: 'center' },
+    stepLabelActive: { color: c.text, fontWeight: '600' },
+    stepConnector: {
+      flex: 1, height: 1, backgroundColor: c.border, marginTop: 16, marginHorizontal: -8,
+    },
+    // Grid list (Stage 14): tiles in a wrapping row, each tile a
+    // padded cell holding a surface card.
+    gridList: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 },
+    gridTileCell: { padding: 4 },
+    gridTile: {
+      backgroundColor: c.surfaceVariant, borderRadius: t.radius.lg,
+      padding: t.spacing.md, flex: 1,
+    },
+    // Tree (Stage 14): node headers in the row rhythm, children
+    // indented one step per depth.
+    treeNodeHeader: {
+      flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, minHeight: 40,
+    },
+    treeNodeLabel: { fontSize: t.typography.body.fontSize, color: c.text },
+    treeChildren: { paddingLeft: t.spacing.xl },
+    treeChevronSpacer: { width: 24 },
+    // Tooltip (Stage 14): a small dark bubble above its host, shown
+    // on long press; the wrap makes the host a positioning parent.
+    tooltipWrap: { position: 'relative' },
+    tooltipBubble: {
+      position: 'absolute', bottom: '100%', alignSelf: 'center', marginBottom: t.spacing.xs,
+      backgroundColor: c.onSurface, borderRadius: t.radius.sm,
+      paddingHorizontal: t.spacing.md, paddingVertical: t.spacing.xs, zIndex: 20,
+    },
+    tooltipText: { color: c.background, fontSize: t.typography.caption.fontSize },
+    // Table pager (Stage 14): a right aligned row under the table
+    // with the page range and two chevron buttons.
+    tablePager: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end',
+      gap: t.spacing.sm, paddingTop: t.spacing.sm,
+    },
+    tablePagerText: { fontSize: t.typography.caption.fontSize, color: c.textMuted },
   });
 }
 
@@ -490,19 +574,23 @@ export function RgAppbar({ title, search, menu, avatar, onMenu }: any) {
   );
 }
 
-export function RgIconButton({ name, size = 28, color, onPress, style }: any) {
+export function RgIconButton({ name, size = 28, color, onPress, style, tooltip }: any) {
   const styles = stylesFor(useRgTheme());
+  const tip = useTooltipBubble(tooltip, styles);
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.iconButton,
-        pressed && styles.buttonPressed,
-        style,
-      ]}
-    >
-      <RgIcon name={name} size={size} color={color} />
-    </Pressable>
+    <View style={[styles.tooltipWrap, { alignSelf: 'flex-start' }, style]}>
+      <Pressable
+        onPress={onPress}
+        onLongPress={tip.show}
+        style={({ pressed }) => [
+          styles.iconButton,
+          pressed && styles.buttonPressed,
+        ]}
+      >
+        <RgIcon name={name} size={size} color={color} />
+      </Pressable>
+      {tip.bubble}
+    </View>
   );
 }
 
@@ -529,23 +617,53 @@ export function RgText({ children, variant = 'body', style }: any) {
   );
 }
 
-export function RgButton({ children, disabled, onPress, badge, style, variant }: any) {
+/**
+ * Tooltip state for the hosts that carry one (Stage 14): a long
+ * press shows the bubble, which dismisses itself after a moment.
+ * Angular Material's matTooltip, in the mobile form: there is no
+ * hover on a phone, so long press is the honest gesture.
+ */
+function useTooltipBubble(tooltip: unknown, styles: any) {
+  const [visible, setVisible] = useState(false);
+  const timer = useRef<any>(null);
+  const text = tooltip === undefined || tooltip === null ? '' : String(tooltip);
+  const show = text
+    ? () => {
+      setVisible(true);
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(() => setVisible(false), 1800);
+    }
+    : undefined;
+  const bubble = visible && text ? (
+    <View style={styles.tooltipBubble} pointerEvents="none">
+      <Text style={styles.tooltipText}>{text}</Text>
+    </View>
+  ) : null;
+  return { show, bubble };
+}
+
+export function RgButton({ children, disabled, onPress, badge, style, variant, tooltip }: any) {
   const styles = stylesFor(useRgTheme());
   const text = variant === 'text';
+  const tip = useTooltipBubble(tooltip, styles);
   return (
-    <Pressable
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        text ? styles.buttonText : styles.button,
-        pressed && styles.buttonPressed,
-        disabled && styles.buttonDisabled,
-        style,
-      ]}
-    >
-      <Text style={text ? styles.buttonTextLabel : styles.buttonLabel}>{children}</Text>
-      <BadgeDot value={badge} styles={styles} offset={{ top: -6, right: -6 }} />
-    </Pressable>
+    <View style={styles.tooltipWrap}>
+      <Pressable
+        disabled={disabled}
+        onPress={onPress}
+        onLongPress={tip.show}
+        style={({ pressed }) => [
+          text ? styles.buttonText : styles.button,
+          pressed && styles.buttonPressed,
+          disabled && styles.buttonDisabled,
+          style,
+        ]}
+      >
+        <Text style={text ? styles.buttonTextLabel : styles.buttonLabel}>{children}</Text>
+        <BadgeDot value={badge} styles={styles} offset={{ top: -6, right: -6 }} />
+      </Pressable>
+      {tip.bubble}
+    </View>
   );
 }
 
@@ -778,10 +896,11 @@ export function RgList({ data, renderItem, keyExtractor, children }: any) {
   );
 }
 
-export function RgRow({ title, subtitle, detail, time, avatar, onPress, badge, children }: any) {
+export function RgRow({ title, subtitle, detail, time, avatar, onPress, badge, tooltip, children }: any) {
   const t = useRgTheme();
   const c = t.colors;
   const styles = stylesFor(t);
+  const tip = useTooltipBubble(tooltip, styles);
   const content = (
     <>
       {avatar ? (
@@ -801,12 +920,16 @@ export function RgRow({ title, subtitle, detail, time, avatar, onPress, badge, c
   );
   // A row with an onPress (a (click) handler or a routerLink in the
   // template) is a Pressable; a row without one stays a plain View, so
-  // static lists pay nothing for the affordance.
-  if (onPress) {
+  // static lists pay nothing for the affordance. A tooltip makes the
+  // row a Pressable too, for the long press that shows the bubble.
+  if (onPress || tip.show) {
     return (
-      <Pressable onPress={onPress} style={({ pressed }: any) => [styles.row, pressed && { opacity: 0.7 }]}>
-        {content}
-      </Pressable>
+      <View style={styles.tooltipWrap}>
+        <Pressable onPress={onPress} onLongPress={tip.show} style={({ pressed }: any) => [styles.row, pressed && { opacity: 0.7 }]}>
+          {content}
+        </Pressable>
+        {tip.bubble}
+      </View>
     );
   }
   return <View style={styles.row}>{content}</View>;
@@ -1231,32 +1354,88 @@ export function RgPanel({ title, subtitle, expanded, onToggle, __groupExpanded, 
   );
 }
 
-export function RgColumn({ name, header }: any) {
+export function RgColumn({ name, header, sortable }: any) {
   // One column definition of an RgTable: `name` is the row property
   // the column displays (Angular Material's matColumnDef name) and
-  // `header` its header text. The table reads both; the marker
-  // renders nothing, like RgTab.
+  // `header` its header text. `sortable` (Stage 14, the mat-sort
+  // header) makes the table sort its rows by this column when the
+  // header is tapped. The table reads all three; the marker renders
+  // nothing, like RgTab.
   void name;
   void header;
+  void sortable;
   return null;
 }
 
-export function RgTable({ data, emptyText, children, style }: any) {
+/** Compare two cell values for a table sort: numbers numerically,
+ * everything else as text, empty values last in ascending order. */
+function compareCells(a: unknown, b: unknown): number {
+  const aEmpty = a === undefined || a === null || a === '';
+  const bEmpty = b === undefined || b === null || b === '';
+  if (aEmpty && bEmpty) return 0;
+  if (aEmpty) return 1;
+  if (bEmpty) return -1;
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  return String(a).localeCompare(String(b));
+}
+
+export function RgTable({ data, emptyText, pageSize, children, style }: any) {
   const styles = stylesFor(useRgTheme());
   const columns = React.Children.toArray(children)
     .filter((child) => React.isValidElement(child))
     .map((child) => {
       const el = child as React.ReactElement<any>;
-      return { name: el.props.name, header: el.props.header };
+      return { name: el.props.name, header: el.props.header, sortable: !!el.props.sortable && el.props.sortable !== 'false' };
     })
     .filter((col) => typeof col.name === 'string');
-  const rows = Array.isArray(data) ? data : [];
+  const allRows = Array.isArray(data) ? data : [];
+  // Sorting and paging (Stage 14, MatPaginator and matSort in one
+  // primitive): both are the table's own view state. Tapping a
+  // sortable header cycles ascending, descending, unsorted; the
+  // pager appears only when a pageSize is set and the rows overflow
+  // one page. The author's data array is never mutated.
+  const [sort, setSort] = useState<{ name: string; dir: 1 | -1 } | null>(null);
+  const [page, setPage] = useState(0);
+  const sorted = sort
+    ? [...allRows].sort((ra: any, rb: any) => sort.dir * compareCells(ra?.[sort.name], rb?.[sort.name]))
+    : allRows;
+  const size = Number.isFinite(Number(pageSize)) && Number(pageSize) > 0 ? Math.floor(Number(pageSize)) : 0;
+  const pageCount = size ? Math.max(1, Math.ceil(sorted.length / size)) : 1;
+  const safePage = Math.min(page, pageCount - 1);
+  const rows = size ? sorted.slice(safePage * size, safePage * size + size) : sorted;
+  const tapHeader = (col: { name: string; sortable: boolean }): void => {
+    if (!col.sortable) return;
+    setPage(0);
+    setSort((prev) => {
+      if (!prev || prev.name !== col.name) return { name: col.name, dir: 1 };
+      if (prev.dir === 1) return { name: col.name, dir: -1 };
+      return null;
+    });
+  };
   return (
     <View style={[styles.table, style]}>
       <View style={styles.tableRow}>
-        {columns.map((col) => (
-          <Text key={col.name} style={styles.tableHeadCell}>{col.header ?? col.name}</Text>
-        ))}
+        {columns.map((col) => {
+          const active = sort?.name === col.name;
+          if (!col.sortable) {
+            return <Text key={col.name} style={styles.tableHeadCell}>{col.header ?? col.name}</Text>;
+          }
+          // The sort arrow is the set's arrow-right icon rotated:
+          // up for ascending, down for descending, faint up while
+          // unsorted. No font glyphs; the icon set is the only
+          // source of shapes.
+          const rotate = active && sort!.dir === -1 ? '90deg' : '-90deg';
+          return (
+            <Pressable key={col.name} style={{ flex: 1 }} onPress={() => tapHeader(col)} accessibilityRole="button">
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text style={styles.tableHeadCell}>{col.header ?? col.name}</Text>
+                <View style={{ transform: [{ rotate }], opacity: active ? 1 : 0.35 }}>
+                  <RgIcon name="arrow-right" size={20} color="textMuted" />
+                </View>
+              </View>
+            </Pressable>
+          );
+        })}
       </View>
       {rows.map((row: any, i: number) => (
         <View key={i} style={styles.tableRow}>
@@ -1265,7 +1444,16 @@ export function RgTable({ data, emptyText, children, style }: any) {
           ))}
         </View>
       ))}
-      {!rows.length && emptyText ? <Text style={styles.tableEmpty}>{emptyText}</Text> : null}
+      {!allRows.length && emptyText ? <Text style={styles.tableEmpty}>{emptyText}</Text> : null}
+      {size && pageCount > 1 ? (
+        <View style={styles.tablePager}>
+          <Text style={styles.tablePagerText}>
+            {`${sorted.length === 0 ? 0 : safePage * size + 1}-${Math.min(sorted.length, safePage * size + size)} of ${sorted.length}`}
+          </Text>
+          <RgIconButton name="chevron-left" size={24} onPress={() => setPage(Math.max(0, safePage - 1))} />
+          <RgIconButton name="chevron-right" size={24} onPress={() => setPage(Math.min(pageCount - 1, safePage + 1))} />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -1412,6 +1600,291 @@ export function RgChip({ icon, removable, onRemove, children, style }: any) {
           <RgIcon name="close" size={20} color="textMuted" />
         </Pressable>
       ) : null}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Stage 14: the components Angular Material ships that Rangular was
+// missing (found by the 2026-11-13 audit against the Material list):
+// menu, select, drawer (sidenav), stepper, grid list, tree, divider,
+// and the tooltip hosts above. The declaration pattern is the Stage
+// 6 and 11 one throughout: group primitives read their declaration
+// children, and a declaration element renders nothing on its own.
+
+/** A divider (MatDivider): one hairline across its container. */
+export function RgDivider({ style }: any) {
+  const styles = stylesFor(useRgTheme());
+  return <View style={[styles.divider, style]} />;
+}
+
+const RgMenuContext = createContext<{ close?: () => void }>({});
+
+/**
+ * The menu (MatMenu): `<menu [open]="menuOpen" (close)="closeMenu()">`
+ * renders a floating panel of <menu-item> rows at the top right over
+ * a dimmed backdrop, the sheet and dialog contract with a menu's
+ * shape. A backdrop tap calls onClose; choosing an item runs the
+ * item's own handler and then closes the menu through the context,
+ * the way Material menus dismiss on selection. With no `open` prop
+ * the menu is simply shown, and the compiler warns.
+ */
+export function RgMenu({ open, onClose, children, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  const isOpen = open === undefined ? true : open === 'false' ? false : !!open;
+  if (!isOpen) return null;
+  return (
+    <View style={styles.overlayRootTop}>
+      <View style={styles.overlayBackdrop}>
+        <Pressable style={styles.overlayFill} onPress={onClose} accessibilityLabel="Close" />
+      </View>
+      <View style={[styles.menuPanel, style]}>
+        <RgMenuContext.Provider value={{ close: onClose }}>{children}</RgMenuContext.Provider>
+      </View>
+    </View>
+  );
+}
+
+export function RgMenuItem({ icon, disabled, onPress, children, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  const menu = useContext(RgMenuContext);
+  const press = (): void => {
+    onPress?.();
+    menu.close?.();
+  };
+  return (
+    <Pressable
+      disabled={disabled}
+      onPress={press}
+      style={({ pressed }) => [styles.menuItem, pressed && styles.buttonPressed, disabled && styles.buttonDisabled, style]}
+    >
+      {icon ? <RgIcon name={icon} size={24} color="textMuted" /> : null}
+      <Text style={styles.menuItemLabel}>{children}</Text>
+    </Pressable>
+  );
+}
+
+/**
+ * The drawer (MatSidenav in its over mode): `<drawer [open]="navOpen"
+ * (close)="closeNav()">` renders a full height panel from the left
+ * over a dimmed backdrop. A backdrop tap calls onClose. The entrance
+ * is a plain slide, timed like the sheet, never a spring.
+ */
+export function RgDrawer({ open, onClose, children, style }: any) {
+  const t = useRgTheme();
+  const styles = stylesFor(t);
+  const isOpen = open === undefined ? true : open === 'false' ? false : !!open;
+  const progress = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (isOpen) {
+      progress.setValue(0);
+      Animated.timing(progress, {
+        toValue: 1, duration: 220, easing: Easing.out(Easing.quad), useNativeDriver: true,
+      }).start();
+    }
+  }, [isOpen, progress]);
+  if (!isOpen) return null;
+  const backdropOpacity = progress.interpolate({ inputRange: [0, 1], outputRange: [0, 0.32] });
+  const translateX = progress.interpolate({ inputRange: [0, 1], outputRange: [-280, 0] });
+  return (
+    <View style={styles.overlayRootLeft}>
+      <Animated.View style={[styles.overlayBackdrop, { opacity: backdropOpacity }]}>
+        <Pressable style={styles.overlayFill} onPress={onClose} accessibilityLabel="Close" />
+      </Animated.View>
+      <Animated.View style={[styles.drawerPanel, { transform: [{ translateX }] }, style]}>
+        {children}
+      </Animated.View>
+    </View>
+  );
+}
+
+/** The text of a declaration's children, for select option labels. */
+function declarationText(children: unknown): string {
+  if (children === undefined || children === null) return '';
+  if (Array.isArray(children)) return children.map(declarationText).join('');
+  return String(children);
+}
+
+/**
+ * The select (MatSelect): a field showing the chosen option's label;
+ * tapping it opens a bottom sheet listing the <option> declarations,
+ * the picker's arrangement. Choosing one writes the option's value
+ * through onChange (the Stage 6 controls contract, [value] in and
+ * (change) out) and closes the sheet; the current option carries a
+ * check. With no value yet, the placeholder shows.
+ */
+export function RgSelect({ value, label, placeholder, disabled, onChange, children, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  const [open, setOpen] = useState(false);
+  const options = React.Children.toArray(children)
+    .filter((child) => React.isValidElement(child))
+    .filter((child) => (child as React.ReactElement<any>).type === RgOption)
+    .map((child) => {
+      const el = child as React.ReactElement<any>;
+      return { value: el.props.value, label: declarationText(el.props.children) };
+    });
+  const selected = options.find((o) => String(o.value ?? '') === String(value ?? ''));
+  const pick = (next: unknown): void => {
+    setOpen(false);
+    onChange?.(next);
+  };
+  return (
+    <View style={[styles.inputWrap, style]}>
+      {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
+      <Pressable
+        disabled={disabled}
+        onPress={() => setOpen(true)}
+        style={[styles.pickerBox, disabled ? styles.inputDisabled : null]}
+        accessibilityRole="button"
+      >
+        <Text style={[styles.pickerValue, !selected && styles.selectPlaceholder]}>
+          {selected ? selected.label : (placeholder ?? 'Choose')}
+        </Text>
+        <View style={{ transform: [{ rotate: '90deg' }] }}>
+          <RgIcon name="chevron-right" size={24} color="textMuted" />
+        </View>
+      </Pressable>
+      <RgSheet open={open} onClose={() => setOpen(false)}>
+        {options.map((option, i) => {
+          const isSelected = String(option.value ?? '') === String(value ?? '');
+          return (
+            <Pressable
+              key={i}
+              onPress={() => pick(option.value)}
+              style={({ pressed }) => [styles.selectOption, pressed && styles.buttonPressed]}
+            >
+              <Text style={styles.selectOptionText}>{option.label}</Text>
+              {isSelected ? <RgIcon name="check" size={24} color="primary" /> : null}
+            </Pressable>
+          );
+        })}
+      </RgSheet>
+    </View>
+  );
+}
+
+export function RgStep({ label, children }: any) {
+  // One step page of an RgStepper, read by the group like RgTab.
+  void label;
+  void children;
+  return null;
+}
+
+/**
+ * The stepper (MatStepper, horizontal): a header of numbered
+ * circles and labels joined by hairlines; the content under it is
+ * the selected <step>'s children. Controlled by [index] and
+ * (change) when bound, self managed otherwise, the tabs contract.
+ * A completed step's circle carries a check.
+ */
+export function RgStepper({ index, onChange, children, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  const items = React.Children.toArray(children)
+    .filter((child) => React.isValidElement(child))
+    .filter((child) => (child as React.ReactElement<any>).type === RgStep)
+    .map((child) => {
+      const el = child as React.ReactElement<any>;
+      return { label: el.props.label, content: el.props.children };
+    });
+  const [internal, setInternal] = useState(0);
+  const controlled = typeof index === 'number';
+  const active = controlled
+    ? Math.min(Math.max(index, 0), Math.max(items.length - 1, 0))
+    : Math.min(internal, Math.max(items.length - 1, 0));
+  const select = (i: number): void => {
+    if (!controlled) setInternal(i);
+    onChange?.(i);
+  };
+  return (
+    <View style={style}>
+      <View style={styles.stepperHeader}>
+        {items.map((item, i) => {
+          const done = i < active;
+          const current = i === active;
+          return (
+            <React.Fragment key={i}>
+              {i > 0 ? <View style={styles.stepConnector} /> : null}
+              <Pressable onPress={() => select(i)} style={styles.stepHead} accessibilityRole="button">
+                <View style={[styles.stepCircle, current && styles.stepCircleActive, done && styles.stepCircleDone]}>
+                  {done ? (
+                    <RgIcon name="check" size={20} color="primary" />
+                  ) : (
+                    <Text style={[styles.stepNumber, current && styles.stepNumberActive]}>{i + 1}</Text>
+                  )}
+                </View>
+                {item.label ? (
+                  <Text style={[styles.stepLabel, current && styles.stepLabelActive]}>{item.label}</Text>
+                ) : null}
+              </Pressable>
+            </React.Fragment>
+          );
+        })}
+      </View>
+      {items[active] ? <View>{items[active].content}</View> : null}
+    </View>
+  );
+}
+
+export function RgGridTile({ __widthPct, children, style }: any) {
+  // One tile of an RgGridList. The list injects the cell width as
+  // __widthPct (the accordion's internal prop pattern); the tile
+  // itself is the padded cell and its surface card.
+  const styles = stylesFor(useRgTheme());
+  const pct = typeof __widthPct === 'number' ? __widthPct : 50;
+  return (
+    <View style={[{ width: `${pct}%` }, styles.gridTileCell, style]}>
+      <View style={styles.gridTile}>{children}</View>
+    </View>
+  );
+}
+
+/**
+ * The grid list (MatGridList): <grid-tile> children laid out in
+ * `cols` columns (default 2), each tile taking an equal share of
+ * the row. Tiles hold any content; the list only arranges them.
+ */
+export function RgGridList({ cols, children, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  const n = Number.isFinite(Number(cols)) && Number(cols) > 0 ? Math.floor(Number(cols)) : 2;
+  const pct = 100 / n;
+  return (
+    <View style={[styles.gridList, style]}>
+      {React.Children.map(children, (child) => {
+        if (!React.isValidElement(child)) return child;
+        if ((child as React.ReactElement<any>).type !== RgGridTile) return child;
+        return React.cloneElement(child as React.ReactElement<any>, { __widthPct: pct });
+      })}
+    </View>
+  );
+}
+
+export function RgTree({ children, style }: any) {
+  // The tree's root (MatTree): it only holds its <tree-node>
+  // children; each node manages its own expansion.
+  return <View style={style}>{children}</View>;
+}
+
+export function RgTreeNode({ label, expanded, children, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  const hasKids = React.Children.count(children) > 0;
+  const [open, setOpen] = useState(() => expanded === true || expanded === 'true');
+  return (
+    <View style={style}>
+      <Pressable
+        onPress={hasKids ? () => setOpen(!open) : undefined}
+        style={styles.treeNodeHeader}
+        accessibilityRole={hasKids ? 'button' : undefined}
+      >
+        {hasKids ? (
+          <View style={{ transform: [{ rotate: open ? '90deg' : '0deg' }] }}>
+            <RgIcon name="chevron-right" size={24} color="textMuted" />
+          </View>
+        ) : (
+          <View style={styles.treeChevronSpacer} />
+        )}
+        <Text style={styles.treeNodeLabel}>{label}</Text>
+      </Pressable>
+      {hasKids && open ? <View style={styles.treeChildren}>{children}</View> : null}
     </View>
   );
 }

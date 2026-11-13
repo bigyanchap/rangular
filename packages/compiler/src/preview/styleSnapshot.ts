@@ -124,6 +124,15 @@ function allRoles(mode: ThemeMode): Record<string, StyleRecord> {
       background: c.error, color: c.onError,
       borderRadius: t.radius.full, fontSize: ty.caption.fontSize, fontWeight: 700, minWidth: 18, height: 18,
     },
+    // Stage 14 roles: the components the audit found missing.
+    divider: { borderColor: c.border },
+    menu: { background: c.surface, borderRadius: t.radius.md },
+    menuItem: { color: c.text, fontSize: ty.body.fontSize, minHeight: 48 },
+    drawer: { background: c.surface },
+    select: { background: c.surface, borderColor: c.outline, borderRadius: t.radius.sm, minHeight: 48 },
+    stepper: { activeBackground: c.primary, activeColor: c.onPrimary, doneBackground: c.primaryContainer, borderColor: c.outline },
+    gridTile: { background: c.surfaceVariant, borderRadius: t.radius.lg, padding: t.spacing.md },
+    treeNode: { color: c.text, fontSize: ty.body.fontSize, minHeight: 40 },
     textDisplay: { fontSize: ty.display.fontSize, lineHeight: ty.display.lineHeight, fontWeight: 700 },
     textHeading: { fontSize: ty.heading.fontSize, lineHeight: ty.heading.lineHeight, fontWeight: 700 },
     textTitle: { fontSize: ty.title.fontSize, lineHeight: ty.title.lineHeight, fontWeight: 600 },
@@ -164,6 +173,14 @@ function rolesForElement(el: ElementNode): string[] {
     case 'progress-bar': return ['progress'];
     case 'spinner': return ['spinner'];
     case 'chip': return ['chip'];
+    case 'divider': return ['divider'];
+    case 'menu': return ['menu'];
+    case 'menu-item': return ['menuItem'];
+    case 'drawer': return ['drawer'];
+    case 'select': return ['select'];
+    case 'stepper': return ['stepper'];
+    case 'grid-tile': return ['gridTile'];
+    case 'tree-node': return ['treeNode'];
     case 'span': return el.attrs['class'] === 'badge' ? ['badge'] : [];
     default: return [];
   }

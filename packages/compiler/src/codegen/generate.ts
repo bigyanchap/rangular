@@ -133,6 +133,18 @@ export const TAG_MAP: Record<string, TagMapping> = {
   spinner: { component: 'RgSpinner', fromUi: true },
   chips: { component: 'RgChips', fromUi: true },
   chip: { component: 'RgChip', fromUi: true },
+  // Stage 14: the Material components the audit found missing.
+  menu: { component: 'RgMenu', fromUi: true },
+  'menu-item': { component: 'RgMenuItem', fromUi: true },
+  drawer: { component: 'RgDrawer', fromUi: true },
+  select: { component: 'RgSelect', fromUi: true },
+  stepper: { component: 'RgStepper', fromUi: true },
+  step: { component: 'RgStep', fromUi: true },
+  'grid-list': { component: 'RgGridList', fromUi: true },
+  'grid-tile': { component: 'RgGridTile', fromUi: true },
+  tree: { component: 'RgTree', fromUi: true },
+  'tree-node': { component: 'RgTreeNode', fromUi: true },
+  divider: { component: 'RgDivider', fromUi: true },
 };
 
 /** True when an initializer source text is a plain literal we may hoist. */
@@ -831,12 +843,89 @@ class Generator {
       for (const node of nodes) {
         if (node.type !== 'element') continue;
         const tag = node.tag.toLowerCase();
-        if (tag === 'option' && parentTag !== 'switcher' && parentTag !== 'radio-group') {
+        if (tag === 'option' && parentTag !== 'switcher' && parentTag !== 'radio-group' && parentTag !== 'select') {
           diagnostics.push(warning(
             'GEN_CONTROL_NESTING',
             '<option> is outside <switcher>; it declares one segment and has no meaning on its own',
             node.pos.line, node.pos.column,
-            'Move the option inside a switcher: <switcher [value]="view" (change)="onView($event)"><option value="list">List</option></switcher>',
+            'Move the option inside a switcher: <switcher [value]="view" (change)="onView($event)"><option value="list">List</option></switcher>, or inside a select: <select [value]="city" (change)="onCity($event)"><option value="ktm">Kathmandu</option></select>',
+          ));
+        }
+        // Stage 14 declarations: step belongs in stepper, menu-item
+        // belongs in menu, grid-tile belongs in grid-list, tree-node
+        // belongs in tree or in another tree-node; and stepper, menu,
+        // grid-list and tree accept only their own declarations (a
+        // menu also takes dividers between its items).
+        if (tag === 'step' && parentTag !== 'stepper') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            '<step> is outside <stepper>; it declares one step page and has no meaning on its own',
+            node.pos.line, node.pos.column,
+            'Move the step inside a stepper: <stepper><step label="Cart">...</step></stepper>',
+          ));
+        }
+        if (parentTag === 'stepper' && tag !== 'step') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            `<${node.tag}> is inside <stepper>; only <step> declarations belong there`,
+            node.pos.line, node.pos.column,
+            'Replace it with <step label="...">...</step>, or move the element outside the stepper',
+          ));
+        }
+        if (tag === 'menu-item' && parentTag !== 'menu') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            '<menu-item> is outside <menu>; it declares one menu row and has no meaning on its own',
+            node.pos.line, node.pos.column,
+            'Move the item inside a menu: <menu [open]="menuOpen" (close)="closeMenu()"><menu-item (click)="rename()">Rename</menu-item></menu>',
+          ));
+        }
+        if (parentTag === 'menu' && tag !== 'menu-item' && tag !== 'divider') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            `<${node.tag}> is inside <menu>; only <menu-item> declarations (and <divider> between them) belong there`,
+            node.pos.line, node.pos.column,
+            'Replace it with <menu-item (click)="...">Label</menu-item>, or move the element outside the menu',
+          ));
+        }
+        if (tag === 'grid-tile' && parentTag !== 'grid-list') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            '<grid-tile> is outside <grid-list>; it declares one grid cell and has no meaning on its own',
+            node.pos.line, node.pos.column,
+            'Move the tile inside a grid list: <grid-list cols="2"><grid-tile>...</grid-tile></grid-list>',
+          ));
+        }
+        if (parentTag === 'grid-list' && tag !== 'grid-tile') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            `<${node.tag}> is inside <grid-list>; only <grid-tile> declarations belong there`,
+            node.pos.line, node.pos.column,
+            'Replace it with <grid-tile>...</grid-tile>, or move the element outside the grid list',
+          ));
+        }
+        if (tag === 'tree-node' && parentTag !== 'tree' && parentTag !== 'tree-node') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            '<tree-node> is outside <tree>; it declares one tree row and has no meaning on its own',
+            node.pos.line, node.pos.column,
+            'Move the node inside a tree: <tree><tree-node label="Inbox"></tree-node></tree>',
+          ));
+        }
+        if (parentTag === 'tree' && tag !== 'tree-node') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            `<${node.tag}> is inside <tree>; only <tree-node> declarations belong there`,
+            node.pos.line, node.pos.column,
+            'Replace it with <tree-node label="...">...</tree-node>, or move the element outside the tree',
+          ));
+        }
+        if (parentTag === 'select' && tag !== 'option') {
+          diagnostics.push(warning(
+            'GEN_CONTROL_NESTING',
+            `<${node.tag}> is inside <select>; only <option> declarations belong there`,
+            node.pos.line, node.pos.column,
+            'Replace it with <option value="...">Label</option>, or move the element outside the select',
           ));
         }
         if (tag === 'radio' && parentTag !== 'radio-group' && parentTag !== 'switcher') {
@@ -922,7 +1011,7 @@ class Generator {
       for (const node of nodes) {
         if (node.type !== 'element') continue;
         const tag = node.tag.toLowerCase();
-        if ((tag === 'sheet' || tag === 'dialog')
+        if ((tag === 'sheet' || tag === 'dialog' || tag === 'menu' || tag === 'drawer')
           && node.attrs['open'] === undefined
           && !node.booleanAttrs.includes('open')
           && !node.propBindings.some((b) => b.name === 'open')) {
@@ -2126,7 +2215,7 @@ class Generator {
           'GEN_UNKNOWN_TAG',
           `Unknown tag <${el.tag}>, emitted as <View>. Use a known block or a component tag.`,
           el.pos.line, el.pos.column,
-          'Known blocks: screen, appbar, card, list, row, fab, button, input, form, switch, switcher, checkbox, radio-group, tabs, accordion, panel, table, slider, progress-bar, spinner, chips, chip, sheet, dialog, datetime-picker, h1, h2, h3, p, span, label, div, section, header, or use a Capitalised component tag',
+          'Known blocks: screen, appbar, card, list, row, fab, button, input, form, switch, switcher, checkbox, radio-group, tabs, accordion, panel, table, slider, progress-bar, spinner, chips, chip, sheet, dialog, datetime-picker, menu, menu-item, drawer, select, stepper, step, grid-list, grid-tile, tree, tree-node, divider, h1, h2, h3, p, span, label, div, section, header, or use a Capitalised component tag',
         ));
         componentName = 'View';
         this.usedRn.add('View');
@@ -2194,6 +2283,25 @@ class Generator {
         ));
       }
 
+      // Tooltip (Stage 14): matTooltip as an attribute. The hosts
+      // are the pressable blocks, <button>, <row> and <icon-button>:
+      // on them the generic loops below emit tooltip as a prop and
+      // the primitives show the bubble on long press. On any other
+      // element the tooltip has no host: warn GEN_TOOLTIP_HOST and
+      // strip it, the badge rule.
+      const tooltipUsed = el.attrs['tooltip'] !== undefined
+        || el.propBindings.some((b) => b.name === 'tooltip');
+      const tooltipHost = ['button', 'row', 'icon-button'].includes(el.tag.toLowerCase());
+      const dropTooltip = tooltipUsed && !tooltipHost;
+      if (dropTooltip) {
+        diagnostics.push(warning(
+          'GEN_TOOLTIP_HOST',
+          `tooltip on <${el.tag}> cannot render; tooltips sit on <button>, <row> and <icon-button> in this version, so the tooltip was dropped`,
+          el.pos.line, el.pos.column,
+          'Move the tooltip to a button, row or icon button: <icon-button name="settings" tooltip="Settings"></icon-button>',
+        ));
+      }
+
       // Attribute directives (Stage 12): a directive's attribute and
       // its input attributes are consumed by the directive (they feed
       // the merged style below), never emitted as host props. On a
@@ -2220,6 +2328,7 @@ class Generator {
         if (name === 'routerLink') continue;
         if (consumedByDirective.has(name)) continue;
         if (name === 'badge' && dropBadge) continue;
+        if (name === 'tooltip' && dropTooltip) continue;
         // A button's type is forms machinery (Stage 8): type="submit"
         // is consumed by the submit rewrite below, never a prop.
         if (isButtonEl && name === 'type') continue;
@@ -2235,6 +2344,7 @@ class Generator {
         if (p.name === 'routerLink') continue;
         if (consumedByDirective.has(p.name)) continue;
         if (p.name === 'badge' && dropBadge) continue;
+        if (p.name === 'tooltip' && dropTooltip) continue;
         props.push(`${p.name}={${codeExpr(p.expression)}}`);
       }
       // Form submit (Stage 8): a <button type="submit"> statically
@@ -2283,13 +2393,16 @@ class Generator {
           props.push(isBareRef ? `${cb}={${src}}` : `${cb}={($event) => ${codeExpr(src)}}`);
           continue;
         }
-        const controlTag = ['switch', 'checkbox', 'switcher', 'radio-group', 'tabs'].includes(el.tag.toLowerCase());
+        const controlTag = ['switch', 'checkbox', 'switcher', 'radio-group', 'tabs', 'select', 'stepper'].includes(el.tag.toLowerCase());
         if (controlTag && ev.name === 'change') {
           // Controls emit their next value as $event (Stage 6). Unlike
           // the generic event path, the generated wrapper must receive
           // that value and pass it to the Angular style handler call.
           // Tabs joined the contract in Stage 11: (change) emits the
-          // newly selected tab index.
+          // newly selected tab index. Select and stepper joined in
+          // Stage 14 with the same contract; without them here, their
+          // handlers generated an arrow that referenced $event
+          // without ever receiving it.
           props.push(isBareRef ? `onChange={${src}}` : `onChange={($event) => ${codeExpr(src)}}`);
           continue;
         }

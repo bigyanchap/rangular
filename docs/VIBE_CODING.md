@@ -908,6 +908,53 @@ See `examples/mailbox-pro/` and its recipe card.
   not run in the environment that built the scaffold; the first
   `npx expo start` on a real machine is the device proof.
 
+## The missing pieces (Stage 14)
+
+An audit against the Angular Material component list found ten
+pieces missing; they are built now. See `examples/app-shell/`
+(drawer, menu, stepper, divider) and `examples/explorer/` (select,
+tree, grid list, table sorting and paging, tooltip) and their
+recipe cards.
+
+- **Menu and drawer are overlays.** `<menu [open]="x" (close)="m()">`
+  and `<drawer [open]="x" (close)="m()">` follow the Stage 10 sheet
+  and dialog contract exactly, including the `GEN_OVERLAY_OPEN`
+  warning when `[open]` is not bound. The menu panel hangs at the
+  top right and holds only `<menu-item>` rows and `<divider>`s; an
+  item takes an optional `icon="..."` and a `(click)`, and choosing
+  it runs the handler and then the menu's `(close)`. The drawer is
+  a full height panel from the left (MatSidenav's over mode; a
+  fixed side column is just a section, not a drawer).
+- **Select is a control.** `<select label="City" [value]="city"
+  (change)="onCity($event)">` with `<option value="ktm">Kathmandu
+  </option>` declarations, the switcher's option element. The
+  field shows the chosen label or the `placeholder`; a tap opens a
+  bottom sheet of options with a check on the current one. Like
+  every control, its `(change)` wrapper receives the value as
+  `$event`. Options are static declarations; `[(ngModel)]` does
+  not bind a select (ngModel is inputs only).
+- **Stepper is the tabs contract in a wizard shape.** `[index]`
+  in, `(change)` out, each `<step label="...">` owning its page;
+  completed steps show a check. No linear mode in this version.
+- **Grid list and tree are declaration groups.** `<grid-list
+  cols="2">` (default 2) arranges `<grid-tile>` children in equal
+  shares. `<tree>` holds `<tree-node label="...">` elements, which
+  nest; a node with node children is a branch whose tap toggles
+  them, `expanded` is the seed, and indentation is one step per
+  depth. Misplaced declarations warn `GEN_CONTROL_NESTING`, as
+  with every group since Stage 6.
+- **Divider** is `<divider>`: one hairline across its container.
+- **Tooltip is an attribute on the pressable hosts.**
+  `tooltip="..."` on `<button>`, `<row>` or `<icon-button>` shows
+  a bubble above the control on long press; in the preview the
+  same text rides the browser title. Any other host warns
+  `GEN_TOOLTIP_HOST` and the tooltip is dropped (the badge rule).
+- **The table sorts and pages.** `<column name="age" sortable>`
+  makes the header cycle ascending, descending, unsorted on tap
+  (numbers numerically, text alphabetically, empties last, the
+  bound array never mutated); `pageSize="5"` on `<table>` pages
+  the rows and draws a pager only while they overflow one page.
+
 ## Child components (Stage 3, M5)
 
 - **Resolution is by import.** The compiler follows the entry component's

@@ -216,6 +216,61 @@
       "tag": "chip",
       "component": "RgChip",
       "from": "@rangular/ui"
+    },
+    {
+      "tag": "menu",
+      "component": "RgMenu",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "menu-item",
+      "component": "RgMenuItem",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "drawer",
+      "component": "RgDrawer",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "select",
+      "component": "RgSelect",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "stepper",
+      "component": "RgStepper",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "step",
+      "component": "RgStep",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "grid-list",
+      "component": "RgGridList",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "grid-tile",
+      "component": "RgGridTile",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "tree",
+      "component": "RgTree",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "tree-node",
+      "component": "RgTreeNode",
+      "from": "@rangular/ui"
+    },
+    {
+      "tag": "divider",
+      "component": "RgDivider",
+      "from": "@rangular/ui"
     }
   ],
   "events": [
@@ -364,6 +419,10 @@
         {
           "name": "style",
           "type": "any"
+        },
+        {
+          "name": "tooltip",
+          "type": "any"
         }
       ]
     },
@@ -435,6 +494,10 @@
         },
         {
           "name": "variant",
+          "type": "any"
+        },
+        {
+          "name": "tooltip",
           "type": "any"
         }
       ]
@@ -675,6 +738,10 @@
           "type": "any"
         },
         {
+          "name": "tooltip",
+          "type": "any"
+        },
+        {
           "name": "children",
           "type": "any"
         }
@@ -909,6 +976,10 @@
         {
           "name": "header",
           "type": "any"
+        },
+        {
+          "name": "sortable",
+          "type": "any"
         }
       ]
     },
@@ -921,6 +992,10 @@
         },
         {
           "name": "emptyText",
+          "type": "any"
+        },
+        {
+          "name": "pageSize",
           "type": "any"
         },
         {
@@ -1026,6 +1101,217 @@
         },
         {
           "name": "onRemove",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgDivider",
+      "props": [
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgMenu",
+      "props": [
+        {
+          "name": "open",
+          "type": "any"
+        },
+        {
+          "name": "onClose",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgMenuItem",
+      "props": [
+        {
+          "name": "icon",
+          "type": "any"
+        },
+        {
+          "name": "disabled",
+          "type": "any"
+        },
+        {
+          "name": "onPress",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgDrawer",
+      "props": [
+        {
+          "name": "open",
+          "type": "any"
+        },
+        {
+          "name": "onClose",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgSelect",
+      "props": [
+        {
+          "name": "value",
+          "type": "any"
+        },
+        {
+          "name": "label",
+          "type": "any"
+        },
+        {
+          "name": "placeholder",
+          "type": "any"
+        },
+        {
+          "name": "disabled",
+          "type": "any"
+        },
+        {
+          "name": "onChange",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgStep",
+      "props": [
+        {
+          "name": "label",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgStepper",
+      "props": [
+        {
+          "name": "index",
+          "type": "any"
+        },
+        {
+          "name": "onChange",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgGridTile",
+      "props": [
+        {
+          "name": "__widthPct",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgGridList",
+      "props": [
+        {
+          "name": "cols",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgTree",
+      "props": [
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgTreeNode",
+      "props": [
+        {
+          "name": "label",
+          "type": "any"
+        },
+        {
+          "name": "expanded",
           "type": "any"
         },
         {
@@ -1530,7 +1816,7 @@
     },
     {
       "code": "GEN_CONTROL_NESTING",
-      "meaning": "A declaration is nested in the wrong parent; option belongs in switcher, radio belongs in radio-group, tab belongs in tabs, and column belongs in table, and those groups (plus accordion, which takes panels only) accept only their own declarations."
+      "meaning": "A declaration is nested in the wrong parent; option belongs in switcher or select, radio belongs in radio-group, tab belongs in tabs, column belongs in table, step belongs in stepper, menu-item belongs in menu, grid-tile belongs in grid-list, and tree-node belongs in tree or another tree-node, and those groups (plus accordion, which takes panels only, and menu, which also takes dividers) accept only their own declarations."
     },
     {
       "code": "GEN_ICON_UNKNOWN",
@@ -1590,7 +1876,11 @@
     },
     {
       "code": "GEN_OVERLAY_OPEN",
-      "meaning": "A <sheet> or <dialog> has no [open] binding, so it cannot be opened or closed from the component; it renders statically open."
+      "meaning": "A <sheet>, <dialog>, <menu> or <drawer> has no [open] binding, so it cannot be opened or closed from the component; it renders statically open."
+    },
+    {
+      "code": "GEN_TOOLTIP_HOST",
+      "meaning": "A tooltip attribute or [tooltip] binding sits on an element that cannot host a tooltip in this version (button, row and icon-button can); the tooltip was dropped."
     },
     {
       "code": "GEN_EVENT_ASSIGNMENT",
