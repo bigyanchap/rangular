@@ -868,6 +868,25 @@ groups, and the badge gained a fourth host, the nav item. The
 catalog now stands at 74 tags, 68 primitives and 62 diagnostic
 codes.
 
+## The tutorial round (2026-11-13)
+
+Three pieces the Rangular Tutorial app asked for, built in the
+framework first. The app bar title can now center truly:
+`<appbar titleAlign="center">` lays the bar out in three zones
+(a fixed width left zone, the centered title, a balancing right
+zone), so the title sits at the centre of the bar even with a
+menu icon at the left; without the attribute the bar is
+unchanged. A `<code>` block compiles to `RgCode`, a dark editor
+surface with a monospace face in both themes, for code samples
+that must read as code; long lines scroll horizontally. And the
+SnackBar's default look is now a toast: a translucent black
+card at bottom centre, dark in both themes, with a subtle grain
+(a real SVG noise texture in the HTML previews; in React
+Native, which has no texture asset, a five percent white sheen
+and a hairline border approximate it, recorded in
+docs/VIBE_CODING.md). The catalog now stands at 75 tags, 69
+primitives and 62 diagnostic codes.
+
 ## v1 is complete
 
 What v1 is: an Angular-style component, template, service and DI

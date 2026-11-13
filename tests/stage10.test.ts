@@ -12,6 +12,7 @@ import { parsePrimitives } from '../packages/compiler/src/catalog';
 import { renderPreview } from '../packages/compiler/src/preview/renderPreview';
 import { buildStyleSnapshot } from '../packages/compiler/src/preview/styleSnapshot';
 import { SnackBar, SnackBarRef } from '../packages/runtime/src/index';
+import { colours } from '../packages/ui/src/tokens';
 import {
   applyWheelValue,
   composeDateTimeIso,
@@ -443,6 +444,28 @@ function renderReminderPreview(): string {
     routes: result.routes,
   });
 }
+
+test('the toast look: translucent black, bottom centre, grain in the preview, tokens in both themes', () => {
+  const paint = renderReminderPreview().split('<script>')[0];
+  const rule = paint.match(/\.snackbar \{[^}]*\}/);
+  assert.ok(rule, 'the snackbar paints');
+  assert.ok(rule![0].includes('left: 50%'), 'the toast card sits at bottom centre');
+  assert.ok(rule![0].includes('translateX(-50%)'), 'the card centers on its own width');
+  assert.ok(rule![0].includes('var(--role-toast-surface)'), 'the surface is the toast token');
+  assert.ok(rule![0].includes('feTurbulence'), 'the preview draws a real grain texture');
+  assert.ok(!rule![0].includes('right:'), 'the old full width bar is gone');
+
+  assert.equal(colours.light.toastSurface, '#000000d9', 'translucent black at 85 percent');
+  assert.equal(colours.dark.toastSurface, colours.light.toastSurface, 'the toast stays dark in dark mode');
+  assert.equal(colours.dark.toastText, colours.light.toastText, 'the toast text is the same in both themes');
+  assert.equal(colours.dark.codeSurface, colours.light.codeSurface, 'the editor surface is dark in both themes');
+
+  const primitives = fs.readFileSync(path.join(ROOT, 'packages', 'ui', 'src', 'primitives.tsx'), 'utf8');
+  assert.match(primitives, /snackbarHost: \{/);
+  assert.match(primitives, /alignItems: 'center', zIndex: 20/);
+  assert.match(primitives, /snackbarSheen/);
+  assert.match(primitives, /backgroundColor: c\.toastSurface/);
+});
 
 test('reminder preview paint: picker value shows, closed overlays and snackbar stay hidden', () => {
   const paint = renderReminderPreview().split('<script>')[0];

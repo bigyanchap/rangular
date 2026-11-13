@@ -376,6 +376,11 @@
       "tag": "crumb",
       "component": "RgCrumb",
       "from": "@rangular/ui"
+    },
+    {
+      "tag": "code",
+      "component": "RgCode",
+      "from": "@rangular/ui"
     }
   ],
   "events": [
@@ -519,6 +524,10 @@
         {
           "name": "onMenu",
           "type": "any"
+        },
+        {
+          "name": "titleAlign",
+          "type": "any"
         }
       ]
     },
@@ -586,6 +595,19 @@
         },
         {
           "name": "variant",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgCode",
+      "props": [
+        {
+          "name": "children",
           "type": "any"
         },
         {
@@ -2062,7 +2084,12 @@
         "outline": "#747775",
         "scrim": "#000000",
         "avatar": "#7b1fa2",
-        "onAvatar": "#ffffff"
+        "onAvatar": "#ffffff",
+        "codeSurface": "#1e1e1e",
+        "codeText": "#d4d4d4",
+        "toastSurface": "#000000d9",
+        "toastText": "#f1f3f4",
+        "toastAction": "#a8c7fa"
       },
       "dark": {
         "primary": "#a8c7fa",
@@ -2087,7 +2114,12 @@
         "outline": "#8e918f",
         "scrim": "#000000",
         "avatar": "#d0bcff",
-        "onAvatar": "#381e72"
+        "onAvatar": "#381e72",
+        "codeSurface": "#1e1e1e",
+        "codeText": "#d4d4d4",
+        "toastSurface": "#000000d9",
+        "toastText": "#f1f3f4",
+        "toastAction": "#a8c7fa"
       }
     },
     "elevation": {
@@ -2201,7 +2233,12 @@
           "outline": "#747775",
           "scrim": "#000000",
           "avatar": "#7b1fa2",
-          "onAvatar": "#ffffff"
+          "onAvatar": "#ffffff",
+          "codeSurface": "#1e1e1e",
+          "codeText": "#d4d4d4",
+          "toastSurface": "#000000d9",
+          "toastText": "#f1f3f4",
+          "toastAction": "#a8c7fa"
         },
         "elevation": {
           "level0": {
@@ -2314,7 +2351,12 @@
           "outline": "#8e918f",
           "scrim": "#000000",
           "avatar": "#d0bcff",
-          "onAvatar": "#381e72"
+          "onAvatar": "#381e72",
+          "codeSurface": "#1e1e1e",
+          "codeText": "#d4d4d4",
+          "toastSurface": "#000000d9",
+          "toastText": "#f1f3f4",
+          "toastAction": "#a8c7fa"
         },
         "elevation": {
           "level0": {

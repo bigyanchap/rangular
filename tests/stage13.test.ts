@@ -53,6 +53,33 @@ test('appbar draws no menu and no avatar unless the app asks for them', () => {
   assert.match(primitives, /avatar \? \(/);
 });
 
+test('appbar titleAlign="center" centers the title in three zones, default unchanged', () => {
+  const centered = compileInline('<screen><appbar title="Rangular Tutorial" titleAlign="center" menu (menu)="go()"></appbar></screen>');
+  assert.equal(hasErrors(centered.diagnostics), false, JSON.stringify(centered.diagnostics));
+  assert.match(centered.code, /titleAlign="center"/);
+  assert.match(centered.code, /onMenu=/);
+
+  const plain = compileInline('<screen><appbar title="Plain"></appbar></screen>');
+  assert.ok(!plain.code.includes('titleAlign'), 'no titleAlign, no centered layout');
+  const plainHtml = renderPreview(plain.component!, plain.ast!);
+  const plainBar = plainHtml.match(/<header class="appbar">.*?<\/header>/);
+  assert.ok(plainBar && !plainBar[0].includes('appbar-side'), 'the default bar has no side zones');
+
+  const html = renderPreview(centered.component!, centered.ast!);
+  const bar = html.match(/<header class="appbar">.*?<\/header>/);
+  assert.ok(bar, 'the centered appbar paints');
+  assert.equal((bar![0].match(/appbar-side/g) ?? []).length, 2, 'two balancing side zones');
+  assert.ok(bar![0].includes('<span class="appbar-title center">Rangular Tutorial</span>'), 'the title carries the center class');
+  assert.ok(bar![0].indexOf('appbar-side') < bar![0].indexOf('appbar-title'), 'the left zone comes before the title');
+  assert.match(html, /\.appbar-side \{ width: 28px;/);
+  assert.match(html, /\.appbar-title\.center[^{]*\{ text-align: center; \}/);
+
+  const primitives = fs.readFileSync(path.join(ROOT, 'packages', 'ui', 'src', 'primitives.tsx'), 'utf8');
+  assert.match(primitives, /titleAlign === 'center'/);
+  assert.match(primitives, /appbarSide: \{ width: 28/);
+  assert.match(primitives, /appbarTitleCenter: \{ textAlign: 'center' \}/);
+});
+
 test('icon-button compiles to RgIconButton and paints a real button in preview', () => {
   const result = compileInline('<screen><icon-button name="chevron-left" (click)="go()"></icon-button></screen>');
   assert.equal(hasErrors(result.diagnostics), false, JSON.stringify(result.diagnostics));

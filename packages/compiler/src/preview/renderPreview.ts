@@ -1016,6 +1016,16 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
       case 'appbar': {
         const search = bound(el, 'search', scope);
         const avatar = bound(el, 'avatar', scope);
+        // Centered title (tutorial round): three zones, the side
+        // zones fixed at the avatar width, so the title centers on
+        // the bar itself even with a menu icon at the left.
+        if (el.attrs['titleAlign'] === 'center') {
+          return `<header class="appbar"><span class="appbar-side">${el.booleanAttrs.includes('menu') ? iconSvg('menu', 24, 'textMuted') : ''}</span>` +
+            (search
+              ? `<span class="search center">${escapeHtml(search)}</span>`
+              : `<span class="appbar-title center">${escapeHtml(title)}</span>`) +
+            `<span class="appbar-side end">${avatar ? `<span class="avatar">${escapeHtml(String(avatar).charAt(0))}</span>` : ''}</span></header>`;
+        }
         return `<header class="appbar">${el.booleanAttrs.includes('menu') ? iconSvg('menu', 24, 'textMuted') : ''}` +
           (search
             ? `<span class="search">${escapeHtml(search)}</span>`
@@ -1026,6 +1036,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
       case 'h2': return `<h2 class="heading"${dirStyle}>${inner}</h2>`;
       case 'h3': return `<h3 class="title"${dirStyle}>${inner}</h3>`;
       case 'p': return `<p class="body"${dirStyle}>${inner}</p>`;
+      case 'code': return `<pre class="code"${dirStyle}>${inner}</pre>`;
       case 'label': return `<span class="label"${dirStyle}>${inner}</span>`;
       case 'span': {
         const cls = el.attrs['class'];
@@ -1297,6 +1308,14 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .appbar { display: flex; align-items: center; gap: ${t.spacing.md}px; background: var(--surface-variant); border-radius: ${t.radius.full}px; padding: 10px ${t.spacing.lg}px; }
   .search { flex: 1; color: var(--text-muted); font-size: 14px; }
   .appbar-title { flex: 1; font-size: ${t.typography.title.fontSize}px; font-weight: 600; }
+  /* Centered app bar title (tutorial round): fixed width side
+     zones balance the bar so the title centers truly. */
+  .appbar-side { width: 28px; flex: 0 0 28px; display: inline-flex; align-items: center; }
+  .appbar-side.end { justify-content: flex-end; }
+  .appbar-title.center, .search.center { text-align: center; }
+  /* Code block (tutorial round): a dark editor surface and a
+     monospace stack in both themes; long lines scroll sideways. */
+  .code { background: var(--role-code-surface); color: var(--role-code-text); border-radius: ${t.radius.md}px; padding: ${t.spacing.md}px ${t.spacing.lg}px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: ${t.typography.body.fontSize}px; line-height: ${t.typography.body.lineHeight}px; white-space: pre; overflow-x: auto; margin: 0; }
   .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--avatar); color: var(--on-avatar); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
   .avatar-lg { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; }
   .icon { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
@@ -1408,9 +1427,9 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .auto-anchor { position: relative; }
   .auto-panel { position: absolute; left: 0; right: 0; top: 100%; margin-top: ${t.spacing.xs}px; background: var(--role-surface); border: 1px solid var(--border); border-radius: ${t.radius.sm}px; z-index: 10; box-shadow: 0 6px 18px rgba(0,0,0,.18); }
   .auto-option { padding: 10px ${t.spacing.md}px; font-size: ${t.typography.body.fontSize}px; color: var(--text); cursor: pointer; }
-  .snackbar { position: absolute; left: ${t.spacing.lg}px; right: ${t.spacing.lg}px; bottom: ${t.spacing.xxxl}px; z-index: 20; display: flex; align-items: center; gap: ${t.spacing.md}px; background: var(--text); color: var(--screen-bg); border-radius: ${t.radius.sm}px; padding: ${t.spacing.md}px ${t.spacing.lg}px; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+  .snackbar { position: absolute; left: 50%; transform: translateX(-50%); bottom: ${t.spacing.xxxl}px; z-index: 20; display: flex; align-items: center; gap: ${t.spacing.md}px; max-width: 92%; background-color: var(--role-toast-surface); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.07'/%3E%3C/svg%3E"); color: var(--role-toast-text); border: 1px solid rgba(255,255,255,.16); border-radius: ${t.radius.md}px; padding: ${t.spacing.md}px ${t.spacing.lg}px; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
   .snackbar-text { flex: 1; font-size: ${t.typography.body.fontSize}px; }
-  .snackbar-action { border: none; background: transparent; color: var(--primary-container); font: inherit; font-size: ${t.typography.label.fontSize}px; font-weight: 600; text-transform: uppercase; cursor: pointer; padding: 0; }
+  .snackbar-action { border: none; background: transparent; color: var(--role-toast-action); font: inherit; font-size: ${t.typography.label.fontSize}px; font-weight: 600; text-transform: uppercase; cursor: pointer; padding: 0; }
   /* Stage 14: menu, drawer, select, stepper, grid list, tree, divider. */
   .divider { border-bottom: 1px solid var(--border); margin: ${t.spacing.xs}px 0; }
   .overlay-top { align-items: flex-start; justify-content: flex-end; padding: 64px ${t.spacing.lg}px 0 0; }
@@ -4476,14 +4495,33 @@ function __buildCore(el, scope, path, form) {
     case 'appbar': {
       var bar = document.createElement('header');
       bar.className = 'appbar';
-      if (el.booleanAttrs.indexOf('menu') >= 0) bar.appendChild(__icon('menu', 24, 'textMuted'));
+      // Centered title (tutorial round): three zones, side zones
+      // fixed at the avatar width, title centered on the bar.
+      var centeredBar = el.attrs['titleAlign'] === 'center';
+      var leftZone = null;
+      if (centeredBar) {
+        leftZone = document.createElement('span');
+        leftZone.className = 'appbar-side';
+        bar.appendChild(leftZone);
+      }
+      if (el.booleanAttrs.indexOf('menu') >= 0) (leftZone || bar).appendChild(__icon('menu', 24, 'textMuted'));
       var search = __attr(el, 'search', scope);
       var mid = document.createElement('span');
-      if (search) { mid.className = 'search'; mid.textContent = String(search); }
-      else { mid.className = 'appbar-title'; mid.textContent = title ? String(title) : ''; }
+      if (search) { mid.className = centeredBar ? 'search center' : 'search'; mid.textContent = String(search); }
+      else { mid.className = centeredBar ? 'appbar-title center' : 'appbar-title'; mid.textContent = title ? String(title) : ''; }
       bar.appendChild(mid);
       var avatar = __attr(el, 'avatar', scope);
-      if (avatar) {
+      if (centeredBar) {
+        var rightZone = document.createElement('span');
+        rightZone.className = 'appbar-side end';
+        if (avatar) {
+          var avc = document.createElement('span');
+          avc.className = 'avatar';
+          avc.textContent = String(avatar).charAt(0);
+          rightZone.appendChild(avc);
+        }
+        bar.appendChild(rightZone);
+      } else if (avatar) {
         var av = document.createElement('span');
         av.className = 'avatar';
         av.textContent = String(avatar).charAt(0);
@@ -4495,6 +4533,7 @@ function __buildCore(el, scope, path, form) {
     case 'h2': return wrap('h2', 'heading');
     case 'h3': return wrap('h3', 'title');
     case 'p': return wrap('p', 'body');
+    case 'code': return wrap('pre', 'code');
     case 'label': return wrap('span', 'label');
     case 'span': {
       var sp = wrap('span', '');

@@ -174,6 +174,8 @@ export const TAG_MAP: Record<string, TagMapping> = {
   lightbox: { component: 'RgLightbox', fromUi: true },
   breadcrumbs: { component: 'RgBreadcrumbs', fromUi: true },
   crumb: { component: 'RgCrumb', fromUi: true },
+  // Tutorial round (2026-11-13): the code block.
+  code: { component: 'RgCode', fromUi: true },
 };
 
 /** True when an initializer source text is a plain literal we may hoist. */
@@ -2353,7 +2355,7 @@ class Generator {
           'GEN_UNKNOWN_TAG',
           `Unknown tag <${el.tag}>, emitted as <View>. Use a known block or a component tag.`,
           el.pos.line, el.pos.column,
-          'Known blocks: screen, appbar, card, list, row, fab, button, input, form, switch, switcher, checkbox, radio-group, tabs, accordion, panel, table, slider, progress-bar, spinner, chips, chip, sheet, dialog, datetime-picker, menu, menu-item, drawer, select, stepper, step, grid-list, grid-tile, tree, tree-node, divider, bottom-nav, nav-item, skeleton, row-action, rating, otp, file-picker, color-picker, editor, carousel, timeline, timeline-item, calendar, avatar, avatar-group, empty-state, chart, image, lightbox, breadcrumbs, crumb, h1, h2, h3, p, span, label, div, section, header, or use a Capitalised component tag',
+          'Known blocks: screen, appbar, card, list, row, fab, button, input, form, switch, switcher, checkbox, radio-group, tabs, accordion, panel, table, slider, progress-bar, spinner, chips, chip, sheet, dialog, datetime-picker, menu, menu-item, drawer, select, stepper, step, grid-list, grid-tile, tree, tree-node, divider, bottom-nav, nav-item, skeleton, row-action, rating, otp, file-picker, color-picker, editor, carousel, timeline, timeline-item, calendar, avatar, avatar-group, empty-state, chart, image, lightbox, breadcrumbs, crumb, h1, h2, h3, p, span, label, code, div, section, header, or use a Capitalised component tag',
         ));
         componentName = 'View';
         this.usedRn.add('View');

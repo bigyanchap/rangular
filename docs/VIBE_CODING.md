@@ -562,8 +562,10 @@ save() { this.snack.open('Reminder saved'); }
 - The generated module holds one `__snackBar` instance when any
   component in the compilation injects `SnackBar`, including a
   child component. The entry component mirrors its current bar in
-  state and renders the `RgSnackbar` host: a dark floating pill at
-  the bottom with the message and the action label uppercased.
+  state and renders the `RgSnackbar` host: a translucent black
+  toast card at bottom centre (the look is specified in the
+  tutorial round section below) with the message and the action
+  label uppercased.
   Pressing the action dismisses the bar first, then fires the
   ref's `onAction` callbacks.
 - **The supported action form is the statement form**, decided
@@ -1050,6 +1052,50 @@ built, in three tour examples: `examples/feed/` (Tier 1),
   declarations join with chevron icons; the last crumb is the
   current page and not a link. On a phone the back chevron does
   most of this job, which is why the audit ranked it last.
+
+## The tutorial round (2026-11-13)
+
+Three pieces the Rangular Tutorial app asked for, built in the
+framework first so the app only consumes them.
+
+- **Centered app bar title.** `<appbar titleAlign="center">`
+  switches the bar to the standard three zone layout: a fixed
+  width left zone (28, the avatar's width), the title in a flex
+  middle zone with centered text, and a balancing right zone.
+  The title therefore sits at the true centre of the bar even
+  when a menu icon sits at the left. Without `titleAlign` (or
+  with `"start"`) the bar renders exactly as before; the search
+  text centers too when a search string is shown. The catalog
+  records the new `titleAlign` prop on `RgAppbar`.
+
+- **The code block.** `<code>` compiles to `RgCode`: projected
+  text on the `codeSurface` token in the `codeText` colour, the
+  platform monospace face (Menlo on iOS, the system monospace on
+  Android), on-scale padding inside a medium radius surface. The
+  two tokens are identical in light and dark on purpose: an
+  editor surface stays dark. A line is one line: long lines
+  scroll horizontally inside the block in the app (a horizontal
+  ScrollView) and in the previews (`white-space: pre` with
+  overflow-x auto). Like the other text blocks it carries its
+  content as projected text and interpolation works inside it,
+  so a lesson binds a sample with `{{ lesson.code }}`; a literal
+  sample written in a template must avoid a raw `<` or `{{`,
+  which are markup and interpolation to the parser. The
+  `code-block` example is its recipe card.
+
+- **The toast.** The SnackBar's default look is now the toast
+  Bigyan specified: a translucent black card at bottom centre,
+  dark in both themes. The `toastSurface` token carries its own
+  85 percent alpha (`#000000d9`); `toastText` and `toastAction`
+  are chosen to read on near black. The service API did not
+  change: `open(message, actionLabel?, durationMs?)`, `onAction`.
+  Grain: the HTML previews draw a real subtle noise, an inline
+  SVG feTurbulence texture over the surface, plus a hairline
+  light border. React Native has no texture asset for that
+  grain, so the app approximates it honestly: a white sheen
+  layer at five percent over the translucent black, under the
+  same hairline border. The two are close, not identical, and
+  this note is the record of that.
 
 ## Child components (Stage 3, M5)
 

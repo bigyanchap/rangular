@@ -63,6 +63,18 @@ export interface ColourRoles {
   scrim: string;
   avatar: string;
   onAvatar: string;
+  // Code block (tutorial round, 2026-11-13): an editor surface that
+  // is dark on purpose in BOTH themes, the way editors look, so a
+  // code sample never reads as body text.
+  codeSurface: string;
+  codeText: string;
+  // Toast (tutorial round, 2026-11-13): the SnackBar toast card is
+  // a translucent black surface, dark in both themes. The surface
+  // carries its own 85 percent alpha (eight digit hex); the text
+  // and action colours are chosen to read on near black.
+  toastSurface: string;
+  toastText: string;
+  toastAction: string;
 }
 
 export const colours: Record<'light' | 'dark', ColourRoles> = {
@@ -90,6 +102,11 @@ export const colours: Record<'light' | 'dark', ColourRoles> = {
     scrim: '#000000',
     avatar: '#7b1fa2',
     onAvatar: '#ffffff',
+    codeSurface: '#1e1e1e',
+    codeText: '#d4d4d4',
+    toastSurface: '#000000d9',
+    toastText: '#f1f3f4',
+    toastAction: '#a8c7fa',
   },
   dark: {
     primary: '#a8c7fa',
@@ -115,6 +132,11 @@ export const colours: Record<'light' | 'dark', ColourRoles> = {
     scrim: '#000000',
     avatar: '#d0bcff',
     onAvatar: '#381e72',
+    codeSurface: '#1e1e1e',
+    codeText: '#d4d4d4',
+    toastSurface: '#000000d9',
+    toastText: '#f1f3f4',
+    toastAction: '#a8c7fa',
   },
 };
 

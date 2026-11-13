@@ -27,7 +27,8 @@ Rangular Material for generated apps.
   `RgFilePicker`, `RgColorPicker`, `RgEditor`, `RgCarousel`,
   `RgTimeline`, `RgCalendar`, `RgAvatar`, `RgAvatarGroup`,
   `RgEmptyState`, `RgChart`, `RgImage`, `RgLightbox`, `RgBreadcrumbs`
-  and their declaration primitives). This is **shipped source**: it is
+  and their declaration primitives, plus the tutorial round's
+  `RgCode`). This is **shipped source**: it is
   bundled into generated apps and is intentionally excluded from this
   repo's `tsc` build, because react-native types are not a dependency
   of this repository.

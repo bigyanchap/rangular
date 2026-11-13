@@ -1,0 +1,83 @@
+{
+  "example": "code-block",
+  "themes": {
+    "light": {
+      "roles": {
+        "appbar": {
+          "background": "#f0f4f9",
+          "borderRadius": 9999,
+          "gap": 12
+        },
+        "avatar": {
+          "background": "#7b1fa2",
+          "color": "#ffffff"
+        },
+        "code": {
+          "background": "#1e1e1e",
+          "color": "#d4d4d4",
+          "borderRadius": 12,
+          "fontSize": 14
+        },
+        "screen": {
+          "background": "#ffffff",
+          "color": "#1f1f1f"
+        },
+        "textBody": {
+          "fontSize": 16,
+          "lineHeight": 24,
+          "color": "#1f1f1f"
+        },
+        "textHeading": {
+          "fontSize": 24,
+          "lineHeight": 32,
+          "fontWeight": 700
+        },
+        "textLabel": {
+          "fontSize": 14,
+          "lineHeight": 20,
+          "fontWeight": 600
+        }
+      },
+      "styles": {}
+    },
+    "dark": {
+      "roles": {
+        "appbar": {
+          "background": "#282a2c",
+          "borderRadius": 9999,
+          "gap": 12
+        },
+        "avatar": {
+          "background": "#d0bcff",
+          "color": "#381e72"
+        },
+        "code": {
+          "background": "#1e1e1e",
+          "color": "#d4d4d4",
+          "borderRadius": 12,
+          "fontSize": 14
+        },
+        "screen": {
+          "background": "#131314",
+          "color": "#e3e3e3"
+        },
+        "textBody": {
+          "fontSize": 16,
+          "lineHeight": 24,
+          "color": "#e3e3e3"
+        },
+        "textHeading": {
+          "fontSize": 24,
+          "lineHeight": 32,
+          "fontWeight": 700
+        },
+        "textLabel": {
+          "fontSize": 14,
+          "lineHeight": 20,
+          "fontWeight": 600
+        }
+      },
+      "styles": {}
+    }
+  }
+}

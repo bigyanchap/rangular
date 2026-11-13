@@ -260,3 +260,15 @@ Tutorial app, from screenshots on a real phone:
   with a plain timing settle, and avatar initials sit on the
   theme's avatar colour. No new colours beyond the data palette,
   no new radii, no springs.
+- The tutorial round (2026-11-13) added the framework's first two
+  deliberately theme-invariant surfaces, both specified by the
+  tutorial app: the code block's dark editor surface (codeSurface
+  and codeText, the same values in light and dark, because an
+  editor looks like an editor) and the toast's translucent black
+  card at bottom centre (toastSurface at 85 percent alpha, with
+  toastText and toastAction chosen to read on near black; the
+  previews draw a real SVG noise grain over it, the app
+  approximates the grain with a five percent white sheen and a
+  hairline border, recorded in docs/VIBE_CODING.md). The centered
+  app bar title reuses the avatar's 28 width as its balancing
+  side zones. No new radii, no springs.

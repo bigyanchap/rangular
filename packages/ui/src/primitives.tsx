@@ -23,6 +23,7 @@ import {
   FlatList,
   Image,
   PanResponder,
+  Platform,
   Pressable,
   RefreshControl,
   SafeAreaView,
@@ -194,6 +195,13 @@ function buildStyles(t: Theme) {
     },
     appbarTitle: { flex: 1, fontSize: t.typography.title.fontSize, fontWeight: '600', color: c.text },
     searchText: { flex: 1, fontSize: t.typography.body.fontSize, color: c.textMuted },
+    // Centered title (tutorial round, 2026-11-13): the three zone
+    // layout. The side zones are fixed at the avatar's width so the
+    // title zone is the true centre of the bar even when a menu
+    // icon sits at the left; the title centers inside its zone.
+    appbarSide: { width: 28, alignItems: 'flex-start', justifyContent: 'center' },
+    appbarSideEnd: { width: 28, alignItems: 'flex-end', justifyContent: 'center' },
+    appbarTitleCenter: { textAlign: 'center' },
     card: {
       backgroundColor: c.surfaceVariant, borderColor: c.border, borderWidth: 1,
       borderRadius: t.radius.lg, padding: t.spacing.lg,
@@ -329,15 +337,46 @@ function buildStyles(t: Theme) {
       flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center',
       gap: t.spacing.sm, marginTop: t.spacing.lg,
     },
+    // The toast (Stage 10, restyled in the tutorial round,
+    // 2026-11-13, at Bigyan's order): a translucent black card at
+    // bottom centre, dark in both themes. The host spans the bar
+    // and centers the card; the card's surface token already
+    // carries 85 percent alpha. React Native has no texture asset
+    // for the grain the previews draw, so the grain is approximated
+    // honestly: a white sheen layer at five percent over the black
+    // and a hairline border catch the light the way grain does.
+    // See docs/VIBE_CODING.md, the tutorial round section.
+    snackbarHost: {
+      position: 'absolute', left: 0, right: 0, bottom: t.spacing.xxxl,
+      alignItems: 'center', zIndex: 20,
+    },
     snackbar: {
-      position: 'absolute', left: t.spacing.lg, right: t.spacing.lg, bottom: t.spacing.xxxl,
-      backgroundColor: c.onSurface, borderRadius: t.radius.sm,
+      backgroundColor: c.toastSurface, borderRadius: t.radius.md,
+      borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.16)',
       paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.md,
       flexDirection: 'row', alignItems: 'center', gap: t.spacing.md,
+      maxWidth: '92%', overflow: 'hidden',
       ...t.elevation.level2,
     },
-    snackbarText: { flex: 1, color: c.background, fontSize: t.typography.body.fontSize },
-    snackbarAction: { color: c.primaryContainer, fontSize: t.typography.label.fontSize, fontWeight: '600' },
+    snackbarSheen: {
+      position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
+      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    },
+    snackbarText: { flexShrink: 1, color: c.toastText, fontSize: t.typography.body.fontSize },
+    snackbarAction: { color: c.toastAction, fontSize: t.typography.label.fontSize, fontWeight: '600' },
+    // Code block (tutorial round, 2026-11-13): a dark editor
+    // surface and a monospace face in both themes; long lines
+    // scroll horizontally inside the block, the way an editor
+    // treats a line as one line.
+    code: {
+      backgroundColor: c.codeSurface, borderRadius: t.radius.md,
+    },
+    codeText: {
+      color: c.codeText,
+      fontSize: t.typography.body.fontSize, lineHeight: t.typography.body.lineHeight,
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.md,
+    },
     // Date-time picker (Stage 10): the field row mirrors RgInput's box;
     // the wheels sit in a sheet, five rows tall, the selected row
     // centred between two hairlines, the iOS arrangement.
@@ -732,7 +771,7 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
   );
 }
 
-export function RgAppbar({ title, search, menu, avatar, onMenu }: any) {
+export function RgAppbar({ title, search, menu, avatar, onMenu, titleAlign }: any) {
   const t = useRgTheme();
   const c = t.colors;
   const styles = stylesFor(t);
@@ -742,19 +781,38 @@ export function RgAppbar({ title, search, menu, avatar, onMenu }: any) {
   // bar always drew both: a dead menu icon, and a user avatar built
   // from the title's first letter in apps with no users and no sign
   // in at all (found by the Rangular Tutorial app, 2026-11-12).
+  const menuNode = menu ? (onMenu ? (
+    <Pressable onPress={onMenu} style={({ pressed }) => [pressed && styles.buttonPressed]}>
+      <RgIcon name="menu" size={24} color="textMuted" />
+    </Pressable>
+  ) : <RgIcon name="menu" size={24} color="textMuted" />) : null;
+  const avatarNode = avatar ? (
+    <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: c.avatar, alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ color: c.onAvatar, fontSize: 12, fontWeight: '600' }}>{String(avatar).charAt(0)}</Text>
+    </View>
+  ) : null;
+  // Centered title (tutorial round, 2026-11-13): `titleAlign="center"`
+  // switches the bar to the standard three zone layout, a fixed
+  // width left zone, the title centered in a flex middle zone, and
+  // a balancing right zone, so the title sits at the true centre of
+  // the bar even with a menu icon at the left. The default (no
+  // titleAlign, or "start") renders exactly the row above.
+  if (titleAlign === 'center') {
+    return (
+      <View style={styles.appbar}>
+        <View style={styles.appbarSide}>{menuNode}</View>
+        {search
+          ? <Text style={[styles.searchText, styles.appbarTitleCenter]}>{search}</Text>
+          : <Text style={[styles.appbarTitle, styles.appbarTitleCenter]}>{title}</Text>}
+        <View style={styles.appbarSideEnd}>{avatarNode}</View>
+      </View>
+    );
+  }
   return (
     <View style={styles.appbar}>
-      {menu ? (onMenu ? (
-        <Pressable onPress={onMenu} style={({ pressed }) => [pressed && styles.buttonPressed]}>
-          <RgIcon name="menu" size={24} color="textMuted" />
-        </Pressable>
-      ) : <RgIcon name="menu" size={24} color="textMuted" />) : null}
+      {menuNode}
       {search ? <Text style={styles.searchText}>{search}</Text> : <Text style={styles.appbarTitle}>{title}</Text>}
-      {avatar ? (
-        <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: c.avatar, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: c.onAvatar, fontSize: 12, fontWeight: '600' }}>{String(avatar).charAt(0)}</Text>
-        </View>
-      ) : null}
+      {avatarNode}
     </View>
   );
 }
@@ -799,6 +857,23 @@ export function RgText({ children, variant = 'body', style }: any) {
     }, style]}>
       {children}
     </Text>
+  );
+}
+
+/**
+ * The code block (tutorial round, 2026-11-13): projected text on a
+ * dark editor surface in a monospace face, dark in both themes the
+ * way editors are. Long lines scroll horizontally inside the
+ * block; the preview page mirrors the same choice.
+ */
+export function RgCode({ children, style }: any) {
+  const styles = stylesFor(useRgTheme());
+  return (
+    <View style={[styles.code, style]}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <Text style={styles.codeText}>{children}</Text>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -1380,14 +1455,20 @@ export function RgActions({ children, style }: any) {
  */
 export function RgSnackbar({ message, actionLabel, onAction, style }: any) {
   const styles = stylesFor(useRgTheme());
+  // The toast card (see the snackbarHost style): a full width host
+  // centers the card at the bottom; the sheen layer is the React
+  // Native approximation of the grain the HTML previews draw.
   return (
-    <View style={[styles.snackbar, style]}>
-      <Text style={styles.snackbarText}>{message}</Text>
-      {actionLabel ? (
-        <Pressable onPress={onAction} accessibilityRole="button">
-          <Text style={styles.snackbarAction}>{String(actionLabel).toUpperCase()}</Text>
-        </Pressable>
-      ) : null}
+    <View style={styles.snackbarHost} pointerEvents="box-none">
+      <View style={[styles.snackbar, style]}>
+        <View style={styles.snackbarSheen} pointerEvents="none" />
+        <Text style={styles.snackbarText}>{message}</Text>
+        {actionLabel ? (
+          <Pressable onPress={onAction} accessibilityRole="button">
+            <Text style={styles.snackbarAction}>{String(actionLabel).toUpperCase()}</Text>
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }

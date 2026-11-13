@@ -610,3 +610,91 @@ test('scaffold regression: init --app writes both picker packages as required de
   assert.equal(pkg.dependencies['expo-document-picker'], '~58.0.5',
     'the scaffold must carry expo-document-picker; Metro resolves the RgFilePicker require at bundle time');
 });
+
+// --- G: the tutorial round (2026-11-13) --------------------------------------
+//
+// Three pieces the Rangular Tutorial app asked for, built in the
+// framework first: the <code> block (an editor styled presentation
+// for code samples), the centered app bar title, and the toast
+// look for the snackbar (pinned in stage10.test.ts, its home).
+// The app bar's compile and paint pins live in stage13.test.ts.
+
+test('tutorial round: the code tag maps to RgCode and the catalog carries it', () => {
+  assert.equal(TAG_MAP['code']?.component, 'RgCode');
+  const catalog = buildCatalog();
+  assert.ok(catalog.tags.some((t) => t.tag === 'code'), 'catalog lists <code>');
+  assert.ok(catalog.primitives.some((p) => p.name === 'RgCode'), 'catalog lists RgCode');
+  const appbar = catalog.primitives.find((p) => p.name === 'RgAppbar');
+  assert.ok(appbar?.props.some((p) => p.name === 'titleAlign'), 'catalog lists the appbar titleAlign prop');
+});
+
+test('tutorial round: code compiles to RgCode with projected and interpolated text', () => {
+  const literal = compileInline('<screen><code>npm install -g @rangular/cli</code></screen>');
+  assert.deepEqual(literal.diagnostics, [], JSON.stringify(literal.diagnostics));
+  assert.match(literal.code, /<RgCode>npm install -g @rangular\/cli<\/RgCode>/);
+  const bound = compileInline('<screen><code>{{ snippet }}</code></screen>', `snippet = 'rangular new my-app';`);
+  assert.deepEqual(bound.diagnostics, [], JSON.stringify(bound.diagnostics));
+  assert.match(bound.code, /<RgCode>\{snippet\}<\/RgCode>/);
+  const primitives = fs.readFileSync(path.join(ROOT, 'packages', 'ui', 'src', 'primitives.tsx'), 'utf8');
+  assert.match(primitives, /export function RgCode/);
+  assert.match(primitives, /backgroundColor: c\.codeSurface/);
+});
+
+test('code-block example: zero diagnostics, doctor clean, goldens and snapshot match', () => {
+  const { dir, entry, result } = compileExample('code-block');
+  assert.deepEqual(result.diagnostics, [], JSON.stringify(result.diagnostics));
+  const golden = fs.readFileSync(path.join(dir, 'code-block.component.tsx'), 'utf8');
+  assert.equal(normalize(result.code), normalize(golden), 'code-block tsx golden drifted');
+  const previewGolden = fs.readFileSync(path.join(dir, 'preview.html'), 'utf8');
+  const preview = renderPreview(result.component!, result.ast!, {
+    children: result.children,
+    services: result.services,
+  });
+  assert.equal(normalize(preview), normalize(previewGolden), 'code-block preview drifted; regenerate it with the CLI if intended');
+  const findings = runDoctor({
+    result,
+    entryFile: entry,
+    styleTexts: doctorStyleTexts(result, entry, (abs) => (
+      fs.existsSync(abs) ? fs.readFileSync(abs, 'utf8') : undefined
+    )),
+  });
+  assert.deepEqual(findings, [], JSON.stringify(findings));
+  const snap = buildStyleSnapshot('code-block', result.component!, result.ast!, result.css!, result.children);
+  const committed = JSON.parse(fs.readFileSync(path.join(dir, 'styles.snapshot.json'), 'utf8'));
+  assert.deepEqual(snap, committed, 'code-block style snapshot drifted');
+});
+
+test('code-block snapshot: the code role is a dark editor surface in both themes', () => {
+  const snap = JSON.parse(fs.readFileSync(path.join(ROOT, 'examples', 'code-block', 'styles.snapshot.json'), 'utf8'));
+  assert.equal(snap.themes.light.roles.code.background, '#1e1e1e');
+  assert.equal(snap.themes.dark.roles.code.background, '#1e1e1e', 'the editor surface stays dark in dark mode');
+  assert.equal(snap.themes.light.roles.code.color, '#d4d4d4');
+  assert.equal(snap.themes.dark.roles.code.color, '#d4d4d4');
+});
+
+test('tutorial round preview runtime: centered appbar zones and the code block render live', () => {
+  const result = compileInline(
+    '<screen><appbar title="Rangular Tutorial" titleAlign="center" menu></appbar><code>npm install -g @rangular/cli</code></screen>',
+  );
+  assert.deepEqual(result.diagnostics, [], JSON.stringify(result.diagnostics));
+  const html = renderPreview(result.component!, result.ast!, {
+    children: result.children,
+    services: result.services,
+  });
+  const { app } = loadPreview(html);
+  const bar = findAll(app, (e) => e.className === 'appbar')[0];
+  assert.ok(bar, 'the runtime renders the app bar');
+  const zones = bar.children.filter((ch) => ch instanceof ShimElement) as ShimElement[];
+  assert.equal(zones.length, 3, 'left zone, title, right zone');
+  assert.equal(zones[0].className, 'appbar-side');
+  assert.ok(zones[0].children.length > 0, 'the menu icon sits in the left zone');
+  assert.equal(zones[1].className, 'appbar-title center');
+  assert.equal(zones[1].textContent, 'Rangular Tutorial');
+  assert.equal(zones[2].className, 'appbar-side end');
+  const code = findAll(app, (e) => e.tagName === 'PRE' && e.className === 'code')[0];
+  assert.ok(code, 'the runtime renders the code block');
+  assert.equal(code.textContent, 'npm install -g @rangular/cli');
+  const paint = html.split('<script>')[0];
+  assert.match(paint, /<pre class="code">npm install -g @rangular\/cli<\/pre>/);
+  assert.match(paint, /\.code \{ background: var\(--role-code-surface\)/);
+});

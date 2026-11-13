@@ -86,6 +86,12 @@ function allRoles(mode: ThemeMode): Record<string, StyleRecord> {
       color: c.text, fontSize: ty.bodyLarge.fontSize,
     },
     inputError: { color: c.error, fontSize: ty.caption.fontSize },
+    // Code block (tutorial round, 2026-11-13): the editor surface,
+    // dark in both themes by design.
+    code: {
+      background: c.codeSurface, color: c.codeText,
+      borderRadius: t.radius.md, fontSize: ty.body.fontSize,
+    },
     sheet: { background: c.surface, borderRadius: t.radius.xl },
     dialog: { background: c.surface, borderRadius: t.radius.xl },
     picker: {
@@ -186,6 +192,7 @@ function rolesForElement(el: ElementNode): string[] {
     case 'h3': return ['textTitle'];
     case 'p': return ['textBody'];
     case 'label': return ['textLabel'];
+    case 'code': return ['code'];
     case 'icon': return ['icon'];
     case 'icon-button': return ['iconButton', 'icon'];
     case 'fab': return ['fab'];
