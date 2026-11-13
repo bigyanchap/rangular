@@ -173,6 +173,87 @@
   .table-pager { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding-top: 8px; }
   .table-pager-text { font-size: 12px; color: var(--text-muted); }
   .table-pager-btn { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: none; background: transparent; cursor: pointer; padding: 0; }
+  /* Stage 15: bottom navigation, refresh, skeleton, swipe rows, rating, otp, carousel, timeline, calendar, avatars, empty state, editor, image and lightbox, colour picker, breadcrumbs, masonry. */
+  .bottom-nav { display: flex; border-top: 1px solid var(--border); background: var(--role-surface); margin: 12px -16px -16px; padding: 4px 8px 8px; }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 0; cursor: pointer; background: none; border: none; font: inherit; }
+  .nav-item-icon { position: relative; display: inline-flex; }
+  .nav-badge { position: absolute; top: -6px; right: -14px; background: var(--error); color: #fff; border-radius: 9999px; font-size: 10px; font-weight: 700; padding: 1px 5px; }
+  .nav-item-label { font-size: 12px; color: var(--text-muted); }
+  .nav-item.selected .nav-item-label { color: var(--primary); font-weight: 600; }
+  .refresh-row { display: flex; justify-content: center; padding: 12px 0; }
+  .refresh-row .spinner svg { animation: spin 1s linear infinite; }
+  .skeleton { background: var(--surface-variant); animation: skeleton-pulse 1.4s linear infinite; }
+  .skeleton.circle { border-radius: 9999px; }
+  .skeleton.block { border-radius: 16px; }
+  .skeleton.line { border-radius: 8px; }
+  @keyframes skeleton-pulse { 0% { opacity: .55; } 50% { opacity: 1; } 100% { opacity: .55; } }
+  .row-swipe { position: relative; overflow: hidden; }
+  .swipe-tray { position: absolute; top: 0; right: 0; bottom: 0; display: none; }
+  .row-swipe.revealed .swipe-tray { display: flex; }
+  .row-swipe.revealed .row { transform: translateX(-144px); }
+  .row-swipe .row { transition: transform .16s linear; background: var(--screen-bg); position: relative; }
+  .swipe-action { width: 72px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: var(--primary); color: var(--role-on-primary); cursor: pointer; border: none; font: inherit; padding: 0; }
+  .swipe-action-label { font-size: 12px; font-weight: 600; }
+  .swipe-reveal { position: absolute; top: 50%; right: 8px; transform: translateY(-50%); width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border); background: var(--role-surface); color: var(--text-muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; z-index: 2; }
+  .rating { display: flex; gap: 4px; padding: 4px 0; }
+  .rating-star { display: inline-flex; cursor: pointer; background: none; border: none; padding: 2px; opacity: 1; }
+  .rating-star:not(.filled) { opacity: .35; }
+  .otp { display: flex; gap: 8px; padding: 4px 0; }
+  .otp-box { width: 44px; height: 52px; border: 1px solid var(--border); border-radius: 8px; background: transparent; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 600; color: var(--text); cursor: text; padding: 0; font-family: inherit; }
+  .otp-box.active { border-color: var(--primary); border-width: 2px; }
+  .otp-input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
+  .otp-wrap { position: relative; }
+  .carousel-dots { display: flex; justify-content: center; gap: 6px; padding: 8px 0 0; }
+  .carousel-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); cursor: pointer; border: none; padding: 0; }
+  .carousel-dot.active { background: var(--primary); }
+  .carousel-nav { display: flex; justify-content: space-between; margin-top: -34px; position: relative; }
+  .timeline-item { display: flex; gap: 12px; }
+  .timeline-rail { display: flex; flex-direction: column; align-items: center; width: 16px; }
+  .timeline-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--primary); margin-top: 6px; flex: none; }
+  .timeline-line { flex: 1; width: 2px; background: var(--border); margin-top: 4px; }
+  .timeline-body { flex: 1; padding-bottom: 16px; min-width: 0; }
+  .timeline-head { display: flex; align-items: baseline; gap: 8px; }
+  .timeline-title { font-size: 20px; font-weight: 600; color: var(--text); flex: 1; }
+  .timeline-time { font-size: 12px; color: var(--text-muted); }
+  .calendar-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .calendar-title { font-size: 20px; font-weight: 600; color: var(--text); }
+  .calendar-week { display: flex; }
+  .calendar-week-cell { flex: 1; text-align: center; font-size: 12px; font-weight: 600; color: var(--text-muted); padding: 4px 0; }
+  .calendar-grid { display: flex; flex-wrap: wrap; }
+  .calendar-cell { width: 14.2857%; display: flex; align-items: center; justify-content: center; min-height: 40px; }
+  .calendar-day { font-size: 14px; color: var(--text); width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; background: none; border: none; font-family: inherit; padding: 0; }
+  .calendar-day.today { color: var(--primary); font-weight: 700; }
+  .calendar-day.selected { background: var(--primary); color: var(--role-on-primary); font-weight: 600; }
+  .avatar-group { display: flex; align-items: center; }
+  .avatar-ring { border-radius: 50%; border: 2px solid var(--screen-bg); display: inline-flex; }
+  .avatar-ring.overlap { margin-left: -10px; }
+  .avatar-face { border-radius: 50%; background: var(--role-avatar); color: var(--role-on-avatar); display: inline-flex; align-items: center; justify-content: center; font-weight: 600; }
+  .avatar-img { border-radius: 50%; object-fit: cover; }
+  .avatar-overflow { width: 40px; height: 40px; border-radius: 50%; background: var(--surface-variant); color: var(--text); display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; }
+  .empty-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 24px 16px; }
+  .empty-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--surface-variant); display: inline-flex; align-items: center; justify-content: center; }
+  .empty-title { font-size: 20px; font-weight: 600; color: var(--text); }
+  .empty-text { font-size: 14px; color: var(--text-muted); }
+  .editor-toolbar { display: flex; gap: 4px; margin-bottom: 4px; }
+  .editor-tool { border: 1px solid var(--border); background: var(--role-surface); color: var(--text); border-radius: 8px; padding: 6px 12px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .editor-area { min-height: 96px; resize: vertical; }
+  .rg-image { display: block; border-radius: 12px; }
+  .overlay-backdrop.dark { background: rgba(0,0,0,.92); }
+  .lightbox-image { max-width: 100%; max-height: 80%; object-fit: contain; position: relative; z-index: 1; }
+  .lightbox-close { position: absolute; top: 16px; right: 16px; z-index: 2; background: var(--role-surface); border-radius: 50%; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border: none; padding: 0; }
+  .lightbox-caption { position: relative; z-index: 1; color: #fff; text-align: center; padding: 12px; }
+  .color-chip { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--border); display: inline-block; flex: none; }
+  .swatch-grid { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 0 12px; }
+  .swatch { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--border); cursor: pointer; padding: 0; }
+  .swatch.selected { border: 3px solid var(--primary); }
+  .breadcrumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+  .crumb { font-size: 14px; color: var(--primary); cursor: pointer; background: none; border: none; font: inherit; padding: 0; }
+  .crumb.current { color: var(--text); font-weight: 600; cursor: default; }
+  .crumb-sep { display: inline-flex; }
+  .grid-list.masonry { display: block; column-gap: 8px; }
+  .grid-list.masonry .grid-tile { break-inside: avoid; margin-bottom: 8px; }
+  .scroll-cue { display: flex; justify-content: center; padding: 8px 0; }
+  .scroll-cue button { border: 1px solid var(--border); background: var(--role-surface); color: var(--text-muted); border-radius: 9999px; padding: 4px 12px; font-size: 12px; cursor: pointer; font-family: inherit; }
 </style>
 </head>
 <body>
@@ -938,6 +1019,156 @@ function __applyWheel(parts, wheel, value) {
   return p;
 }
 var __pickerStates = {};
+// Input mask (Stage 15). A plain-JS mirror of @rangular/ui
+// mask.ts, parity-tested against it: 9 is a digit slot, A a letter
+// slot, star any character, everything else a literal that only
+// appears once the slot after it is filled.
+function __isMaskSlot(ch) { return ch === '9' || ch === 'A' || ch === '*'; }
+function __slotAccepts(slot, ch) {
+  if (slot === '9') return ch >= '0' && ch <= '9';
+  if (slot === 'A') return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
+  return true;
+}
+function __applyMask(raw, pattern) {
+  var input = String(raw === undefined || raw === null ? '' : raw);
+  pattern = String(pattern || '');
+  var filled = [];
+  var pi = 0;
+  for (var ci = 0; ci < input.length; ci++) {
+    var ch = input[ci];
+    var consumed = false;
+    while (pi < pattern.length && !__isMaskSlot(pattern[pi])) {
+      if (pattern[pi] === ch) { consumed = true; pi++; break; }
+      pi++;
+    }
+    if (consumed) continue;
+    if (pi >= pattern.length) break;
+    if (__slotAccepts(pattern[pi], ch)) { filled.push(ch); pi++; }
+  }
+  var out = '';
+  var pending = '';
+  var fi = 0;
+  for (var i = 0; i < pattern.length; i++) {
+    var p = pattern[i];
+    if (__isMaskSlot(p)) {
+      if (fi >= filled.length) break;
+      out += pending + filled[fi++];
+      pending = '';
+    } else pending += p;
+  }
+  return out;
+}
+// The data palette (Stage 15), a mirror of @rangular/ui palette.ts.
+var __SWATCHES = ['#0b57d0', '#1e8e3e', '#f9ab00', '#d93025', '#9334e6', '#e37400', '#12a5af', '#c2185b', '#5f6368', '#80868b', '#202124', '#ffffff'];
+// Chart geometry (Stage 15). A plain-JS mirror of @rangular/ui
+// chart.ts, parity-tested against it: the same model of shapes,
+// serialized to the same SVG the static paint produces.
+function __r2(n) { return Math.round(n * 100) / 100; }
+function __normalizeChartData(data) {
+  if (!Array.isArray(data)) return [];
+  var out = [];
+  data.forEach(function (item) {
+    if (item === null || typeof item !== 'object') return;
+    var value = Number(item.value);
+    if (!isFinite(value)) return;
+    var point = { label: item.label === undefined || item.label === null ? '' : String(item.label), value: value };
+    if (typeof item.color === 'string') point.color = item.color;
+    out.push(point);
+  });
+  return out;
+}
+function __chartColor(point, index, palette) {
+  if (point.color !== undefined && point.color !== null) return point.color;
+  var c = palette[index % Math.max(palette.length, 1)];
+  return c === undefined || c === null ? '#000000' : c;
+}
+function __chartModel(type, data, width, height, palette, labelColor) {
+  var points = __normalizeChartData(data);
+  var w = Math.max(40, Math.floor(width) || 40);
+  var plotH = Math.max(40, Math.floor(height) || 40);
+  var shapes = [];
+  if (!points.length) return { width: w, height: plotH, shapes: shapes };
+  if (type === 'pie') {
+    var total = 0;
+    points.forEach(function (p) { total += Math.max(0, p.value); });
+    var r = Math.min(w, plotH) / 2;
+    var cx = w / 2;
+    var cy = plotH / 2;
+    var angle = -90;
+    points.forEach(function (p, i) {
+      var frac = total > 0 ? Math.max(0, p.value) / total : 0;
+      var sweep = frac * 360;
+      var fill = __chartColor(p, i, palette);
+      if (frac > 0) {
+        if (frac >= 0.9999) {
+          shapes.push({ kind: 'circle', cx: __r2(cx), cy: __r2(cy), r: __r2(r), fill: fill });
+        } else {
+          var a0 = angle * Math.PI / 180;
+          var a1 = (angle + sweep) * Math.PI / 180;
+          var x0 = cx + r * Math.cos(a0);
+          var y0 = cy + r * Math.sin(a0);
+          var x1 = cx + r * Math.cos(a1);
+          var y1 = cy + r * Math.sin(a1);
+          var large = sweep > 180 ? 1 : 0;
+          shapes.push({
+            kind: 'path',
+            d: 'M ' + __r2(cx) + ' ' + __r2(cy) + ' L ' + __r2(x0) + ' ' + __r2(y0) + ' A ' + __r2(r) + ' ' + __r2(r) + ' 0 ' + large + ' 1 ' + __r2(x1) + ' ' + __r2(y1) + ' Z',
+            fill: fill,
+          });
+        }
+      }
+      angle += sweep;
+    });
+    points.forEach(function (p, i) {
+      var y = plotH + 6 + i * 18;
+      shapes.push({ kind: 'rect', x: 0, y: __r2(y), width: 10, height: 10, fill: __chartColor(p, i, palette) });
+      shapes.push({ kind: 'text', x: 16, y: __r2(y + 10), text: p.label + ' ' + p.value, fill: labelColor, size: 12, anchor: 'start' });
+    });
+    return { width: w, height: plotH + 6 + points.length * 18, shapes: shapes };
+  }
+  if (type === 'line') {
+    var values = points.map(function (p) { return p.value; });
+    var min = Math.min.apply(null, values);
+    var max = Math.max.apply(null, values);
+    if (min === max) { min -= 1; max += 1; }
+    var stroke = __chartColor(points[0], 0, palette);
+    var coords = points.map(function (p, i) {
+      var x = points.length === 1 ? w / 2 : i * w / (points.length - 1);
+      var y = plotH - (p.value - min) / (max - min) * (plotH - 8) - 4;
+      return { x: __r2(x), y: __r2(y) };
+    });
+    var d = coords.map(function (c, i) { return (i === 0 ? 'M' : 'L') + ' ' + c.x + ' ' + c.y; }).join(' ');
+    shapes.push({ kind: 'path', d: d, stroke: stroke, strokeWidth: 2 });
+    coords.forEach(function (c) { shapes.push({ kind: 'circle', cx: c.x, cy: c.y, r: 3, fill: stroke }); });
+    points.forEach(function (p, i) {
+      shapes.push({ kind: 'text', x: coords[i].x, y: plotH + 14, text: p.label, fill: labelColor, size: 12, anchor: 'middle' });
+    });
+    return { width: w, height: plotH + 18, shapes: shapes };
+  }
+  var barValues = [1];
+  points.forEach(function (p) { barValues.push(Math.max(0, p.value)); });
+  var barMax = Math.max.apply(null, barValues);
+  var slot = w / points.length;
+  var barW = slot * 0.6;
+  points.forEach(function (p, i) {
+    var v = Math.max(0, p.value);
+    var h = v / barMax * (plotH - 4);
+    shapes.push({ kind: 'rect', x: __r2(slot * i + slot * 0.2), y: __r2(plotH - h), width: __r2(barW), height: __r2(h), fill: __chartColor(p, i, palette) });
+    shapes.push({ kind: 'text', x: __r2(slot * i + slot / 2), y: plotH + 14, text: p.label, fill: labelColor, size: 12, anchor: 'middle' });
+  });
+  return { width: w, height: plotH + 18, shapes: shapes };
+}
+function __chartSvg(model) {
+  var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+  var s = '<svg width="' + model.width + '" height="' + model.height + '" viewBox="0 0 ' + model.width + ' ' + model.height + '">';
+  model.shapes.forEach(function (sh) {
+    if (sh.kind === 'rect') s += '<rect x="' + sh.x + '" y="' + sh.y + '" width="' + sh.width + '" height="' + sh.height + '" fill="' + sh.fill + '"/>';
+    else if (sh.kind === 'path') s += '<path d="' + sh.d + '" fill="' + (sh.fill || 'none') + '"' + (sh.stroke ? ' stroke="' + sh.stroke + '" stroke-width="' + sh.strokeWidth + '"' : '') + '/>';
+    else if (sh.kind === 'circle') s += '<circle cx="' + sh.cx + '" cy="' + sh.cy + '" r="' + sh.r + '" fill="' + sh.fill + '"/>';
+    else s += '<text x="' + sh.x + '" y="' + sh.y + '" fill="' + sh.fill + '" font-size="' + sh.size + '"' + (sh.anchor === 'middle' ? ' text-anchor="middle"' : '') + '>' + esc(sh.text) + '</text>';
+  });
+  return s + '</svg>';
+}
 function __buildPicker(el, scope, path) {
   var modeAttr = __attr(el, 'mode', scope);
   var mode = modeAttr === 'date' || modeAttr === 'time' ? modeAttr : 'datetime';
@@ -1477,11 +1708,16 @@ function __buildInput(el, scope, form, path) {
     value = vb !== undefined ? vb : el.attrs['value'];
   }
   input.value = value === undefined || value === null ? '' : String(value);
+  // Input mask (Stage 15): the field shows and stores the masked
+  // string, formatted by the shared formatter on every keystroke.
+  var mask = __attr(el, 'mask', scope);
+  if (mask) input.value = __applyMask(input.value, String(mask));
   if (__truthy(__controlValue(el, 'disabled', scope))) input.disabled = true;
   var touchedKey = el.ref || field;
   if (form && field && touchedKey && form.touchedKeys.indexOf(touchedKey) < 0) form.touchedKeys.push(touchedKey);
   input.addEventListener('input', function () {
     var v = input.value;
+    if (mask) { v = __applyMask(v, String(mask)); input.value = v; }
     if (control) control.setValue(v);
     if (tw && field && scope.__state) scope.__state[field] = v;
     el.eventBindings.forEach(function (ev) {
@@ -2096,6 +2332,561 @@ function __buildChip(el, scope, path, form) {
   }
   return chip;
 }
+// Stage 15 builders: the beyond-Angular pieces. Internal state
+// the primitives hold (uncontrolled selection, revealed swipe
+// trays, the calendar's shown month, an open colour sheet) is
+// keyed by template path, like the picker and tabs state above.
+var __navStates = {};
+var __carouselStates = {};
+var __swipeStates = {};
+var __calendarStates = {};
+var __colorStates = {};
+function __declText(node, scope) {
+  var out = '';
+  (node.children || []).forEach(function (c) {
+    if (c.type !== 'text') return;
+    c.parts.forEach(function (p) {
+      if (p.type === 'static') out += p.value;
+      else {
+        try {
+          var v = __evalSrc(p.expression, scope);
+          out += (v === undefined || v === null) ? '' : String(v);
+        } catch (err) { console.warn(err); }
+      }
+    });
+  });
+  return out.replace(/^\s+|\s+$/g, '');
+}
+function __buildBottomNav(el, scope, path, form) {
+  var wrap = document.createElement('nav');
+  wrap.className = 'bottom-nav';
+  var items = el.children.filter(function (c) { return c.type === 'element' && c.tag === 'nav-item'; });
+  var boundIdx = __binding(el, 'index', scope);
+  var active = typeof boundIdx === 'number' ? boundIdx : (__navStates[path] || 0);
+  active = Math.min(Math.max(active, 0), Math.max(items.length - 1, 0));
+  items.forEach(function (item, i) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'nav-item' + (i === active ? ' selected' : '');
+    var iconWrap = document.createElement('span');
+    iconWrap.className = 'nav-item-icon';
+    var iconName = item.attrs['icon'];
+    if (iconName) iconWrap.appendChild(__icon(iconName, 24, i === active ? 'primary' : 'textMuted'));
+    var dot = __badgeDot(item, scope);
+    if (dot) { dot.className = 'nav-badge'; iconWrap.appendChild(dot); }
+    b.appendChild(iconWrap);
+    var label = __attr(item, 'label', scope);
+    if (label) {
+      var ls = document.createElement('span');
+      ls.className = 'nav-item-label';
+      ls.textContent = String(label);
+      b.appendChild(ls);
+    }
+    __attachEvents(b, item, scope);
+    __attachNav(b, item, scope);
+    b.addEventListener('click', function () {
+      __navStates[path] = i;
+      __runChange(el, scope, i);
+    });
+    wrap.appendChild(b);
+  });
+  return wrap;
+}
+function __buildRating(el, scope, path) {
+  var wrap = document.createElement('div');
+  wrap.className = 'rating';
+  var maxRaw = Number(__controlValue(el, 'max', scope));
+  var n = isFinite(maxRaw) && maxRaw > 0 ? Math.min(10, Math.floor(maxRaw)) : 5;
+  var current = Number(__controlValue(el, 'value', scope));
+  if (!isFinite(current)) current = 0;
+  var disabled = __truthy(__controlValue(el, 'disabled', scope));
+  for (var s = 1; s <= n; s++) {
+    (function (star) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'rating-star' + (star <= current ? ' filled' : '');
+      b.appendChild(__icon('star', 28, star <= current ? 'primary' : 'textMuted'));
+      if (disabled) b.disabled = true;
+      else b.addEventListener('click', function () { __runChange(el, scope, star); });
+      wrap.appendChild(b);
+    })(s);
+  }
+  return wrap;
+}
+function __buildOtp(el, scope, path) {
+  var wrap = document.createElement('div');
+  wrap.className = 'otp-wrap';
+  var row = document.createElement('div');
+  row.className = 'otp';
+  var lenRaw = Number(__controlValue(el, 'length', scope));
+  var len = isFinite(lenRaw) ? Math.min(8, Math.max(4, Math.floor(lenRaw))) : 6;
+  var rawValue = __controlValue(el, 'value', scope);
+  var text = String(rawValue === undefined || rawValue === null ? '' : rawValue).replace(/\D/g, '').slice(0, len);
+  var input = document.createElement('input');
+  input.className = 'otp-input';
+  input.setAttribute('inputmode', 'numeric');
+  input.maxLength = len;
+  input.value = text;
+  var activeBox = Math.min(text.length, len - 1);
+  for (var i = 0; i < len; i++) {
+    (function (boxIndex) {
+      var box = document.createElement('button');
+      box.type = 'button';
+      box.className = 'otp-box' + (boxIndex === activeBox ? ' active' : '');
+      box.textContent = text[boxIndex] || '';
+      box.addEventListener('click', function () { if (input.focus) input.focus(); });
+      row.appendChild(box);
+    })(i);
+  }
+  input.addEventListener('input', function () {
+    var v = input.value.replace(/\D/g, '').slice(0, len);
+    input.value = v;
+    __runChange(el, scope, v);
+  });
+  wrap.appendChild(row);
+  wrap.appendChild(input);
+  return wrap;
+}
+function __buildCarousel(el, scope, path, form) {
+  var wrap = document.createElement('div');
+  wrap.className = 'carousel';
+  var pageEls = el.children.filter(function (c) { return c.type === 'element'; });
+  var boundIdx = __binding(el, 'index', scope);
+  var active = typeof boundIdx === 'number' ? boundIdx : (__carouselStates[path] || 0);
+  active = Math.min(Math.max(active, 0), Math.max(pageEls.length - 1, 0));
+  if (pageEls[active]) {
+    var page = document.createElement('div');
+    page.className = 'carousel-page';
+    __buildNodes([pageEls[active]], scope, path + '/page' + active, form).forEach(function (k) { page.appendChild(k); });
+    wrap.appendChild(page);
+  }
+  if (pageEls.length > 1) {
+    var dots = document.createElement('div');
+    dots.className = 'carousel-dots';
+    pageEls.forEach(function (_, i) {
+      var dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'carousel-dot' + (i === active ? ' active' : '');
+      dot.addEventListener('click', function () {
+        __carouselStates[path] = i;
+        __runChange(el, scope, i);
+        __render();
+      });
+      dots.appendChild(dot);
+    });
+    wrap.appendChild(dots);
+    // Preview paging affordance: the chevrons stand in for the
+    // swipe a DOM preview cannot perform, documented in the docs
+    // like the slider ticks.
+    var nav = document.createElement('div');
+    nav.className = 'carousel-nav';
+    var prev = document.createElement('button');
+    prev.type = 'button';
+    prev.className = 'icon-btn carousel-prev';
+    prev.appendChild(__icon('chevron-left', 24, 'text'));
+    prev.addEventListener('click', function () {
+      var next = Math.max(0, active - 1);
+      __carouselStates[path] = next;
+      __runChange(el, scope, next);
+      __render();
+    });
+    var nextBtn = document.createElement('button');
+    nextBtn.type = 'button';
+    nextBtn.className = 'icon-btn carousel-next';
+    nextBtn.appendChild(__icon('chevron-right', 24, 'text'));
+    nextBtn.addEventListener('click', function () {
+      var next = Math.min(pageEls.length - 1, active + 1);
+      __carouselStates[path] = next;
+      __runChange(el, scope, next);
+      __render();
+    });
+    nav.appendChild(prev);
+    nav.appendChild(nextBtn);
+    wrap.appendChild(nav);
+  }
+  return wrap;
+}
+function __buildFilePicker(el, scope, path) {
+  var wrap = document.createElement('div');
+  wrap.className = 'field';
+  var labelText = __attr(el, 'label', scope);
+  if (labelText) {
+    var ls = document.createElement('span');
+    ls.className = 'field-label';
+    ls.textContent = String(labelText);
+    wrap.appendChild(ls);
+  }
+  var kind = __attr(el, 'kind', scope) || 'image';
+  var box = document.createElement('div');
+  box.className = 'picker-box';
+  var val = document.createElement('span');
+  val.className = 'picker-value placeholder';
+  var labelChildren = __declText(el, scope);
+  val.textContent = labelChildren || __attr(el, 'placeholder', scope) || (kind === 'file' ? 'Choose a file' : 'Choose a photo');
+  box.appendChild(val);
+  box.appendChild(__icon(kind === 'file' ? 'edit' : 'plus', 24, 'textMuted'));
+  // The browser's own file input is the preview's picker: choosing
+  // files emits their name, size and type through (change), the
+  // documented picked-file shape the app produces.
+  var fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.className = 'file-input';
+  fileInput.style.display = 'none';
+  if (kind === 'image') fileInput.setAttribute('accept', 'image/*');
+  if (__controlValue(el, 'multiple', scope)) fileInput.multiple = true;
+  fileInput.addEventListener('change', function () {
+    var files = [];
+    var list = fileInput.files || [];
+    for (var i = 0; i < list.length; i++) {
+      files.push({ name: list[i].name, uri: list[i].name, size: list[i].size, type: list[i].type });
+    }
+    if (files.length) __runChange(el, scope, files);
+  });
+  box.appendChild(fileInput);
+  box.addEventListener('click', function () { if (fileInput.click) fileInput.click(); });
+  wrap.appendChild(box);
+  return wrap;
+}
+function __buildTimeline(el, scope, path, form) {
+  var wrap = document.createElement('div');
+  wrap.className = 'timeline';
+  var items = el.children.filter(function (c) { return c.type === 'element' && c.tag === 'timeline-item'; });
+  items.forEach(function (item, i) {
+    var rowEl = document.createElement('div');
+    rowEl.className = 'timeline-item';
+    var rail = document.createElement('div');
+    rail.className = 'timeline-rail';
+    var dot = document.createElement('span');
+    dot.className = 'timeline-dot';
+    rail.appendChild(dot);
+    if (i < items.length - 1) {
+      var line = document.createElement('span');
+      line.className = 'timeline-line';
+      rail.appendChild(line);
+    }
+    rowEl.appendChild(rail);
+    var body = document.createElement('div');
+    body.className = 'timeline-body';
+    var head = document.createElement('div');
+    head.className = 'timeline-head';
+    var itemTitle = __attr(item, 'title', scope);
+    var titleSpan = document.createElement('span');
+    titleSpan.className = 'timeline-title';
+    titleSpan.textContent = itemTitle ? String(itemTitle) : '';
+    head.appendChild(titleSpan);
+    var itemTime = __attr(item, 'time', scope);
+    if (itemTime) {
+      var timeSpan = document.createElement('span');
+      timeSpan.className = 'timeline-time';
+      timeSpan.textContent = String(itemTime);
+      head.appendChild(timeSpan);
+    }
+    body.appendChild(head);
+    __buildNodes(item.children, scope, path + '/item' + i, form).forEach(function (k) { body.appendChild(k); });
+    rowEl.appendChild(body);
+    wrap.appendChild(rowEl);
+  });
+  return wrap;
+}
+function __buildCalendar(el, scope, path) {
+  var wrap = document.createElement('div');
+  wrap.className = 'calendar';
+  var selected = __parseParts(__controlValue(el, 'value', scope));
+  var today = __nowParts();
+  var shown = __calendarStates[path] || (selected ? { year: selected.year, month: selected.month } : { year: today.year, month: today.month });
+  var head = document.createElement('div');
+  head.className = 'calendar-head';
+  var prev = document.createElement('button');
+  prev.type = 'button';
+  prev.className = 'icon-btn calendar-prev';
+  prev.appendChild(__icon('chevron-left', 24, 'text'));
+  prev.addEventListener('click', function () {
+    var total = shown.year * 12 + (shown.month - 1) - 1;
+    __calendarStates[path] = { year: Math.floor(total / 12), month: (total % 12) + 1 };
+    __render();
+  });
+  head.appendChild(prev);
+  var titleSpan = document.createElement('span');
+  titleSpan.className = 'calendar-title';
+  var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  titleSpan.textContent = monthNames[shown.month - 1] + ' ' + shown.year;
+  head.appendChild(titleSpan);
+  var next = document.createElement('button');
+  next.type = 'button';
+  next.className = 'icon-btn calendar-next';
+  next.appendChild(__icon('chevron-right', 24, 'text'));
+  next.addEventListener('click', function () {
+    var total = shown.year * 12 + (shown.month - 1) + 1;
+    __calendarStates[path] = { year: Math.floor(total / 12), month: (total % 12) + 1 };
+    __render();
+  });
+  head.appendChild(next);
+  wrap.appendChild(head);
+  var week = document.createElement('div');
+  week.className = 'calendar-week';
+  ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].forEach(function (d) {
+    var c = document.createElement('span');
+    c.className = 'calendar-week-cell';
+    c.textContent = d;
+    week.appendChild(c);
+  });
+  wrap.appendChild(week);
+  var grid = document.createElement('div');
+  grid.className = 'calendar-grid';
+  var firstWeekday = new Date(shown.year, shown.month - 1, 1).getDay();
+  var count = __daysInMonth(shown.year, shown.month);
+  for (var b = 0; b < firstWeekday; b++) {
+    var blank = document.createElement('span');
+    blank.className = 'calendar-cell';
+    grid.appendChild(blank);
+  }
+  for (var day = 1; day <= count; day++) {
+    (function (d) {
+      var cell = document.createElement('span');
+      cell.className = 'calendar-cell';
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      var isSel = !!selected && selected.year === shown.year && selected.month === shown.month && selected.day === d;
+      var isToday = today.year === shown.year && today.month === shown.month && today.day === d;
+      btn.className = 'calendar-day' + (isSel ? ' selected' : '') + (isToday && !isSel ? ' today' : '');
+      btn.textContent = '' + d;
+      btn.addEventListener('click', function () {
+        __runChange(el, scope, __composeIso({
+          year: shown.year, month: shown.month, day: d,
+          hour: selected ? selected.hour : 0, minute: selected ? selected.minute : 0,
+        }));
+      });
+      cell.appendChild(btn);
+      grid.appendChild(cell);
+    })(day);
+  }
+  wrap.appendChild(grid);
+  return wrap;
+}
+function __avatarInitials(text) {
+  var words = String(text === undefined || text === null ? '' : text).replace(/^\s+|\s+$/g, '').split(/\s+/).filter(Boolean);
+  if (!words.length) return '';
+  if (words.length === 1) return words[0].charAt(0).toUpperCase();
+  return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
+}
+function __buildAvatar(el, scope) {
+  var src = __attr(el, 'src', scope);
+  var sizeRaw = Number(__controlValue(el, 'size', scope));
+  var d = isFinite(sizeRaw) && sizeRaw > 0 ? sizeRaw : 40;
+  if (src) {
+    var img = document.createElement('img');
+    img.className = 'avatar-img';
+    img.setAttribute('src', String(src));
+    img.setAttribute('style', 'width:' + d + 'px;height:' + d + 'px');
+    return img;
+  }
+  var face = document.createElement('span');
+  face.className = 'avatar-face';
+  face.setAttribute('style', 'width:' + d + 'px;height:' + d + 'px;font-size:' + Math.round(d * 0.4) + 'px');
+  face.textContent = __avatarInitials(__attr(el, 'text', scope));
+  return face;
+}
+function __buildAvatarGroup(el, scope, path, form) {
+  var wrap = document.createElement('div');
+  wrap.className = 'avatar-group';
+  var items = el.children.filter(function (c) { return c.type === 'element' && c.tag === 'avatar'; });
+  var maxRaw = Number(__controlValue(el, 'max', scope));
+  var limit = isFinite(maxRaw) && maxRaw > 0 ? Math.floor(maxRaw) : items.length;
+  var shownItems = items.slice(0, limit);
+  shownItems.forEach(function (a, i) {
+    var ring = document.createElement('span');
+    ring.className = 'avatar-ring' + (i > 0 ? ' overlap' : '');
+    ring.appendChild(__buildAvatar(a, scope));
+    wrap.appendChild(ring);
+  });
+  var overflow = items.length - shownItems.length;
+  if (overflow > 0) {
+    var ring2 = document.createElement('span');
+    ring2.className = 'avatar-ring overlap';
+    var more = document.createElement('span');
+    more.className = 'avatar-overflow';
+    more.textContent = '+' + overflow;
+    ring2.appendChild(more);
+    wrap.appendChild(ring2);
+  }
+  return wrap;
+}
+function __buildChart(el, scope) {
+  var wrap = document.createElement('div');
+  wrap.className = 'chart';
+  var type = __attr(el, 'type', scope) || 'bar';
+  if (type !== 'line' && type !== 'pie') type = 'bar';
+  var data = __binding(el, 'data', scope);
+  var w = Number(__controlValue(el, 'width', scope));
+  var h = Number(__controlValue(el, 'height', scope));
+  var model = __chartModel(type, data, isFinite(w) && w > 0 ? w : 320, isFinite(h) && h > 0 ? h : 160, __SWATCHES, 'var(--role-text-muted)');
+  wrap.innerHTML = __chartSvg(model);
+  return wrap;
+}
+function __buildEditor(el, scope, form, path) {
+  var wrap = document.createElement('div');
+  wrap.className = 'field';
+  var labelText = __attr(el, 'label', scope);
+  if (labelText) {
+    var ls = document.createElement('span');
+    ls.className = 'field-label';
+    ls.textContent = String(labelText);
+    wrap.appendChild(ls);
+  }
+  var area = document.createElement('textarea');
+  area.className = 'field-input editor-area';
+  area.setAttribute('rows', '4');
+  var ph = __attr(el, 'placeholder', scope);
+  if (ph) area.setAttribute('placeholder', String(ph));
+  var current = __controlValue(el, 'value', scope);
+  area.value = current === undefined || current === null ? '' : String(current);
+  if (__truthy(__controlValue(el, 'disabled', scope))) area.disabled = true;
+  var toolbar = document.createElement('div');
+  toolbar.className = 'editor-toolbar';
+  function applyEdit(next) { __runChange(el, scope, next); }
+  function tool(label, act) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'editor-tool';
+    b.textContent = label;
+    b.addEventListener('click', function () {
+      var text = area.value;
+      var start = typeof area.selectionStart === 'number' ? area.selectionStart : text.length;
+      var end = typeof area.selectionEnd === 'number' ? area.selectionEnd : start;
+      act(text, start, end);
+    });
+    return b;
+  }
+  toolbar.appendChild(tool('Bold', function (text, start, end) {
+    applyEdit(text.slice(0, start) + '**' + text.slice(start, end) + '**' + text.slice(end));
+  }));
+  toolbar.appendChild(tool('Italic', function (text, start, end) {
+    applyEdit(text.slice(0, start) + '*' + text.slice(start, end) + '*' + text.slice(end));
+  }));
+  toolbar.appendChild(tool('List', function (text, start) {
+    var lineStart = text.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
+    applyEdit(text.slice(0, lineStart) + '- ' + text.slice(lineStart));
+  }));
+  wrap.appendChild(toolbar);
+  area.addEventListener('input', function () { __runChange(el, scope, area.value); });
+  wrap.appendChild(area);
+  return wrap;
+}
+function __buildColorPicker(el, scope, path, form) {
+  var wrap = document.createElement('div');
+  wrap.className = 'field';
+  var labelText = __attr(el, 'label', scope);
+  if (labelText) {
+    var ls = document.createElement('span');
+    ls.className = 'field-label';
+    ls.textContent = String(labelText);
+    wrap.appendChild(ls);
+  }
+  var current = __controlValue(el, 'value', scope);
+  current = current === undefined || current === null ? '' : String(current);
+  var box = document.createElement('div');
+  box.className = 'picker-box';
+  var chip = document.createElement('span');
+  chip.className = 'color-chip';
+  if (current) chip.setAttribute('style', 'background:' + current);
+  box.appendChild(chip);
+  var val = document.createElement('span');
+  val.className = 'picker-value' + (current ? '' : ' placeholder');
+  val.textContent = current || __attr(el, 'placeholder', scope) || 'Pick a colour';
+  box.appendChild(val);
+  var chev = document.createElement('span');
+  chev.className = 'select-chevron';
+  chev.appendChild(__icon('chevron-right', 24, 'textMuted'));
+  box.appendChild(chev);
+  box.addEventListener('click', function () {
+    __colorStates[path] = true;
+    __render();
+  });
+  wrap.appendChild(box);
+  if (__colorStates[path]) {
+    var overlay = document.createElement('div');
+    overlay.className = 'overlay';
+    var backdrop = document.createElement('div');
+    backdrop.className = 'overlay-backdrop';
+    backdrop.addEventListener('click', function () {
+      __colorStates[path] = false;
+      __render();
+    });
+    overlay.appendChild(backdrop);
+    var sheet = document.createElement('section');
+    sheet.className = 'sheet';
+    var handle = document.createElement('div');
+    handle.className = 'sheet-handle';
+    sheet.appendChild(handle);
+    var grid = document.createElement('div');
+    grid.className = 'swatch-grid';
+    __SWATCHES.forEach(function (hex) {
+      var sw = document.createElement('button');
+      sw.type = 'button';
+      sw.className = 'swatch' + (hex.toLowerCase() === current.toLowerCase() ? ' selected' : '');
+      sw.setAttribute('style', 'background:' + hex);
+      sw.setAttribute('data-hex', hex);
+      sw.addEventListener('click', function () {
+        __colorStates[path] = false;
+        __runChange(el, scope, hex);
+      });
+      grid.appendChild(sw);
+    });
+    sheet.appendChild(grid);
+    var customRow = document.createElement('div');
+    customRow.className = 'field';
+    var customInput = document.createElement('input');
+    customInput.className = 'field-input color-custom';
+    customInput.setAttribute('placeholder', '#d93025');
+    customRow.appendChild(customInput);
+    var applyBtn = document.createElement('button');
+    applyBtn.type = 'button';
+    applyBtn.className = 'btn btn-text color-apply';
+    applyBtn.textContent = 'Use this colour';
+    applyBtn.addEventListener('click', function () {
+      var m = /^#?([0-9a-fA-F]{6})$/.exec(String(customInput.value).replace(/^\s+|\s+$/g, ''));
+      if (m) {
+        __colorStates[path] = false;
+        __runChange(el, scope, '#' + m[1].toLowerCase());
+      }
+    });
+    customRow.appendChild(applyBtn);
+    sheet.appendChild(customRow);
+    overlay.appendChild(sheet);
+    wrap.appendChild(overlay);
+  }
+  return wrap;
+}
+function __buildBreadcrumbs(el, scope, path, form) {
+  var wrap = document.createElement('nav');
+  wrap.className = 'breadcrumbs';
+  var items = el.children.filter(function (c) { return c.type === 'element' && c.tag === 'crumb'; });
+  items.forEach(function (crumb, i) {
+    if (i > 0) {
+      var sep = document.createElement('span');
+      sep.className = 'crumb-sep';
+      sep.appendChild(__icon('chevron-right', 20, 'textMuted'));
+      wrap.appendChild(sep);
+    }
+    var last = i === items.length - 1;
+    var label = __declText(crumb, scope);
+    if (last) {
+      var cur = document.createElement('span');
+      cur.className = 'crumb current';
+      cur.textContent = label;
+      wrap.appendChild(cur);
+      return;
+    }
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'crumb';
+    b.textContent = label;
+    __attachEvents(b, crumb, scope);
+    __attachNav(b, crumb, scope);
+    wrap.appendChild(b);
+  });
+  return wrap;
+}
 function __buildCore(el, scope, path, form) {
   if (el.tag === 'ng-content') {
     // Content projection (Stage 12): paint the content the host wrote
@@ -2120,6 +2911,21 @@ function __buildCore(el, scope, path, form) {
   if (el.tag === 'select') return [__buildSelect(el, scope, path, form)];
   if (el.tag === 'tree-node') return [__buildTreeNode(el, scope, path, form)];
   if (el.tag === 'column' || el.tag === 'tab' || el.tag === 'step') return [];
+  // Stage 15 builders, the same dedicated pattern.
+  if (el.tag === 'bottom-nav') return [__buildBottomNav(el, scope, path, form)];
+  if (el.tag === 'rating') return [__buildRating(el, scope, path)];
+  if (el.tag === 'otp') return [__buildOtp(el, scope, path)];
+  if (el.tag === 'carousel') return [__buildCarousel(el, scope, path, form)];
+  if (el.tag === 'file-picker') return [__buildFilePicker(el, scope, path)];
+  if (el.tag === 'timeline') return [__buildTimeline(el, scope, path, form)];
+  if (el.tag === 'calendar') return [__buildCalendar(el, scope, path)];
+  if (el.tag === 'avatar') return [__buildAvatar(el, scope)];
+  if (el.tag === 'avatar-group') return [__buildAvatarGroup(el, scope, path, form)];
+  if (el.tag === 'chart') return [__buildChart(el, scope)];
+  if (el.tag === 'editor') return [__buildEditor(el, scope, form, path)];
+  if (el.tag === 'color-picker') return [__buildColorPicker(el, scope, path, form)];
+  if (el.tag === 'breadcrumbs') return [__buildBreadcrumbs(el, scope, path, form)];
+  if (el.tag === 'nav-item' || el.tag === 'row-action' || el.tag === 'crumb' || el.tag === 'timeline-item') return [];
   if (el.tag === 'slider') return [__buildSlider(el, scope, path)];
   if (el.tag === 'progress-bar') return [__buildProgress(el, scope)];
   if (el.tag === 'spinner') return [__buildSpinner(el, scope)];
@@ -2135,7 +2941,52 @@ function __buildCore(el, scope, path, form) {
   }
   var title = __attr(el, 'title', scope);
   switch (el.tag) {
-    case 'screen': return wrap('div', 'screen');
+    case 'screen': {
+      var scr = wrap('div', 'screen')[0];
+      // Stage 15: pull to refresh and infinite scroll. The cues
+      // are documented preview affordances (a DOM preview cannot
+      // pull or scroll to an end): the top cue fires (refresh),
+      // the bottom cue fires (endReached), and a bound refreshing
+      // flag shows the spinner row, the native spinner's stand-in.
+      var hasRefresh = el.eventBindings.some(function (ev) { return ev.name === 'refresh'; });
+      var hasEnd = el.eventBindings.some(function (ev) { return ev.name === 'endReached'; });
+      var scrOut = [];
+      if (__truthy(__controlValue(el, 'refreshing', scope))) {
+        var spinRow = document.createElement('div');
+        spinRow.className = 'refresh-row';
+        var spinSpan = document.createElement('span');
+        spinSpan.className = 'spinner';
+        spinSpan.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24"><path d="' + __SPINNER_ARC + '" stroke="var(--role-primary)" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg>';
+        spinRow.appendChild(spinSpan);
+        var spinWrap = document.createElement('div');
+        spinWrap.className = 'screen';
+        spinWrap.appendChild(spinRow);
+        scrOut.push(spinWrap);
+      } else if (hasRefresh) {
+        var cueTop = document.createElement('div');
+        cueTop.className = 'scroll-cue';
+        var cueBtn = document.createElement('button');
+        cueBtn.type = 'button';
+        cueBtn.className = 'refresh-cue';
+        cueBtn.textContent = 'Pull to refresh (preview: tap)';
+        cueBtn.addEventListener('click', function () { __runEvent(el, scope, 'refresh', undefined); });
+        cueTop.appendChild(cueBtn);
+        scrOut.push(cueTop);
+      }
+      scrOut.push(scr);
+      if (hasEnd) {
+        var cueBottom = document.createElement('div');
+        cueBottom.className = 'scroll-cue';
+        var endBtn = document.createElement('button');
+        endBtn.type = 'button';
+        endBtn.className = 'end-cue';
+        endBtn.textContent = 'Load more (preview: tap)';
+        endBtn.addEventListener('click', function () { __runEvent(el, scope, 'endReached', undefined); });
+        cueBottom.appendChild(endBtn);
+        scrOut.push(cueBottom);
+      }
+      return scrOut;
+    }
     case 'appbar': {
       var bar = document.createElement('header');
       bar.className = 'appbar';
@@ -2196,8 +3047,100 @@ function __buildCore(el, scope, path, form) {
       var gl = wrap('div', 'grid-list')[0];
       var colsRaw = Number(el.attrs['cols']);
       var cols = isFinite(colsRaw) && colsRaw > 0 ? Math.floor(colsRaw) : 2;
-      gl.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+      // Stage 15: masonry paints with CSS columns, the app builds
+      // column stacks from the same tiles.
+      if (el.attrs['mode'] === 'masonry') {
+        gl.className = 'grid-list masonry';
+        gl.style.columnCount = '' + cols;
+      } else {
+        gl.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+      }
       return [gl];
+    }
+    case 'skeleton': {
+      var sk = document.createElement('div');
+      var skShape = el.attrs['shape'] || 'line';
+      sk.className = 'skeleton ' + skShape;
+      var skW = Number(el.attrs['width']);
+      var skH = Number(el.attrs['height']);
+      var skS = Number(el.attrs['size']);
+      if (skShape === 'circle') {
+        var skD = isFinite(skS) && skS > 0 ? skS : 40;
+        sk.setAttribute('style', 'width:' + skD + 'px;height:' + skD + 'px');
+      } else if (skShape === 'block') {
+        sk.setAttribute('style', 'width:' + (isFinite(skW) && skW > 0 ? skW + 'px' : '100%') + ';height:' + (isFinite(skH) && skH > 0 ? skH + 'px' : '96px'));
+      } else {
+        sk.setAttribute('style', 'width:' + (isFinite(skW) && skW > 0 ? skW + 'px' : '100%') + ';height:' + (isFinite(skH) && skH > 0 ? skH + 'px' : '14px'));
+      }
+      return [sk];
+    }
+    case 'image': {
+      var im = document.createElement('img');
+      im.className = 'rg-image';
+      var imSrc = __attr(el, 'src', scope);
+      if (imSrc) im.setAttribute('src', String(imSrc));
+      var imW = Number(el.attrs['width']);
+      var imH = Number(el.attrs['height']);
+      var imFit = el.attrs['resize'] === 'contain' ? 'contain' : el.attrs['resize'] === 'stretch' ? 'fill' : 'cover';
+      im.setAttribute('style', 'width:' + (isFinite(imW) && imW > 0 ? imW + 'px' : '100%') + ';height:' + (isFinite(imH) && imH > 0 ? imH + 'px' : '160px') + ';object-fit:' + imFit);
+      __attachEvents(im, el, scope);
+      __attachNav(im, el, scope);
+      return [im];
+    }
+    case 'empty-state': {
+      var es = document.createElement('div');
+      es.className = 'empty-state';
+      var esIcon = el.attrs['icon'];
+      if (esIcon) {
+        var esCircle = document.createElement('span');
+        esCircle.className = 'empty-icon';
+        esCircle.appendChild(__icon(esIcon, 28, 'textMuted'));
+        es.appendChild(esCircle);
+      }
+      var esTitle = __attr(el, 'title', scope);
+      if (esTitle) {
+        var esT = document.createElement('div');
+        esT.className = 'empty-title';
+        esT.textContent = String(esTitle);
+        es.appendChild(esT);
+      }
+      var esText = __attr(el, 'text', scope);
+      if (esText) {
+        var esB = document.createElement('div');
+        esB.className = 'empty-text';
+        esB.textContent = String(esText);
+        es.appendChild(esB);
+      }
+      kids.forEach(function (k) { es.appendChild(k); });
+      return [es];
+    }
+    case 'lightbox': {
+      var lbOpen = __controlValue(el, 'open', scope);
+      if (lbOpen !== undefined && !__truthy(lbOpen)) return [];
+      var lb = document.createElement('div');
+      lb.className = 'overlay';
+      var lbBackdrop = document.createElement('div');
+      lbBackdrop.className = 'overlay-backdrop dark';
+      lbBackdrop.addEventListener('click', function () { __runClose(el, scope); });
+      lb.appendChild(lbBackdrop);
+      var lbImg = document.createElement('img');
+      lbImg.className = 'lightbox-image';
+      var lbSrc = __attr(el, 'src', scope);
+      if (lbSrc) lbImg.setAttribute('src', String(lbSrc));
+      lb.appendChild(lbImg);
+      var lbClose = document.createElement('button');
+      lbClose.type = 'button';
+      lbClose.className = 'lightbox-close';
+      lbClose.appendChild(__icon('close', 24, 'text'));
+      lbClose.addEventListener('click', function () { __runClose(el, scope); });
+      lb.appendChild(lbClose);
+      if (kids.length) {
+        var lbCap = document.createElement('div');
+        lbCap.className = 'lightbox-caption';
+        kids.forEach(function (k) { lbCap.appendChild(k); });
+        lb.appendChild(lbCap);
+      }
+      return [lb];
     }
     case 'grid-tile': return wrap('div', 'grid-tile');
     case 'tree': return wrap('div', 'tree');
@@ -2322,7 +3265,46 @@ function __buildCore(el, scope, path, form) {
       });
       return [radioGroup];
     }
-    case 'list': return wrap('div', 'list');
+    case 'list': {
+      var lst = wrap('div', 'list')[0];
+      // Stage 15: the same refresh and end-reached affordances as
+      // the screen (see the screen case).
+      var listHasRefresh = el.eventBindings.some(function (ev) { return ev.name === 'refresh'; });
+      var listHasEnd = el.eventBindings.some(function (ev) { return ev.name === 'endReached'; });
+      var lstOut = [];
+      if (__truthy(__controlValue(el, 'refreshing', scope))) {
+        var lSpinRow = document.createElement('div');
+        lSpinRow.className = 'refresh-row';
+        var lSpinSpan = document.createElement('span');
+        lSpinSpan.className = 'spinner';
+        lSpinSpan.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24"><path d="' + __SPINNER_ARC + '" stroke="var(--role-primary)" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg>';
+        lSpinRow.appendChild(lSpinSpan);
+        lstOut.push(lSpinRow);
+      } else if (listHasRefresh) {
+        var lCueTop = document.createElement('div');
+        lCueTop.className = 'scroll-cue';
+        var lCueBtn = document.createElement('button');
+        lCueBtn.type = 'button';
+        lCueBtn.className = 'refresh-cue';
+        lCueBtn.textContent = 'Pull to refresh (preview: tap)';
+        lCueBtn.addEventListener('click', function () { __runEvent(el, scope, 'refresh', undefined); });
+        lCueTop.appendChild(lCueBtn);
+        lstOut.push(lCueTop);
+      }
+      lstOut.push(lst);
+      if (listHasEnd) {
+        var lCueBottom = document.createElement('div');
+        lCueBottom.className = 'scroll-cue';
+        var lEndBtn = document.createElement('button');
+        lEndBtn.type = 'button';
+        lEndBtn.className = 'end-cue';
+        lEndBtn.textContent = 'Load more (preview: tap)';
+        lEndBtn.addEventListener('click', function () { __runEvent(el, scope, 'endReached', undefined); });
+        lCueBottom.appendChild(lEndBtn);
+        lstOut.push(lCueBottom);
+      }
+      return lstOut;
+    }
     case 'row': {
       var row = document.createElement('div');
       row.className = 'row';
@@ -2367,7 +3349,51 @@ function __buildCore(el, scope, path, form) {
       if (rTip) row.title = String(rTip);
       __attachEvents(row, el, scope);
       __attachNav(row, el, scope);
-      return [row];
+      // Stage 15: swipe actions. The tray sits behind the row; a
+      // small reveal handle (the preview's stand-in for the swipe
+      // gesture) toggles the revealed state, and choosing an
+      // action runs it and closes the tray.
+      var rowActions = el.children.filter(function (c) { return c.type === 'element' && c.tag === 'row-action'; });
+      if (!rowActions.length) return [row];
+      var swipeWrap = document.createElement('div');
+      swipeWrap.className = 'row-swipe' + (__swipeStates[path] ? ' revealed' : '');
+      var tray = document.createElement('div');
+      tray.className = 'swipe-tray';
+      rowActions.forEach(function (a) {
+        var ab = document.createElement('button');
+        ab.type = 'button';
+        ab.className = 'swipe-action';
+        var aIcon = a.attrs['icon'];
+        if (aIcon) ab.appendChild(__icon(aIcon, 24, 'onPrimary'));
+        var aLabel = __attr(a, 'label', scope) || __declText(a, scope);
+        if (aLabel) {
+          var al = document.createElement('span');
+          al.className = 'swipe-action-label';
+          al.textContent = String(aLabel);
+          ab.appendChild(al);
+        }
+        var aColor = a.attrs['color'];
+        if (aColor) ab.setAttribute('style', 'background:' + (/^[a-zA-Z]+$/.test(aColor) ? 'var(--role-' + __kebabRole(aColor) + ')' : aColor));
+        ab.addEventListener('click', function () {
+          __swipeStates[path] = false;
+          __runEvent(a, scope, 'click', undefined);
+          __render();
+        });
+        tray.appendChild(ab);
+      });
+      swipeWrap.appendChild(tray);
+      if (__swipeStates[path]) row.style.transform = 'translateX(-' + (rowActions.length * 72) + 'px)';
+      swipeWrap.appendChild(row);
+      var handle = document.createElement('button');
+      handle.type = 'button';
+      handle.className = 'swipe-reveal';
+      handle.appendChild(__icon('chevron-left', 20, 'textMuted'));
+      handle.addEventListener('click', function () {
+        __swipeStates[path] = !__swipeStates[path];
+        __render();
+      });
+      swipeWrap.appendChild(handle);
+      return [swipeWrap];
     }
     case 'icon': {
       var iconName = __attr(el, 'name', scope);
