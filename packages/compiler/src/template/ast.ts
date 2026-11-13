@@ -34,6 +34,13 @@ export interface ElementNode {
   twoWayBindings: PropBinding[];
   eventBindings: EventBinding[];
   structural?: StructuralDirective;
+  /**
+   * Structural directives the parser dropped because the element
+   * already carried one (one structural directive per element): the
+   * parser warns TPL_STRUCTURAL_MULTIPLE for each, and codegen emits
+   * a TODO comment naming each dropped directive.
+   */
+  droppedStructural?: StructuralDirective[];
   /** Template reference variable name from `#ref`, without '#'. */
   ref?: string;
   /** The exportAs value of a template reference, e.g. `#email="ngModel"` (Stage 8). */

@@ -318,6 +318,49 @@ export function isAssignmentExpression(source: string): boolean {
 const HTTP_CLIENT = 'HttpClient';
 
 /**
+ * The class name a [class.name] toggle binding names, or undefined
+ * when the binding name is not a class toggle. Class names follow the
+ * CSS subset's class selector grammar (a plain identifier, hyphens
+ * allowed), the same shape parseCss accepts for a `.class` key.
+ */
+export function classToggleOf(bindingName: string): string | undefined {
+  const match = /^class\.([A-Za-z_-][A-Za-z0-9_-]*)$/.exec(bindingName);
+  return match ? match[1] : undefined;
+}
+
+/**
+ * True for every binding name that carries class, style or HTML
+ * attribute intent: [class], [class.name], [ngClass], [style],
+ * [style.prop] (with or without a unit suffix), [ngStyle] and
+ * [attr.x]. None of these is a prop of any generated component:
+ * [class.name] over a class declared in the component styles is wired
+ * through the element's style (see styleFor), and every other form is
+ * diagnosed and dropped by the binding scan in generateComponent.
+ * Before the gap fix the generic prop loops emitted them verbatim
+ * (class.hot={hot}, style.color={colour}, attr.class={...}), props
+ * the primitives ignore, so the styling silently never appeared; a
+ * [style] object or a static style attribute could even collide with
+ * the generated style prop and produce a duplicate-prop JSX error.
+ */
+export function isClassStyleBindingName(bindingName: string): boolean {
+  return bindingName === 'class'
+    || bindingName === 'ngClass'
+    || bindingName === 'ngStyle'
+    || bindingName === 'style'
+    || bindingName.startsWith('class.')
+    || bindingName.startsWith('style.')
+    || bindingName.startsWith('attr.');
+}
+
+/**
+ * Blocks whose renderers never emit a style, so a [class.name] toggle
+ * on them has nothing to attach to: the icon (its renderer reads only
+ * name, size, color and badge), the table column declaration (it
+ * renders nothing itself), the router outlet and ng-content.
+ */
+const STYLELESS_TAGS = new Set(['icon', 'column', 'router-outlet', 'ng-content']);
+
+/**
  * Forms analysis for one component (Stage 8). FormInfo is what a <form>
  * offers its subtree: its (submit) handler, its [formGroup] field, and
  * the touched-state keys of the ngModel inputs inside it (a submit
@@ -1395,10 +1438,94 @@ class Generator {
       if (styleKeys.has(el.tag)) refs.push(`styles.${styleKeyFor(opts.stylePrefix, el.tag)}`);
       const classes = (el.attrs['class'] ?? '').split(/\s+/).filter(Boolean);
       for (const cls of classes) if (styleKeys.has(cls)) refs.push(`styles.${styleKeyFor(opts.stylePrefix, cls)}`);
+      // [class.name] toggles over classes the component styles declare
+      // (gap fix): the entry is conditional, so the class style joins
+      // the array only while the expression holds, after the static
+      // classes (a directive style still merges after this, in
+      // renderCore, and wins). Undeclared classes and styleless hosts
+      // are diagnosed by the binding scan below and never reach here.
+      for (const b of el.propBindings) {
+        const toggle = classToggleOf(b.name);
+        if (toggle !== undefined && styleKeys.has(toggle) && !STYLELESS_TAGS.has(el.tag.toLowerCase())) {
+          refs.push(`${codeExpr(b.expression)} ? styles.${styleKeyFor(opts.stylePrefix, toggle)} : undefined`);
+        }
+      }
       if (!refs.length) return undefined;
       this.usedRn.add('StyleSheet');
       return refs.length === 1 ? refs[0] : `[${refs.join(', ')}]`;
     };
+
+    // Class, style and attribute bindings scan (gap fix). Every
+    // binding of these shapes is either wired ([class.name] over a
+    // declared class on a block that takes a style, handled by
+    // styleFor) or diagnosed here and stripped by the renderers'
+    // prop loops, so no form is ever emitted as an inert prop or
+    // dropped without a word. The scan runs once per unit over the
+    // whole template, so dedicated renderers (icon, input, picker,
+    // slider, ...) are covered exactly like the generic path.
+    const scanClassStyleBindings = (nodes: TemplateNode[]): void => {
+      for (const node of nodes) {
+        if (node.type !== 'element') continue;
+        const tag = node.tag.toLowerCase();
+        if (node.attrs['style'] !== undefined) {
+          diagnostics.push(warning(
+            'GEN_STYLE_BINDING',
+            `<${node.tag}> carries a static style attribute ("${node.attrs['style']}"), which is not supported; the attribute was dropped`,
+            node.pos.line, node.pos.column,
+            'Move the declarations into the component styles under a class and apply it with class="name", or toggle it with [class.name]="cond"',
+          ));
+        }
+        for (const b of node.propBindings) {
+          const toggle = classToggleOf(b.name);
+          if (toggle !== undefined) {
+            if (STYLELESS_TAGS.has(tag)) {
+              diagnostics.push(warning(
+                'GEN_CLASS_BINDING',
+                `[class.${toggle}] on <${node.tag}> cannot apply: this block takes no style, so the binding was dropped`,
+                node.pos.line, node.pos.column,
+                `Put the [class.${toggle}] toggle on a block that takes a style (a <p>, <div>, <card> or <button>), with .${toggle} declared in the component styles`,
+              ));
+            } else if (!styleKeys.has(toggle)) {
+              diagnostics.push(warning(
+                'GEN_CLASS_BINDING',
+                `[class.${toggle}] names a class the component styles do not declare; the binding was dropped`,
+                node.pos.line, node.pos.column,
+                `Declare .${toggle} in the component styles (styles: ['.${toggle} { ... }']), or remove the binding`,
+              ));
+            }
+            continue;
+          }
+          if (b.name === 'class' || b.name === 'ngClass') {
+            diagnostics.push(warning(
+              'GEN_CLASS_BINDING',
+              `[${b.name}] on <${node.tag}> binds a whole dynamic class value, which cannot be resolved to StyleSheet entries at compile time; the binding was dropped`,
+              node.pos.line, node.pos.column,
+              'Toggle one declared class with [class.name]="cond", or put static classes in the plain class attribute and swap pre-styled elements with *ngIf',
+            ));
+            continue;
+          }
+          if (b.name === 'style' || b.name === 'ngStyle' || b.name.startsWith('style.')) {
+            diagnostics.push(warning(
+              'GEN_STYLE_BINDING',
+              `[${b.name}] on <${node.tag}> binds raw CSS values, which bypass the token-snapped component styles; the binding was dropped`,
+              node.pos.line, node.pos.column,
+              'Declare a class in the component styles and apply it with class="name", toggle it with [class.name]="cond", or fold a directive style with an attribute directive',
+            ));
+            continue;
+          }
+          if (b.name.startsWith('attr.')) {
+            diagnostics.push(warning(
+              'GEN_ATTR_BINDING',
+              `[${b.name}] on <${node.tag}> targets an HTML attribute; React Native elements have no arbitrary attributes, so the binding was dropped`,
+              node.pos.line, node.pos.column,
+              'Use the plain attribute when this block supports one, or the specific [prop] binding the block documents in catalog.md',
+            ));
+          }
+        }
+        scanClassStyleBindings(node.children);
+      }
+    };
+    scanClassStyleBindings(ast.children);
 
     // Template expressions (Stage 8): reactive form fields read through
     // their ref (profileForm -> profileFormRef.current), and member
@@ -1743,7 +1870,10 @@ class Generator {
       else if (typeAttr === 'number') props.push('keyboardType="numeric"');
 
       for (const [name, value] of Object.entries(el.attrs)) {
-        if (name === 'class' || INPUT_DROP_ATTRS.has(name)) continue;
+        // A static style attribute is diagnosed by the binding scan
+        // (GEN_STYLE_BINDING) and dropped, never emitted as a string
+        // style prop next to the generated one.
+        if (name === 'class' || name === 'style' || INPUT_DROP_ATTRS.has(name)) continue;
         props.push(`${name}="${escapeJsxAttrValue(value)}"`);
       }
       for (const b of el.booleanAttrs) {
@@ -1825,6 +1955,9 @@ class Generator {
       if (info && info.mode !== 'plain') consumedProps.add('value');
       for (const p of el.propBindings) {
         if (consumedProps.has(p.name)) continue;
+        // Class, style and [attr.x] bindings are wired by styleFor or
+        // diagnosed by the binding scan; never emitted as props.
+        if (isClassStyleBindingName(p.name)) continue;
         if (p.name === 'type') {
           lines.push(`${indent}{/* TODO(Rangular forms): a [type] binding on <input> is not supported, use a static type="password|email|number" attribute */}`);
           continue;
@@ -1981,7 +2114,7 @@ class Generator {
         }
       }
 
-      const consumedAttrs = new Set(['class', 'mode', 'minuteInterval']);
+      const consumedAttrs = new Set(['class', 'style', 'mode', 'minuteInterval']);
       for (const [name, value] of Object.entries(el.attrs)) {
         if (consumedAttrs.has(name)) continue;
         props.push(`${name}="${escapeJsxAttrValue(value)}"`);
@@ -1990,6 +2123,7 @@ class Generator {
       const consumedProps = new Set(['mode', 'minuteInterval']);
       for (const p of el.propBindings) {
         if (consumedProps.has(p.name)) continue;
+        if (isClassStyleBindingName(p.name)) continue;
         props.push(`${p.name}={${codeExpr(p.expression)}}`);
       }
       for (const ev of el.eventBindings) {
@@ -2133,7 +2267,7 @@ class Generator {
         emitNumberProp('step');
       }
 
-      const consumedAttrs = new Set(['class', 'min', 'max', 'step']);
+      const consumedAttrs = new Set(['class', 'style', 'min', 'max', 'step']);
       for (const [name, value] of Object.entries(el.attrs)) {
         if (consumedAttrs.has(name)) continue;
         props.push(`${name}="${escapeJsxAttrValue(value)}"`);
@@ -2142,6 +2276,7 @@ class Generator {
       const consumedProps = new Set(['min', 'max', 'step']);
       for (const p of el.propBindings) {
         if (consumedProps.has(p.name)) continue;
+        if (isClassStyleBindingName(p.name)) continue;
         props.push(`${p.name}={${codeExpr(p.expression)}}`);
       }
       for (const ev of el.eventBindings) {
@@ -2218,7 +2353,7 @@ class Generator {
             : `value={${codeExpr(valueBinding.expression)}}`);
         }
       }
-      const consumedAttrs = new Set(['class', 'mode', 'value']);
+      const consumedAttrs = new Set(['class', 'style', 'mode', 'value']);
       for (const [name, value] of Object.entries(el.attrs)) {
         if (consumedAttrs.has(name)) continue;
         props.push(`${name}="${escapeJsxAttrValue(value)}"`);
@@ -2226,6 +2361,7 @@ class Generator {
       for (const b of el.booleanAttrs) props.push(b);
       for (const p of el.propBindings) {
         if (p.name === 'mode' || p.name === 'value') continue;
+        if (isClassStyleBindingName(p.name)) continue;
         props.push(`${p.name}={${codeExpr(p.expression)}}`);
       }
       const style = styleFor(el);
@@ -2467,6 +2603,10 @@ class Generator {
       const isButtonEl = el.tag.toLowerCase() === 'button';
       for (const [name, value] of Object.entries(el.attrs)) {
         if (name === 'class') continue;
+        // A static style attribute is diagnosed by the binding scan
+        // (GEN_STYLE_BINDING) and dropped; emitted verbatim it would
+        // sit next to the generated style prop as a duplicate.
+        if (name === 'style') continue;
         if (name === 'routerLink') continue;
         if (consumedByDirective.has(name)) continue;
         if (name === 'badge' && dropBadge) continue;
@@ -2484,6 +2624,10 @@ class Generator {
         // [formGroup] is the reactive binding mechanism, not a View prop.
         if (isFormEl && p.name === 'formGroup') continue;
         if (p.name === 'routerLink') continue;
+        // Class, style and [attr.x] bindings are wired through the
+        // style prop ([class.name], see styleFor) or diagnosed and
+        // dropped by the binding scan; they are never props.
+        if (isClassStyleBindingName(p.name)) continue;
         if (consumedByDirective.has(p.name)) continue;
         if (p.name === 'badge' && dropBadge) continue;
         if (p.name === 'tooltip' && dropTooltip) continue;
@@ -2620,7 +2764,7 @@ class Generator {
     };
 
     /** Render an element, applying *ngIf / *ngFor wrapping when present (M4). */
-    const renderElementInner = (el: ElementNode, depth: number, formCtx?: FormInfo): string[] => {
+    const renderElementInnerCore = (el: ElementNode, depth: number, formCtx?: FormInfo): string[] => {
       const indent = '  '.repeat(depth + 2);
       if (!el.structural) return renderCore(el, depth, [], formCtx);
       const stripped: ElementNode = { ...el, structural: undefined };
@@ -2678,6 +2822,22 @@ class Generator {
         `${indent}{/* TODO: *${el.structural.name}="${forBlockComment(el.structural.expression)}" */}`,
         ...renderCore(stripped, depth, [], formCtx),
       ];
+    };
+
+    /**
+     * renderElementInnerCore plus the TODO comments for structural
+     * directives the parser dropped (one structural directive per
+     * element, TPL_STRUCTURAL_MULTIPLE): the warning names the drop,
+     * and the generated code carries the same note at the element, so
+     * the loss is visible in both places instead of silent.
+     */
+    const renderElementInner = (el: ElementNode, depth: number, formCtx?: FormInfo): string[] => {
+      const lines = renderElementInnerCore(el, depth, formCtx);
+      if (!el.droppedStructural?.length) return lines;
+      const indent = '  '.repeat(depth + 2);
+      const todos = el.droppedStructural.map((d) =>
+        `${indent}{/* TODO: *${d.name}="${forBlockComment(d.expression)}" dropped, one structural directive per element, see TPL_STRUCTURAL_MULTIPLE */}`);
+      return [...todos, ...lines];
     };
 
     /**

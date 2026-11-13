@@ -1,4 +1,4 @@
-import { Diagnostic, error } from '../diagnostics';
+import { Diagnostic, error, warning } from '../diagnostics';
 import { ElementNode, SourcePos, TemplateNode, TemplateRoot, TextNode, TextPart } from './ast';
 
 export interface ParseResult {
@@ -138,7 +138,23 @@ export function parseTemplate(source: string): ParseResult {
     }
 
     if (name.startsWith('*')) {
-      el.structural = { name: name.slice(1), expression: value ?? '' };
+      const directive = { name: name.slice(1), expression: value ?? '' };
+      if (el.structural) {
+        // One structural directive per element (the Angular rule, and
+        // this AST stores exactly one): the first wins, each later one
+        // is dropped with a warning instead of silently overwriting
+        // the first, which used to emit the loop variable outside its
+        // map (or drop the condition) with no diagnostic at all.
+        (el.droppedStructural ??= []).push(directive);
+        diagnostics.push(warning(
+          'TPL_STRUCTURAL_MULTIPLE',
+          `<${el.tag}> carries *${el.structural.name} and *${directive.name}; only the first (*${el.structural.name}) is kept and *${directive.name} is dropped`,
+          at.line, at.column,
+          `Put one structural directive per element: nest one element inside the other, e.g. <div *ngFor="let item of items"><p *ngIf="item.ready">...</p></div>`,
+        ));
+      } else {
+        el.structural = directive;
+      }
     } else if (name.startsWith('[(') && name.endsWith(')]')) {
       // Two-way binding [(name)]="expr" (Stage 8): its own list, because
       // codegen must write back, not just bind one way.

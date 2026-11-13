@@ -173,7 +173,10 @@ function isTemplateDriven(code: string): boolean {
     || code === 'PIPE_UNKNOWN'
     || code === 'GEN_VALIDATOR_ARG'
     || code === 'DIR_UNSUPPORTED'
-    || code === 'PROJECTION_SELECT_UNSUPPORTED';
+    || code === 'PROJECTION_SELECT_UNSUPPORTED'
+    || code === 'GEN_CLASS_BINDING'
+    || code === 'GEN_STYLE_BINDING'
+    || code === 'GEN_ATTR_BINDING';
 }
 
 function isStyleDriven(code: string): boolean {

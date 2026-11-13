@@ -664,6 +664,7 @@ Full token values (both colour modes, the light and dark theme objects, elevatio
 | TPL_MISMATCH | A closing tag does not match the currently open element. |
 | TPL_NGFOR | The *ngFor microsyntax could not be parsed. |
 | TPL_NGFOR_SEGMENT | A segment of *ngFor microsyntax is not supported and was ignored. |
+| TPL_STRUCTURAL_MULTIPLE | An element carries more than one structural directive (*ngIf, *ngFor, ...); only the first is kept and each later one is dropped. One structural directive per element: nest one element inside the other. |
 | CLS_NO_COMPONENT | No class decorated with @Component was found in the source file. |
 | CMP_TEMPLATE | The component template could not be resolved (missing inline template and templateUrl). |
 | CSS_SELECTOR | A CSS selector is not an element or .class selector; the rule was skipped. |
@@ -700,6 +701,9 @@ Full token values (both colour modes, the light and dark theme objects, elevatio
 | GEN_PROGRESS_RANGE | A <progress-bar> value is statically known to sit outside 0 to 100; the generated code clamps it into range. |
 | GEN_SPINNER_SIZE | A <spinner> size is off the icon size scale (20, 24, 28); the generated code uses the nearest on-scale size. |
 | GEN_BADGE_HOST | A badge attribute or [badge] binding sits on an element that cannot host a badge in this version (button, row, icon and nav-item can); the badge was dropped. |
+| GEN_CLASS_BINDING | A class binding Rangular cannot honour was dropped: [class] and [ngClass] bind a whole dynamic class value, which cannot be resolved to StyleSheet entries at compile time, and [class.name] only works when the component styles declare that class and the block takes a style. The supported toggle is [class.name]="cond" over a class declared in the component styles; the other working pattern is named classes in the component styles with the plain class attribute, swapped with *ngIf. |
+| GEN_STYLE_BINDING | A style binding or static style attribute was dropped: [style], [style.prop] (with or without a unit) and [ngStyle] bind raw CSS values, which bypass the token-snapped component styles, and a static style="..." attribute has no StyleSheet entry to attach to. Styles live in the component styles block under a class, applied with the plain class attribute or toggled with [class.name]. |
+| GEN_ATTR_BINDING | An [attr.x] binding was dropped: it targets an HTML attribute, and React Native elements have no arbitrary attributes. Use the plain attribute when the block supports one, or the specific [prop] binding the block documents. |
 | METHOD_UNSUPPORTED | A statement in a component method is outside the supported translation subset; it was left as a TODO. |
 | CMP_IMPORT_UNRESOLVED | A relative import in a compiled file could not be resolved to a source file. |
 | CMP_PATH_ESCAPE | A templateUrl, styleUrl or relative import resolved to a file outside the project root; the file was not read. |

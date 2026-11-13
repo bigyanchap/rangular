@@ -2427,6 +2427,10 @@
       "meaning": "A segment of *ngFor microsyntax is not supported and was ignored."
     },
     {
+      "code": "TPL_STRUCTURAL_MULTIPLE",
+      "meaning": "An element carries more than one structural directive (*ngIf, *ngFor, ...); only the first is kept and each later one is dropped. One structural directive per element: nest one element inside the other."
+    },
+    {
       "code": "CLS_NO_COMPONENT",
       "meaning": "No class decorated with @Component was found in the source file."
     },
@@ -2569,6 +2573,18 @@
     {
       "code": "GEN_BADGE_HOST",
       "meaning": "A badge attribute or [badge] binding sits on an element that cannot host a badge in this version (button, row, icon and nav-item can); the badge was dropped."
+    },
+    {
+      "code": "GEN_CLASS_BINDING",
+      "meaning": "A class binding Rangular cannot honour was dropped: [class] and [ngClass] bind a whole dynamic class value, which cannot be resolved to StyleSheet entries at compile time, and [class.name] only works when the component styles declare that class and the block takes a style. The supported toggle is [class.name]=\"cond\" over a class declared in the component styles; the other working pattern is named classes in the component styles with the plain class attribute, swapped with *ngIf."
+    },
+    {
+      "code": "GEN_STYLE_BINDING",
+      "meaning": "A style binding or static style attribute was dropped: [style], [style.prop] (with or without a unit) and [ngStyle] bind raw CSS values, which bypass the token-snapped component styles, and a static style=\"...\" attribute has no StyleSheet entry to attach to. Styles live in the component styles block under a class, applied with the plain class attribute or toggled with [class.name]."
+    },
+    {
+      "code": "GEN_ATTR_BINDING",
+      "meaning": "An [attr.x] binding was dropped: it targets an HTML attribute, and React Native elements have no arbitrary attributes. Use the plain attribute when the block supports one, or the specific [prop] binding the block documents."
     },
     {
       "code": "METHOD_UNSUPPORTED",

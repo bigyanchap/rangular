@@ -87,6 +87,10 @@ the repo's actual behaviour today (through Stage 12), not aspirations.
 | SSR / hydration | Not supported, output is a React Native app, there is no server rendering | Not planned |
 | Full RxJS surface (operators, Subjects, Observables from other sources) | Not supported. Only the Observable-lite exists (`subscribe(next?, error?)`, no operators). The `async` pipe is wired (Stage 12): generated code subscribes in an effect and renders the latest value; the streamed expression is captured at mount, so stream a stable field or service property, not a fresh method call | Later stage |
 | `*ngIf` with `else` / `then` | Detected, warns `GEN_NGIF_ELSE_TODO`, element emitted unconditionally. Workaround: two elements, `*ngIf="cond"` and `*ngIf="!(cond)"` | Later stage |
+| Two structural directives on one element (`*ngIf` and `*ngFor` together) | Detected, warns `TPL_STRUCTURAL_MULTIPLE`: the first directive is kept, each later one is dropped and named in a TODO comment in the generated code. Nest one element inside the other instead | Enforced (the keep-first degrade is the v1 behaviour) |
+| `[class]` / `[ngClass]` whole-value class bindings | Detected, warns `GEN_CLASS_BINDING`, binding dropped: a dynamic class string cannot be resolved to StyleSheet entries at compile time. Toggle one declared class with `[class.name]="cond"` instead (supported, see the styling notes) | Not planned |
+| `[style]` / `[style.prop]` / `[ngStyle]` bindings, and static `style="..."` attributes | Detected, warns `GEN_STYLE_BINDING`, dropped: raw CSS values bypass the token-snapped component styles, and a static style attribute has no StyleSheet entry to attach to. Declare a class in the component styles instead | Not planned |
+| `[attr.x]` bindings | Detected, warns `GEN_ATTR_BINDING`, dropped: React Native elements have no arbitrary HTML attributes. Use the plain attribute or the specific `[prop]` binding the block documents | Not planned |
 | Full CSS (cascade, inheritance, descendant/id/pseudo selectors, unsupported properties) | Subset only: element and `.class` selectors, a fixed property list; anything else warns (`CSS_SELECTOR` / `CSS_UNSUPPORTED`) and is dropped. Styles apply per element, no cascade | Subset may grow per stage |
 
 ### Rangular source vs React
@@ -134,6 +138,9 @@ method bodies is a defined subset: do not assume all of TypeScript:
   its title lines and the control together).
 - A block stores **one** structural directive: never put `*ngIf` and
   `*ngFor` on the same element, nest one inside the other instead.
+  The compiler enforces the rule: a second structural directive warns
+  `TPL_STRUCTURAL_MULTIPLE` and is dropped (the first is kept), with a
+  TODO comment at the element in the generated code.
 - `<row avatar>`: the bare `avatar` attribute turns on a circle at the row's
   left. The circle shows the **first character of the row's `title`**, on the
   theme's primary colour. Today the avatar exists only as part of `<row>`;
@@ -1204,6 +1211,19 @@ framework first so the app only consumes them.
   value, plus a `STYLE_OFF_SCALE` warning whose fix names the snapped
   value: `margin-bottom: 13px` becomes 12. On-scale values and 0 pass
   silently; ties go to the lower value; colours are never snapped.
+- **Toggling a class: `[class.name]="cond"`.** When the component
+  styles declare `.name`, the binding compiles to a conditional entry
+  in the element's generated style array (`cond ? styles.name :
+  undefined`), after the static classes from the plain `class`
+  attribute; an attribute directive's folded style still merges last.
+  Naming a class the styles do not declare, or putting the toggle on
+  a block that takes no style (`<icon>`, `<column>`, `<router-outlet>`,
+  `<ng-content>`), warns `GEN_CLASS_BINDING` and drops the binding.
+  The whole-value and raw-value forms are not supported and warn
+  instead of silently doing nothing: `[class]` and `[ngClass]`
+  (`GEN_CLASS_BINDING`), `[style]`, `[style.prop]` (with or without a
+  unit) and `[ngStyle]`, and static `style="..."` attributes
+  (`GEN_STYLE_BINDING`).
 - **Text by meaning, not by number.** `h1`/`h2`/`h3`/`p` compile to
   `RgText` at the display/heading/title/bodyLarge steps, and
   `<label>` (new in Stage 4) maps to the label step. `RgText`
