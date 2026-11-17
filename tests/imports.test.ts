@@ -13,10 +13,13 @@ import { compileComponent, CompileResult, hasErrors } from '../packages/compiler
  * per specifier, unless its name is already taken there, in which
  * case it is dropped with a GEN_IMPORT_COLLISION warning. The
  * import = require(...) form cannot be carried and warns
- * CMP_IMPORT_FORM. Framework specifiers (@angular/*, @rangular/*,
- * react, react-native) and relative imports behave exactly as before:
- * framework names are consumed semantically, relative imports are
- * followed and their classes inlined.
+ * CMP_IMPORT_FORM. The @angular/* and @rangular/* specifiers are
+ * consumed semantically and never carried; relative imports are
+ * followed and their classes inlined. react and react-native
+ * imports carry like any other bare specifier (2026-11-17 fix:
+ * a Platform import in a service used to drop silently and break
+ * at runtime); a carried name the module itself defines drops
+ * with GEN_IMPORT_COLLISION, so it can never duplicate a binding.
  */
 
 function compileProject(files: Record<string, string>, entryName = 'app.component.ts'): CompileResult {
@@ -160,6 +163,71 @@ export class StoreService {
 `));
   assert.deepEqual(result.diagnostics, [], JSON.stringify(result.diagnostics));
   assert.ok(importLines(result.code).includes(`import { nanoid } from 'nanoid';`), result.code);
+});
+
+test('a named react-native import in a service is carried (the Platform fix)', () => {
+  const files = {
+    'app.component.ts': component(`import { StoreService } from './store.service';`,
+      `constructor(private store: StoreService) {}`),
+    'store.service.ts': `import { Injectable } from '@angular/core';
+import { Platform } from 'react-native';
+@Injectable({ providedIn: 'root' })
+export class StoreService {
+  useSqlite = false;
+  constructor() { this.useSqlite = Platform.OS !== 'web'; }
+}
+`,
+  };
+  const result = compileProject(files);
+  assert.deepEqual(result.diagnostics, [], JSON.stringify(result.diagnostics));
+  assert.ok(
+    importLines(result.code).includes(`import { Platform } from 'react-native';`),
+    result.code,
+  );
+  assert.match(result.code, /Platform\.OS !== 'web'/);
+});
+
+test('a named react-native import in the entry component is carried', () => {
+  const files = {
+    'app.component.ts': `import { Component } from '@angular/core';
+import { Platform } from 'react-native';
+@Component({ selector: 'app-root', template: '<p>hi</p>' })
+export class AppComponent {
+  os = '';
+  ngOnInit() { this.os = Platform.OS; }
+}
+`,
+  };
+  const result = compileProject(files);
+  assert.deepEqual(result.diagnostics, [], JSON.stringify(result.diagnostics));
+  assert.ok(
+    importLines(result.code).includes(`import { Platform } from 'react-native';`),
+    result.code,
+  );
+});
+
+test('a react import naming a framework import of the module warns GEN_IMPORT_COLLISION and stays bound once', () => {
+  const files = {
+    'app.component.ts': component(`import { StoreService } from './store.service';`,
+      `count = 0; constructor(private store: StoreService) {}`),
+    'store.service.ts': `import { Injectable } from '@angular/core';
+import { useSyncExternalStore } from 'react';
+@Injectable({ providedIn: 'root' })
+export class StoreService {
+  copied: any = null;
+  read() { this.copied = useSyncExternalStore; }
+}
+`,
+  };
+  const result = compileProject(files);
+  assert.ok(
+    result.diagnostics.some((d) => d.code === 'GEN_IMPORT_COLLISION'),
+    JSON.stringify(result.diagnostics),
+  );
+  const reactLines = importLines(result.code).filter((l) => l.includes(`from 'react'`));
+  assert.equal(reactLines.length, 1, result.code);
+  assert.match(reactLines[0], /useSyncExternalStore/);
+  assert.match(result.code, /GEN_IMPORT_COLLISION/);
 });
 
 test('a type-only third-party import in a service is carried as an import type', () => {

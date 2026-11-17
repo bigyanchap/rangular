@@ -574,16 +574,21 @@ export function compileComponent(options: CompileOptions): CompileResult {
   // module in one of those files must be carried into the generated
   // module, merged across files, or the generated code references a
   // name nothing binds (a runtime ReferenceError, found in the wild
-  // with AsyncStorage in a service). Framework specifiers are consumed
-  // semantically (@angular/*, @rangular/*) or emitted by codegen
-  // itself (react, react-native) and keep their old behaviour, and
-  // relative imports keep theirs (followed above, classes inlined).
+  // with AsyncStorage in a service). The @angular/* and @rangular/*
+  // specifiers are consumed semantically and never carried. react
+  // and react-native are NOT consumed: an import of them in a
+  // contributing file carries like any other bare specifier (fix,
+  // 2026-11-17: `import { Platform } from 'react-native'` in a
+  // service was silently dropped while its uses were emitted, which
+  // left Platform unbound at runtime). A carried name the generated
+  // module already defines (its own react and react-native imports
+  // included) drops in codegen with a GEN_IMPORT_COLLISION warning,
+  // so carrying can never duplicate a binding. Relative imports
+  // keep their behaviour (followed above, classes inlined).
   // Directive files contribute no module code (their expressions admit
   // only inputs and locals, anything else is DIR_UNSUPPORTED), so they
   // are not contributing files here.
-  const isFrameworkSpecifier = (spec: string): boolean => spec === 'react'
-    || spec === 'react-native'
-    || spec.startsWith('@angular/')
+  const isFrameworkSpecifier = (spec: string): boolean => spec.startsWith('@angular/')
     || spec.startsWith('@rangular/');
   const contributingFiles: string[] = [];
   const addContributing = (f: string | undefined): void => {

@@ -1282,6 +1282,10 @@ Found on a phone, invisible on the web: a dialog declared inside a screen's scro
 
 The tutorial redesign round, picked from mockups after a phone critique of the Gmail light build: the title sat below the search bar, a fake account initial sat in the bar for a user who never signed in, a seam ran between the status area and the bar, the drawer started below the bar with no current place marked, and the menu at the pill's left end missed half its taps because its touch box was only the glyph. The framework answers, all in the shell family: an app bar tone `tint` (a flat surfaceVariant band) whose pinned bar lends its background colour to the screen, which paints its safe area strip with it, so the status area and the bar read as one surface; a second right side bar action (`actionIcon2`, `(action2)`); a `[progress]` percent line at the bar's bottom edge; a `fade` attribute on `<screen>` that melts the scrolling content out under the pinned bar in strips of the bar's colour; a bottom slot in RgScreen, so a `<bottom-nav>` declared in a routed page pins under the scroll like a direct child, its selected icon in a primary container pill; a `[selected]` pill on `<row>` for the drawer's current place; the search pill's leading button grown to a full 44px touch box; the app bar's own icon buttons grown to a 40px touch box (the phone gate found them at exactly the 24px glyph); named avatar tones on `<row>` (`avatarTone="green"` and family, beside `varied`); and a `chart` icon (31 in the set). The tutorial rebuild on top of it (entry, path home, saved and progress tabs, about, lesson) is the round's integration test, and `examples/path-shell` is its recipe card. Preview grain: the preview is one static screen, so the fade veil and the two slots are runtime placement only; the tint band, the progress line, the second action and the selected pills paint in both preview renderers.
 
+## The react-native import fix (2026-11-17, version 0.1.4)
+
+Found by the tutorial app acting as the integration test: its progress service needed `Platform` from `react-native` to choose SQLite on device and AsyncStorage on web, and the compiler silently dropped the import while emitting its uses, which would have thrown a ReferenceError at runtime. Imports of `react` and `react-native` in a contributing file (entry component, child component, root service, custom pipe) now carry into the generated module like any other bare specifier. A carried name the module already defines, including one of codegen's own react or react-native imports, drops with a `GEN_IMPORT_COLLISION` warning and a TODO note, so a binding is never duplicated. The `@angular/*` and `@rangular/*` specifiers stay consumed and are never carried. Regression tests live in `tests/imports.test.ts`.
+
 ## Child components (Stage 3, M5)
 
 - **Resolution is by import.** The compiler follows the entry component's
@@ -1372,13 +1376,20 @@ The tutorial redesign round, picked from mockups after a phone critique of the G
 - **`import A = require('x')` cannot be carried.** The generated
   module is an ES module; the declaration is dropped with a
   `CMP_IMPORT_FORM` warning. Write an ES module import instead.
-- **Framework and relative imports are unchanged.** `@angular/*`
-  and `@rangular/*` names are consumed semantically and never
-  emitted; `react` and `react-native` imports are codegen's own.
-  Relative imports are followed and their classes inlined, as
-  before. One standing limit of that rule: only classes resolve
-  through relative imports, so a relative import of a file holding
-  no classes (a plain exported const, say) is not inlined.
+- **Framework and relative imports.** `@angular/*` and
+  `@rangular/*` names are consumed semantically and never
+  emitted. `react` and `react-native` imports in a contributing
+  file carry like any other bare specifier (fix, 2026-11-17,
+  version 0.1.4: a `Platform` import in a service used to drop
+  silently while its uses were emitted, leaving the name unbound
+  at runtime); a carried name the generated module already
+  defines, including one of codegen's own react or react-native
+  imports, drops with `GEN_IMPORT_COLLISION`, so a binding can
+  never be duplicated. Relative imports are followed and their
+  classes inlined, as before. One standing limit of that rule:
+  only classes resolve through relative imports, so a relative
+  import of a file holding no classes (a plain exported const,
+  say) is not inlined.
 
 ## HttpClient (Stage 3, M6)
 
