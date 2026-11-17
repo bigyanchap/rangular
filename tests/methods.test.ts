@@ -106,3 +106,44 @@ test('an unsupported statement warns and leaves a TODO, never broken code', () =
   assert.ok(diagnostics.some((d) => d.code === 'METHOD_UNSUPPORTED'));
   assert.match(code, /TODO\(Rangular\): unsupported in method 'loop': ForStatement/);
 });
+
+test('a field assigned and then read in the same method reads the written value (shadow local)', () => {
+  // The ngOnInit shape: assign a field, derive a second field from it,
+  // then branch on the second. In the class each read sees the value
+  // just written; a bare setter call would leave every later read on
+  // the stale render value, so codegen keeps a method-local shadow.
+  const { code } = compileClass(`
+    item: any = null;
+    itemId = 0;
+    ready = false;
+    load() {
+      const found = { id: 7 };
+      this.item = found;
+      this.itemId = this.item === null ? 0 : this.item.id;
+      if (this.itemId > 0) { this.ready = true; }
+    }
+  `);
+  assert.match(code, /let __shadowItem = item;/);
+  assert.match(code, /let __shadowItemId = itemId;/);
+  assert.match(code, /__shadowItem = found;\s+setItem\(__shadowItem\);/);
+  assert.match(code, /__shadowItemId = \(__shadowItem === null \? 0 : __shadowItem\.id\);\s+setItemId\(__shadowItemId\);/);
+  assert.match(code, /if \(__shadowItemId > 0\) \{\s+setReady\(true\);/);
+});
+
+test('a field assigned and never read again in the method keeps the plain setter form', () => {
+  const { code } = compileClass(`
+    count = 0;
+    reset() { this.count = 0; }
+  `);
+  assert.doesNotMatch(code, /__shadowCount/);
+  assert.match(code, /setCount\(0\);/);
+});
+
+test('a read before any assignment in the method stays on the render value', () => {
+  const { code } = compileClass(`
+    count = 1;
+    describe() { const label = 'n=' + this.count; this.count = 2; return label; }
+  `);
+  assert.doesNotMatch(code, /__shadowCount/);
+  assert.match(code, /const label = 'n=' \+ count;/);
+});

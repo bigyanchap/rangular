@@ -34,6 +34,19 @@ export function setterName(field: string): string {
   return 'set' + field.charAt(0).toUpperCase() + field.slice(1);
 }
 
+/**
+ * The method-local shadow for a state field that a method assigns and
+ * then reads again (react mode). Generated code holds fields in consts
+ * plus setters, so a read after `this.x = v` would see the stale render
+ * value, where the class reads the value it just wrote. A shadow local
+ * restores the class semantics: it starts as the render value, every
+ * assignment in the method updates it alongside the setter call, and
+ * reads of the field after its first assignment in the method go to it.
+ */
+export function shadowName(field: string): string {
+  return '__shadow' + field.charAt(0).toUpperCase() + field.slice(1);
+}
+
 const ASSIGN_OPS = new Set([
   ts.SyntaxKind.EqualsToken,
   ts.SyntaxKind.PlusEqualsToken,
@@ -145,6 +158,11 @@ interface Ctx {
    * in state mode they live in the preview state like any other field.
    */
   formFields?: Set<string>;
+  /**
+   * React mode: state fields this method assigns and then reads again,
+   * mapped to their method-local shadow variable (see shadowName).
+   */
+  shadowFields?: Map<string, string>;
   /** Set when the current statement uses an unsupported construct. */
   unsupported?: string;
   /** A statement specific fix line for the unsupported construct, when set. */
@@ -302,6 +320,9 @@ class Translator {
     if (c.methodNames.has(name)) return c.mode === 'state' ? `methods.${name}` : name;
     // Stage 8: a reactive form instance is ref-held in generated code.
     if (c.mode === 'react' && c.formFields?.has(name)) return `${name}Ref.current`;
+    // A field this method assigned earlier reads from its shadow local,
+    // which holds the value the class would see (see shadowName).
+    if (c.mode === 'react' && c.shadowFields?.has(name)) return c.shadowFields.get(name)!;
     return c.mode === 'state' ? `state.${name}` : name;
   }
 
@@ -352,13 +373,18 @@ class Translator {
       );
     }
     const set = setterName(field);
+    const shadow = c.shadowFields?.get(field);
+    const receiver = shadow ?? field;
     if (method === 'push') {
       const args = e.arguments.map((a) => this.expr(a)).join(', ');
       if (c.unsupported) return this.unsupportedLine(indent, c.unsupported);
+      if (shadow) return [`${indent}${shadow} = ${receiver}.concat(${args});`, `${indent}${set}(${shadow});`];
       return [`${indent}${set}(${field}.concat(${args}));`];
     }
     if ((method === 'pop' || method === 'shift') && e.arguments.length === 0) {
-      return [`${indent}${set}(${method === 'pop' ? `${field}.slice(0, -1)` : `${field}.slice(1)`});`];
+      const sliced = method === 'pop' ? `${receiver}.slice(0, -1)` : `${receiver}.slice(1)`;
+      if (shadow) return [`${indent}${shadow} = ${sliced};`, `${indent}${set}(${shadow});`];
+      return [`${indent}${set}(${sliced});`];
     }
     return this.unsupportedLine(
       indent,
@@ -400,6 +426,11 @@ class Translator {
             return [`${indent}this.${target.name} ${op} ${rhs};`];
           }
           const set = setterName(target.name);
+          const shadow = c.shadowFields?.get(target.name);
+          if (shadow) {
+            const value = op === '=' ? rhs : `${shadow} ${op.slice(0, -1)} ${rhs}`;
+            return [`${indent}${shadow} = ${value};`, `${indent}${set}(${shadow});`];
+          }
           if (op === '=') return [`${indent}${set}(${rhs});`];
           const binOp = op.slice(0, -1);
           return [`${indent}${set}(${target.name} ${binOp} ${rhs});`];
@@ -435,6 +466,13 @@ class Translator {
             return [ts.isPostfixUnaryExpression(e)
               ? `${indent}this.${target.name}${sym};`
               : `${indent}${sym}this.${target.name};`];
+          }
+          const shadowInc = c.shadowFields?.get(target.name);
+          if (shadowInc) {
+            return [
+              `${indent}${shadowInc} = ${shadowInc} ${delta};`,
+              `${indent}${setterName(target.name)}(${shadowInc});`,
+            ];
           }
           return [`${indent}${setterName(target.name)}(${target.name} ${delta});`];
         }
@@ -496,6 +534,79 @@ class Translator {
   }
 }
 
+/**
+ * React mode: find the state fields a method assigns and then reads
+ * again later in the same method (in source order, blocks and if/else
+ * branches flattened in order). Those fields get a method-local shadow
+ * (see shadowName), because the generated setter call does not update
+ * the render-scope const the bare field name reads. Reads inside the
+ * assigning statement's own right-hand side are not "later": they see
+ * the value from before that assignment, which is the render value or
+ * the shadow left by an earlier assignment, both already correct.
+ */
+export function findShadowedFields(
+  statements: ts.Statement[],
+  fieldNames: Set<string>,
+  methodNames: Set<string>,
+  stateFields: Set<string>,
+): Map<string, string> {
+  const shadowed = new Map<string, string>();
+  const assigned = new Set<string>();
+
+  const collectReads = (node: ts.Node, into: Set<string>): void => {
+    if (ts.isBinaryExpression(node) && ASSIGN_OPS.has(node.operatorToken.kind) && isThisProperty(node.left)) {
+      // The assignment target is a write, not a read; the right side reads.
+      collectReads(node.right, into);
+      return;
+    }
+    const self = isThisProperty(node);
+    if (self) {
+      if (fieldNames.has(self.name) && !methodNames.has(self.name)) into.add(self.name);
+      return;
+    }
+    ts.forEachChild(node, (child) => collectReads(child, into));
+  };
+  const collectAssigns = (node: ts.Node, into: Set<string>): void => {
+    if (ts.isBinaryExpression(node) && ASSIGN_OPS.has(node.operatorToken.kind)) {
+      const target = isThisProperty(node.left);
+      if (target && fieldNames.has(target.name)) into.add(target.name);
+    }
+    if ((ts.isPostfixUnaryExpression(node) || ts.isPrefixUnaryExpression(node)) &&
+      (node.operator === ts.SyntaxKind.PlusPlusToken || node.operator === ts.SyntaxKind.MinusMinusToken)) {
+      const target = isThisProperty(node.operand);
+      if (target && fieldNames.has(target.name)) into.add(target.name);
+    }
+    const call = thisMethodCall(node);
+    if (call && fieldNames.has(call.field) && MUTATING_ARRAY_METHODS.has(call.method)) into.add(call.field);
+    ts.forEachChild(node, (child) => collectAssigns(child, into));
+  };
+
+  const units: ts.Node[] = [];
+  const flatten = (list: ts.Statement[]): void => {
+    for (const stmt of list) {
+      if (ts.isBlock(stmt)) { flatten([...stmt.statements]); continue; }
+      if (ts.isIfStatement(stmt)) {
+        units.push(stmt.expression);
+        flatten([stmt.thenStatement]);
+        if (stmt.elseStatement) flatten([stmt.elseStatement]);
+        continue;
+      }
+      units.push(stmt);
+    }
+  };
+  flatten(statements);
+
+  for (const unit of units) {
+    const reads = new Set<string>();
+    collectReads(unit, reads);
+    for (const name of reads) {
+      if (assigned.has(name) && stateFields.has(name)) shadowed.set(name, shadowName(name));
+    }
+    collectAssigns(unit, assigned);
+  }
+  return shadowed;
+}
+
 export interface TranslatedMethod {
   name: string;
   /** Parameter source texts (react mode), e.g. `step: number = 1`. */
@@ -537,14 +648,22 @@ export function translateMethods(
   for (const method of component.methodDetails) {
     const statements = bodyStatements(method);
     if (!statements) continue;
+    const shadowFields = mode === 'react'
+      ? findShadowedFields(statements, fieldNames, methodNames, stateFields)
+      : new Map<string, string>();
     const ctx: Ctx = {
       mode, fieldNames, methodNames, stateFields,
       methodName: method.name, diagnostics,
       outputCallbacks: options.outputCallbacks,
       formFields: options.formFields,
+      shadowFields,
     };
     const translator = new Translator(ctx);
     const lines = translator.statements(statements, '');
+    if (shadowFields.size) {
+      const prologue = [...shadowFields.entries()].map(([field, shadow]) => `let ${shadow} = ${field};`);
+      lines.unshift(...prologue);
+    }
     methods.push({
       name: method.name,
       paramTexts: method.params.map((p) => p.text),

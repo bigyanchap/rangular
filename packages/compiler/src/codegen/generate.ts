@@ -1016,6 +1016,11 @@ class Generator {
     for (const name of this.rootServices.keys()) visit(name);
 
     const lines: string[] = ['const __container = new Container();'];
+    // Built-ins register first: HttpClient has no dependencies, and a root
+    // service may inject it, which resolves during that service's own
+    // registration line. Registering it after the services made such an
+    // app crash at startup with "no provider registered for token".
+    if (needsHttp) lines.push(`__container.register(HttpClient, new HttpClient());`);
     for (const name of order) {
       const svc = this.rootServices.get(name)!;
       const args = svc.constructorDeps.map((d) => {
@@ -1025,7 +1030,6 @@ class Generator {
       });
       lines.push(`__container.register(${name}, new ${name}(${args.join(', ')}));`);
     }
-    if (needsHttp) lines.push(`__container.register(HttpClient, new HttpClient());`);
     return lines;
   }
 

@@ -176,6 +176,32 @@ test('services can inject services; registrations are dependency-ordered', () =>
   assert.match(result.code, /constructor\(private mail: MailService\) \{\s+super\(\);/);
 });
 
+test('a service can inject HttpClient; the built-in registers before the service', () => {
+  const result = compileProject({
+    'user.service.ts': `
+      import { Injectable } from '@angular/core';
+      import { HttpClient } from '@angular/common/http';
+      @Injectable({ providedIn: 'root' })
+      export class UserService {
+        constructor(private http: HttpClient) {}
+        load() { return this.http.get('https://example.com/user'); }
+      }
+    `,
+    'app.component.ts': `
+      import { Component } from '@angular/core';
+      import { UserService } from './user.service';
+      @Component({ selector: 'app-x', template: '<screen><p>user</p></screen>' })
+      export class AppComponent { constructor(private user: UserService) {} }
+    `,
+  }, 'app.component.ts');
+  assert.equal(hasErrors(result.diagnostics), false, JSON.stringify(result.diagnostics));
+  assert.match(result.code, /new UserService\(__container\.get<HttpClient>\(HttpClient\)\)/);
+  const httpReg = result.code.indexOf('__container.register(HttpClient');
+  const userReg = result.code.indexOf('__container.register(UserService');
+  assert.ok(httpReg >= 0 && userReg > httpReg,
+    'HttpClient registers before UserService, whose constructor resolves it during registration');
+});
+
 test('an unknown constructor token is a DI_UNKNOWN_TOKEN error with a fix', () => {
   const result = compileProject({
     'app.component.ts': `
