@@ -1,0 +1,8 @@
+<screen>
+  <appbar title="Notes"></appbar>
+  <p *ngIf="!db.ready">Opening the database...</p>
+  <input [(ngModel)]="draft" placeholder="Write a note">
+  <button (click)="addNote()">Add note</button>
+  <p *ngIf="db.ready && db.notes.length === 0">No notes yet. Add your first note above.</p>
+  <row *ngFor="let n of db.notes" [title]="n.text" (click)="db.remove(n.id)"></row>
+</screen>

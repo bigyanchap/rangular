@@ -58,6 +58,8 @@ Not React: no JSX, no hooks, no useState in source, source is classes + HTML tem
 - [Insights - recipe card](examples/insights/README.md): Stage 15 Tier 3, breadcrumbs, an avatar group, bar line and pie charts, a calendar month view, a timeline, a photo lightbox, a small editor, a colour picker, and a masonry grid
 - [Code Block - recipe card](examples/code-block/README.md): Tutorial round, a <code> block compiling to RgCode, a dark editor surface with a monospace face in both themes, long lines scrolling horizontally
 - [Gradient Shell - recipe card](examples/gradient-shell/README.md): Gradient shell round, a pinned gradient app bar with a search pill projected into it, gradient surfaces, labelled section headers, and rows with number tiles and bookmark actions
+- [Path Shell - recipe card](examples/path-shell/README.md): Option A round, a tint app bar with chrome blend, two actions and a progress line, a screen fade under the pinned bar, a selected drawer row, path lesson rows with named tiles, and a bottom tab bar pinned by the screen bottom slot
+- [SQLite Notes - recipe card](examples/sqlite-notes/README.md): The blessed database pattern, one root service owns expo-sqlite (open, create table, runAsync and getAllAsync in .then form, results assigned to fields), screens bind to the service and never write SQL
 
 ## Packages
 
