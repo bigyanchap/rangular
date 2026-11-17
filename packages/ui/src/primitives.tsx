@@ -43,7 +43,7 @@ import { ICON_PATHS } from './icons';
 import { applyMask } from './mask';
 import { chartModel } from './chart';
 import type { ChartShape } from './chart';
-import { AVATAR_TONES, COLOR_SWATCHES } from './palette';
+import { AVATAR_TONES, AVATAR_TONE_NAMES, COLOR_SWATCHES } from './palette';
 import {
   MONTH_SHORT,
   applyWheelValue,
@@ -196,6 +196,46 @@ function buildStyles(t: Theme) {
       paddingVertical: 12,
       shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.14,
       shadowRadius: 4, elevation: 3,
+    },
+    // Tint app bar (Option A round, 2026-11-17): tone="tint" makes
+    // the bar a flat surfaceVariant band with no shadow, and the
+    // screen paints its safe area strip the same colour, so the
+    // clock and battery sit on the header's own surface and no
+    // seam shows between the status area and the bar.
+    appbarTint: {
+      borderRadius: 0, backgroundColor: c.surfaceVariant,
+      paddingVertical: 12,
+    },
+    // The app bar icon button touch box (Option A round,
+    // 2026-11-17): the bar's menu, back and action buttons get a
+    // 40px box around the 24px glyph, so the tap lands on the
+    // button, not on the glyph alone. Found by the phone gate:
+    // the boxes were exactly the glyph, 24 by 24.
+    appbarButton: {
+      width: 40, height: 40, alignItems: 'center', justifyContent: 'center',
+    },
+    // The app bar progress line (Option A round, 2026-11-17): a
+    // 3px track at the bar's bottom edge with a primary fill, the
+    // lesson position line the learning apps draw under the bar.
+    appbarProgressTrack: { height: 3, backgroundColor: c.border },
+    appbarProgressFill: { height: 3, backgroundColor: c.primary },
+    // The bottom nav selected pill (Option A round, 2026-11-17):
+    // the selected tab's icon sits in a primary container pill,
+    // the Material 3 navigation bar indicator.
+    navItemIconWrapSelected: {
+      backgroundColor: c.primaryContainer, borderRadius: t.radius.full,
+      paddingHorizontal: 14, paddingVertical: 3,
+    },
+    // A selected row (Option A round, 2026-11-17): the drawer's
+    // current place reads as a filled pill, not a plain row.
+    rowSelected: {
+      backgroundColor: c.primaryContainer, borderRadius: t.radius.lg,
+    },
+    // The search pill's leading button (Option A round,
+    // 2026-11-17): a full 44px touch box, not just the glyph, so
+    // the menu at the pill's left end takes the tap every time.
+    inputPillLeading: {
+      width: 44, height: 44, alignItems: 'center', justifyContent: 'center',
     },
     // Section chip (Gmail light round, 2026-11-17): a labelled
     // section may open with a round solid chip holding an icon
@@ -914,7 +954,7 @@ export const ActivatedRouteContext = createContext<any>(null);
  * it, or without `pin`, renders in place exactly as before.
  */
 const RgHeaderSlotContext = createContext<{
-  register: (key: string, node: React.ReactNode) => void;
+  register: (key: string, node: React.ReactNode, chrome?: string) => void;
   clear: (key: string) => void;
 } | null>(null);
 
@@ -995,7 +1035,38 @@ function useRgOverlay(tree: React.ReactNode, active: boolean): boolean {
   return slot !== null;
 }
 
-export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, onEndReached }: any) {
+/**
+ * The bottom slot (Option A round, 2026-11-17): the screen lends
+ * a bottom navigation bar declared anywhere inside it (a routed
+ * tab page, not just a direct child) a place under the
+ * ScrollView, the same pattern as the header slot. Before this,
+ * RgScreen lifted only direct children, so a tab bar inside a
+ * routed page rendered in flow at the end of the scroll.
+ * Registration is keyed on the bar's content, like the overlays.
+ */
+const RgBottomSlotContext = createContext<{
+  register: (key: string, node: React.ReactNode) => void;
+  clear: (key: string) => void;
+} | null>(null);
+
+function useRgBottom(tree: React.ReactNode): boolean {
+  const slot = useContext(RgBottomSlotContext);
+  const key = overlayKeyOf(tree);
+  useLayoutEffect(() => {
+    if (!slot) return;
+    slot.register(key, tree);
+    return () => slot.clear(key);
+  });
+  return slot !== null;
+}
+
+// The scroll fade steps (Option A round, 2026-11-17): six 4px
+// strips of the header's colour at falling opacity, the poor
+// man's gradient, so content melts out under a pinned bar with
+// no gradient dependency.
+const VEIL_STEPS = [0.95, 0.8, 0.64, 0.48, 0.32, 0.16];
+
+export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, onEndReached, fade }: any) {
   const inherited = useRgTheme();
   const active = mode === 'dark' || mode === 'light' ? makeTheme(mode) : inherited;
   const styles = stylesFor(active);
@@ -1006,20 +1077,53 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
   // with the same key is a no-op.
   const [headerNode, setHeaderNode] = useState<React.ReactNode>(null);
   const headerKeyRef = useRef<string | null>(null);
+  // The chrome colour (Option A round, 2026-11-17): a pinned bar
+  // may lend the screen its background colour, and the screen
+  // paints its safe area strip with it, so the status area and
+  // the bar read as one surface with no seam.
+  const [chrome, setChrome] = useState<string | undefined>(undefined);
   const headerSlot = useRef({
-    register: (key: string, node: React.ReactNode) => {
+    register: (key: string, node: React.ReactNode, chromeColor?: string) => {
       if (headerKeyRef.current !== key) {
         headerKeyRef.current = key;
         setHeaderNode(node);
+        setChrome(chromeColor);
       }
     },
     clear: (key: string) => {
       if (headerKeyRef.current === key) {
         headerKeyRef.current = null;
         setHeaderNode(null);
+        setChrome(undefined);
       }
     },
   }).current;
+  // The bottom slot state, mirroring the header slot.
+  const [bottomNode, setBottomNode] = useState<React.ReactNode>(null);
+  const bottomKeyRef = useRef<string | null>(null);
+  const bottomSlot = useRef({
+    register: (key: string, node: React.ReactNode) => {
+      if (bottomKeyRef.current !== key) {
+        bottomKeyRef.current = key;
+        setBottomNode(node);
+      }
+    },
+    clear: (key: string) => {
+      if (bottomKeyRef.current === key) {
+        bottomKeyRef.current = null;
+        setBottomNode(null);
+      }
+    },
+  }).current;
+  // The scroll fade (Option A round, 2026-11-17): with `fade`,
+  // the screen tracks the scroll offset and draws the veil under
+  // the pinned bar, deepening as the content scrolls under it.
+  const [scrollY, setScrollY] = useState(0);
+  const handleScroll = (e: any) => {
+    if (onEndReached) onScroll(e);
+    if (fade) setScrollY(e?.nativeEvent?.contentOffset?.y ?? 0);
+  };
+  const veilFactor = fade ? Math.min(1, Math.max(0, scrollY / 24)) : 0;
   // The overlay slot: overlays inside the scrollable content
   // register here while open, and the screen draws them above
   // everything, anchored to the screen box.
@@ -1060,10 +1164,12 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
   );
   return (
     <RgThemeContext.Provider value={active}>
-      <SafeAreaView style={[styles.screen, style]}>
+      <SafeAreaView style={[styles.screen, chrome ? { backgroundColor: chrome } : null, style]}>
         <RgOverlaySlotContext.Provider value={overlaySlot}>
+        <RgBottomSlotContext.Provider value={bottomSlot}>
         <RgHeaderSlotContext.Provider value={headerSlot}>
           {headerNode}
+          <View style={{ flex: 1, position: 'relative' }}>
           <KeyboardAvoidingView
             style={{ flex: 1 }}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -1075,28 +1181,39 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
             refreshControl={onRefresh
               ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} />
               : undefined}
-            onScroll={onEndReached ? onScroll : undefined}
-            scrollEventThrottle={64}
+            onScroll={onEndReached || fade ? handleScroll : undefined}
+            scrollEventThrottle={fade ? 32 : 64}
           >
             {body}
           </ScrollView>
           </KeyboardAvoidingView>
+          {fade && veilFactor > 0 ? (
+            <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0 }}>
+              {VEIL_STEPS.map((a, i) => (
+                <View key={i} style={{ height: 4, backgroundColor: chrome ?? styles.screen.backgroundColor, opacity: a * veilFactor }} />
+              ))}
+            </View>
+          ) : null}
+          </View>
           {navs}
+          {bottomNode}
           {overlayNodes}
         </RgHeaderSlotContext.Provider>
+        </RgBottomSlotContext.Provider>
         </RgOverlaySlotContext.Provider>
       </SafeAreaView>
     </RgThemeContext.Provider>
   );
 }
 
-export function RgAppbar({ title, search, menu, avatar, onMenu, titleAlign, tone, pin, back, onBack, actionIcon, onAction, children }: any) {
+export function RgAppbar({ title, search, menu, avatar, onMenu, titleAlign, tone, pin, back, onBack, actionIcon, onAction, actionIcon2, onAction2, progress, children }: any) {
   const t = useRgTheme();
   const c = t.colors;
   const styles = stylesFor(t);
   const slot = useContext(RgHeaderSlotContext);
   const gradient = tone === 'gradient';
   const plain = tone === 'plain';
+  const tint = tone === 'tint';
   const iconRole = gradient ? 'onPrimary' : 'textMuted';
   // Menu and avatar are opt-in. An app bar shows a menu button only
   // when the app asks for one (the boolean `menu` attribute), and an
@@ -1105,7 +1222,7 @@ export function RgAppbar({ title, search, menu, avatar, onMenu, titleAlign, tone
   // from the title's first letter in apps with no users and no sign
   // in at all (found by the Rangular Tutorial app, 2026-11-12).
   const menuNode = menu ? (onMenu ? (
-    <Pressable onPress={onMenu} style={({ pressed }) => [pressed && styles.buttonPressed]}>
+    <Pressable onPress={onMenu} hitSlop={4} style={({ pressed }) => [styles.appbarButton, pressed && styles.buttonPressed]}>
       <RgIcon name="menu" size={24} color={iconRole} />
     </Pressable>
   ) : <RgIcon name="menu" size={24} color={iconRole} />) : null;
@@ -1113,7 +1230,7 @@ export function RgAppbar({ title, search, menu, avatar, onMenu, titleAlign, tone
   // attribute puts a chevron at the left, wired to (back); it takes
   // the left slot over the menu, a screen shows one or the other.
   const backNode = back ? (onBack ? (
-    <Pressable onPress={onBack} style={({ pressed }) => [pressed && styles.buttonPressed]}>
+    <Pressable onPress={onBack} hitSlop={4} style={({ pressed }) => [styles.appbarButton, pressed && styles.buttonPressed]}>
       <RgIcon name="chevron-left" size={24} color={iconRole} />
     </Pressable>
   ) : <RgIcon name="chevron-left" size={24} color={iconRole} />) : null;
@@ -1128,12 +1245,24 @@ export function RgAppbar({ title, search, menu, avatar, onMenu, titleAlign, tone
   // bookmark here, filled or outline by the icon name the app
   // binds, so the state reads at a glance.
   const actionNode = actionIcon ? (onAction ? (
-    <Pressable onPress={onAction} style={({ pressed }) => [pressed && styles.buttonPressed]}>
+    <Pressable onPress={onAction} hitSlop={4} style={({ pressed }) => [styles.appbarButton, pressed && styles.buttonPressed]}>
       <RgIcon name={actionIcon} size={24} color={gradient ? 'onPrimary' : 'primary'} />
     </Pressable>
   ) : <RgIcon name={actionIcon} size={24} color={gradient ? 'onPrimary' : 'primary'} />) : null;
+  // Second action (Option A round, 2026-11-17): `actionIcon2`
+  // names a second icon button at the right, wired to (action2),
+  // so a bar can carry search and a shortcut side by side. With
+  // any action present the avatar steps aside, as before.
+  const action2Node = actionIcon2 ? (onAction2 ? (
+    <Pressable onPress={onAction2} hitSlop={4} style={({ pressed }) => [styles.appbarButton, pressed && styles.buttonPressed]}>
+      <RgIcon name={actionIcon2} size={24} color={gradient ? 'onPrimary' : 'primary'} />
+    </Pressable>
+  ) : <RgIcon name={actionIcon2} size={24} color={gradient ? 'onPrimary' : 'primary'} />) : null;
   const leftNode = back ? backNode : menuNode;
-  const rightNode = actionIcon ? actionNode : avatarNode;
+  const rightBits = [actionNode, action2Node].filter(Boolean);
+  const rightNode = rightBits.length ? (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md }}>{rightBits}</View>
+  ) : avatarNode;
   const titleNode = search
     ? <Text style={[styles.searchText, gradient ? { color: c.onPrimary } : null, titleAlign === 'center' ? styles.appbarTitleCenter : null]}>{search}</Text>
     : <Text style={[styles.appbarTitle, gradient ? { color: c.onPrimary } : null, titleAlign === 'center' ? styles.appbarTitleCenter : null]}>{title}</Text>;
@@ -1153,7 +1282,8 @@ export function RgAppbar({ title, search, menu, avatar, onMenu, titleAlign, tone
   // above the child.
   const hasRow = !!(title || search || leftNode || rightNode);
   const bar = (
-    <View style={[styles.appbar, { flexDirection: 'column', alignItems: 'stretch' }, gradient ? styles.appbarGradient : null, plain ? styles.appbarPlain : null]}>
+    <>
+    <View style={[styles.appbar, { flexDirection: 'column', alignItems: 'stretch' }, gradient ? styles.appbarGradient : null, plain ? styles.appbarPlain : null, tint ? styles.appbarTint : null]}>
       {gradient ? <GradientFill /> : null}
       {hasRow ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md }}>
@@ -1174,6 +1304,12 @@ export function RgAppbar({ title, search, menu, avatar, onMenu, titleAlign, tone
       ) : null}
       {children ? <View style={[styles.appbarChildren, hasRow ? null : { marginTop: 0 }]}>{children}</View> : null}
     </View>
+    {progress !== undefined && progress !== null ? (
+      <View style={styles.appbarProgressTrack}>
+        <View style={[styles.appbarProgressFill, { width: `${Math.min(100, Math.max(0, Number(progress) || 0))}%` }]} />
+      </View>
+    ) : null}
+    </>
   );
   // Pin (gradient shell round, 2026-11-17): with `pin` and a screen
   // above it, the bar registers into the screen's header slot and
@@ -1182,8 +1318,13 @@ export function RgAppbar({ title, search, menu, avatar, onMenu, titleAlign, tone
   // its children's scalar values, so the pinned bar follows a
   // search field's typed text but never loops on a plain re-render.
   const pinKey = pin
-    ? [title ?? '', search ?? '', back ? 'back' : '', menu ? 'menu' : '', avatar ?? '', actionIcon ?? '', titleAlign ?? '', tone ?? '', childrenKeyOf(children)].join('|')
+    ? [title ?? '', search ?? '', back ? 'back' : '', menu ? 'menu' : '', avatar ?? '', actionIcon ?? '', actionIcon2 ?? '', progress === undefined || progress === null ? '' : String(Math.round(Number(progress) || 0)), titleAlign ?? '', tone ?? '', childrenKeyOf(children)].join('|')
     : '';
+  // The chrome colour this bar lends the screen (Option A round,
+  // 2026-11-17): the flat bands (tint, plain) lend their
+  // background, so the safe area strip above the bar paints the
+  // same colour and no seam shows. Other tones lend nothing.
+  const chrome = tint ? c.surfaceVariant : plain ? c.background : undefined;
   // Registration uses a layout effect (Gmail light round,
   // 2026-11-17): the pinned bar must be in the screen's header
   // slot before the frame paints, or the content paints one frame
@@ -1191,7 +1332,7 @@ export function RgAppbar({ title, search, menu, avatar, onMenu, titleAlign, tone
   // seen on back navigation. A passive effect runs after paint.
   useLayoutEffect(() => {
     if (!pin || !slot) return;
-    slot.register(pinKey, bar);
+    slot.register(pinKey, bar, chrome);
     return () => slot.clear(pinKey);
   }, [pinKey]);
   if (pin && slot) return null;
@@ -1407,7 +1548,7 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
         {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
         <View style={[styles.inputPill, pillTone === 'white' ? { backgroundColor: t.colors.surface } : null]}>
           {leadingIcon ? (
-            <Pressable onPress={onLeading} style={({ pressed }) => [pressed && styles.buttonPressed]}>
+            <Pressable onPress={onLeading} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} style={({ pressed }) => [styles.inputPillLeading, pressed && styles.buttonPressed]}>
               <RgIcon name={leadingIcon} size={20} color="textMuted" />
             </Pressable>
           ) : (
@@ -1772,7 +1913,7 @@ function SwipeRow({ actions, children }: any) {
   );
 }
 
-export function RgRow({ title, subtitle, detail, time, avatar, avatarText, avatarTone, icon, actionIcon, onAction, onPress, badge, tooltip, children }: any) {
+export function RgRow({ title, subtitle, detail, time, avatar, avatarText, avatarTone, icon, actionIcon, onAction, onPress, badge, tooltip, selected, children }: any) {
   const t = useRgTheme();
   const c = t.colors;
   const styles = stylesFor(t);
@@ -1792,7 +1933,7 @@ export function RgRow({ title, subtitle, detail, time, avatar, avatarText, avata
   // Gmail list look where each row's tile carries its own tint.
   const tonePair = avatarTone === 'varied'
     ? AVATAR_TONES[[...avatarLabel].reduce((acc, ch) => acc + ch.charCodeAt(0), 0) % AVATAR_TONES.length]
-    : null;
+    : avatarTone ? AVATAR_TONE_NAMES[avatarTone] ?? null : null;
   const content = (
     <>
             {icon ? (
@@ -1825,14 +1966,14 @@ export function RgRow({ title, subtitle, detail, time, avatar, avatarText, avata
   if (onPress || tip.show) {
     inner = (
       <View style={styles.tooltipWrap}>
-        <Pressable onPress={onPress} onLongPress={tip.show} style={({ pressed }: any) => [styles.row, pressed && { opacity: 0.7 }]}>
+        <Pressable onPress={onPress} onLongPress={tip.show} style={({ pressed }: any) => [styles.row, selected && styles.rowSelected, pressed && { opacity: 0.7 }]}>
           {content}
         </Pressable>
         {tip.bubble}
       </View>
     );
   } else {
-    inner = <View style={styles.row}>{content}</View>;
+    inner = <View style={[styles.row, selected && styles.rowSelected]}>{content}</View>;
   }
   // Swipe actions (Stage 15): <row-action> declarations among the
   // row's children turn the row into a SwipeRow; the declarations
@@ -2885,7 +3026,7 @@ export function RgBottomNav({ index, onChange, children, style }: any) {
     items[i]?.onPress?.();
     onChange?.(i);
   };
-  return (
+  const tree = (
     <View style={[styles.bottomNav, style]}>
       {items.map((item, i) => {
         const selected = i === active;
@@ -2897,7 +3038,7 @@ export function RgBottomNav({ index, onChange, children, style }: any) {
             accessibilityState={{ selected }}
             style={styles.navItem}
           >
-            <View style={styles.navItemIconWrap}>
+            <View style={[styles.navItemIconWrap, selected && styles.navItemIconWrapSelected]}>
               {item.icon ? (
                 <RgIcon name={item.icon} size={24} color={selected ? 'primary' : 'textMuted'} />
               ) : null}
@@ -2913,6 +3054,8 @@ export function RgBottomNav({ index, onChange, children, style }: any) {
       })}
     </View>
   );
+  const slotted = useRgBottom(tree);
+  return slotted ? null : tree;
 }
 
 /**

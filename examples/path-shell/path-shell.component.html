@@ -1,0 +1,24 @@
+<screen fade>
+  <appbar pin tone="tint" title="Rangular" menu (menu)="openNav()" actionIcon="search" (action)="goSearch()" actionIcon2="bookmark" (action2)="goSaved()" [progress]="pct"></appbar>
+  <drawer [open]="navOpen" (close)="closeNav()">
+    <section label="Rangular Tutorial" meta="95 lessons, in order"></section>
+    <list>
+      <row icon="home" title="Learn" selected></row>
+      <row icon="bookmark" title="Saved lessons"></row>
+      <row icon="chart" title="Your progress"></row>
+      <row icon="info" title="About"></row>
+    </list>
+  </drawer>
+  <h1>Your path</h1>
+  <p>3 of 95 lessons done. The next one is ready when you are.</p>
+  <section label="Getting started" plain meta="2 of 5 done">
+    <row avatar avatarText="✓" avatarTone="green" title="What Rangular is" subtitle="Angular in, native out"></row>
+    <row avatar avatarText="3" avatarTone="blue" title="Buttons and events" subtitle="Tap, count, toast"></row>
+  </section>
+  <bottom-nav [index]="tab" (change)="pick($event)">
+    <nav-item icon="home" label="Learn"></nav-item>
+    <nav-item icon="bookmark" label="Saved"></nav-item>
+    <nav-item icon="chart" label="Progress"></nav-item>
+    <nav-item icon="info" label="About"></nav-item>
+  </bottom-nav>
+</screen>
