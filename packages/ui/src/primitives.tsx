@@ -16,12 +16,15 @@
  * `RgThemeProvider` does the same job standalone. With no provider and no
  * prop, the default theme is light, the original Rangular Material look.
  */
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
   FlatList,
   Image,
+  InputAccessoryView,
+  Keyboard,
+  KeyboardAvoidingView,
   PanResponder,
   Platform,
   Pressable,
@@ -40,7 +43,7 @@ import { ICON_PATHS } from './icons';
 import { applyMask } from './mask';
 import { chartModel } from './chart';
 import type { ChartShape } from './chart';
-import { COLOR_SWATCHES } from './palette';
+import { AVATAR_TONES, COLOR_SWATCHES } from './palette';
 import {
   MONTH_SHORT,
   applyWheelValue,
@@ -183,6 +186,37 @@ function buildStyles(t: Theme) {
       borderRadius: 0, backgroundColor: 'transparent',
       paddingVertical: t.spacing.md,
     },
+    // Plain app bar (Gmail light round, 2026-11-17): tone="plain"
+    // makes the bar a full width white band with a soft shadow, the
+    // Gmail shell: the visible chrome is the search pill the bar
+    // carries as a child, not the bar itself. The shadow colour is
+    // the platform default, so no hex lives here.
+    appbarPlain: {
+      borderRadius: 0, backgroundColor: c.surface,
+      paddingVertical: 12,
+      shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.14,
+      shadowRadius: 4, elevation: 3,
+    },
+    // Section chip (Gmail light round, 2026-11-17): a labelled
+    // section may open with a round solid chip holding an icon
+    // instead of the gradient bar, the Gmail section marker.
+    sectionChip: {
+      width: 28, height: 28, borderRadius: 14, flexShrink: 0,
+      backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center',
+    },
+    // The keyboard Done bar (Gmail light round, 2026-11-17): the
+    // iOS input accessory every text field carries, a right aligned
+    // Done that dismisses the keyboard.
+    keyboardDoneBar: {
+      flexDirection: 'row', justifyContent: 'flex-end',
+      backgroundColor: c.surfaceVariant,
+      borderTopWidth: 1, borderTopColor: c.border,
+      paddingHorizontal: t.spacing.md, paddingVertical: t.spacing.sm,
+    },
+    keyboardDoneText: {
+      color: c.primary, fontWeight: '600',
+      fontSize: t.typography.body.fontSize,
+    },
     appbarChildren: { marginTop: t.spacing.sm },
     // The gradient surface (gradient shell round, 2026-11-17): a
     // rounded container the brand gradient fills; children sit in a
@@ -282,7 +316,7 @@ function buildStyles(t: Theme) {
     // apps. The field inside carries no border of its own.
     inputPill: {
       flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm,
-      backgroundColor: c.surface, borderRadius: t.radius.full,
+      backgroundColor: c.surfaceVariant, borderRadius: t.radius.full,
       paddingHorizontal: t.spacing.md, minHeight: 48,
       borderWidth: 1, borderColor: c.border,
     },
@@ -374,6 +408,7 @@ function buildStyles(t: Theme) {
       borderTopLeftRadius: t.radius.xl, borderTopRightRadius: t.radius.xl,
       paddingHorizontal: t.spacing.lg, paddingTop: t.spacing.sm, paddingBottom: t.spacing.xxl,
       ...t.elevation.level2,
+      flexDirection: 'column', gap: t.spacing.md,
     },
     sheetHandle: {
       alignSelf: 'center', width: 36, height: 4, borderRadius: t.radius.full,
@@ -382,6 +417,7 @@ function buildStyles(t: Theme) {
     dialogPanel: {
       backgroundColor: c.surface, borderRadius: t.radius.xl,
       padding: t.spacing.xl, ...t.elevation.level2,
+      flexDirection: 'column', gap: t.spacing.md,
     },
     dialogTitle: {
       fontSize: t.typography.title.fontSize, lineHeight: t.typography.title.lineHeight,
@@ -480,6 +516,7 @@ function buildStyles(t: Theme) {
     autoOptionText: { fontSize: t.typography.body.fontSize, color: c.text },
     // Tabs (Stage 11): a label bar with a hairline under it, the
     // selected label in the primary colour with a 3px indicator bar.
+    tabPanel: { flexDirection: 'column', gap: t.spacing.md },
     tabsHeader: {
       flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: c.border,
@@ -505,7 +542,7 @@ function buildStyles(t: Theme) {
     panelTitles: { flex: 1 },
     panelTitle: { fontSize: t.typography.body.fontSize, fontWeight: '600', color: c.text },
     panelSubtitle: { fontSize: t.typography.caption.fontSize, color: c.textMuted },
-    panelBody: { paddingBottom: t.spacing.lg },
+    panelBody: { paddingBottom: t.spacing.lg, gap: t.spacing.md },
     // Table (Stage 11): header labels over hairline separated rows,
     // every column an equal share, the plain Material table look.
     table: {},
@@ -574,6 +611,7 @@ function buildStyles(t: Theme) {
       width: 280, maxWidth: '85%', height: '100%', backgroundColor: c.surface,
       paddingHorizontal: t.spacing.lg, paddingTop: t.spacing.xxl, paddingBottom: t.spacing.lg,
       ...t.elevation.level2,
+      flexDirection: 'column', gap: t.spacing.md,
     },
     selectOption: {
       flexDirection: 'row', alignItems: 'center', gap: t.spacing.md,
@@ -584,6 +622,7 @@ function buildStyles(t: Theme) {
     // Stepper (Stage 14): a header row of numbered circles joined
     // by hairlines, the selected step in the primary colour, a
     // completed step carrying a check.
+    stepPanel: { flexDirection: 'column', gap: t.spacing.md },
     stepperHeader: { flexDirection: 'row', alignItems: 'flex-start' },
     stepHead: { alignItems: 'center', width: 72 },
     stepCircle: {
@@ -854,6 +893,16 @@ export function RgGradient({ children, style }: any) {
 }
 
 /**
+ * The current route's ActivatedRoute, provided by the generated
+ * outlet around the routed component. Angular provides
+ * ActivatedRoute through the outlet's injector, so any component
+ * in the routed subtree can inject it, not only the routed
+ * component itself; this context is the same idea. The value is
+ * the runtime's ActivatedRoute instance for the active route.
+ */
+export const ActivatedRouteContext = createContext<any>(null);
+
+/**
  * The header slot a screen offers its pinned app bar (gradient
  * shell round, 2026-11-17). An app bar written with `pin` inside a
  * screen registers its rendered bar here instead of rendering in
@@ -930,7 +979,13 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
       <SafeAreaView style={[styles.screen, style]}>
         <RgHeaderSlotContext.Provider value={headerSlot}>
           {headerNode}
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
           <ScrollView
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
             contentContainerStyle={styles.screenContent}
             refreshControl={onRefresh
               ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} />
@@ -940,6 +995,7 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
           >
             {body}
           </ScrollView>
+          </KeyboardAvoidingView>
           {navs}
         </RgHeaderSlotContext.Provider>
       </SafeAreaView>
@@ -953,6 +1009,7 @@ export function RgAppbar({ title, search, menu, avatar, onMenu, titleAlign, tone
   const styles = stylesFor(t);
   const slot = useContext(RgHeaderSlotContext);
   const gradient = tone === 'gradient';
+  const plain = tone === 'plain';
   const iconRole = gradient ? 'onPrimary' : 'textMuted';
   // Menu and avatar are opt-in. An app bar shows a menu button only
   // when the app asks for one (the boolean `menu` attribute), and an
@@ -1003,25 +1060,32 @@ export function RgAppbar({ title, search, menu, avatar, onMenu, titleAlign, tone
   // into the bar renders under the title row, inside the bar: a
   // search pill under the title of a gradient shell bar is the
   // shape this exists for. Before this, bar children were dropped.
+  // Empty title row (Gmail light round, 2026-11-17): a bar whose
+  // whole face is a child (the Gmail shell, a search pill in a
+  // plain bar) renders no title row at all, so no empty band sits
+  // above the child.
+  const hasRow = !!(title || search || leftNode || rightNode);
   const bar = (
-    <View style={[styles.appbar, { flexDirection: 'column', alignItems: 'stretch' }, gradient ? styles.appbarGradient : null]}>
+    <View style={[styles.appbar, { flexDirection: 'column', alignItems: 'stretch' }, gradient ? styles.appbarGradient : null, plain ? styles.appbarPlain : null]}>
       {gradient ? <GradientFill /> : null}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md }}>
-        {titleAlign === 'center' ? (
-          <>
-            <View style={styles.appbarSide}>{leftNode}</View>
-            {titleNode}
-            <View style={styles.appbarSideEnd}>{rightNode}</View>
-          </>
-        ) : (
-          <>
-            {leftNode}
-            {titleNode}
-            {rightNode}
-          </>
-        )}
-      </View>
-      {children ? <View style={styles.appbarChildren}>{children}</View> : null}
+      {hasRow ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md }}>
+          {titleAlign === 'center' ? (
+            <>
+              <View style={styles.appbarSide}>{leftNode}</View>
+              {titleNode}
+              <View style={styles.appbarSideEnd}>{rightNode}</View>
+            </>
+          ) : (
+            <>
+              {leftNode}
+              {titleNode}
+              {rightNode}
+            </>
+          )}
+        </View>
+      ) : null}
+      {children ? <View style={[styles.appbarChildren, hasRow ? null : { marginTop: 0 }]}>{children}</View> : null}
     </View>
   );
   // Pin (gradient shell round, 2026-11-17): with `pin` and a screen
@@ -1033,7 +1097,12 @@ export function RgAppbar({ title, search, menu, avatar, onMenu, titleAlign, tone
   const pinKey = pin
     ? [title ?? '', search ?? '', back ? 'back' : '', menu ? 'menu' : '', avatar ?? '', actionIcon ?? '', titleAlign ?? '', tone ?? '', childrenKeyOf(children)].join('|')
     : '';
-  useEffect(() => {
+  // Registration uses a layout effect (Gmail light round,
+  // 2026-11-17): the pinned bar must be in the screen's header
+  // slot before the frame paints, or the content paints one frame
+  // without its bar and then jumps when the bar lands, the jitter
+  // seen on back navigation. A passive effect runs after paint.
+  useLayoutEffect(() => {
     if (!pin || !slot) return;
     slot.register(pinKey, bar);
     return () => slot.clear(pinKey);
@@ -1062,7 +1131,7 @@ export function RgIconButton({ name, size = 28, color, onPress, style, tooltip }
   );
 }
 
-export function RgSection({ children, style, label, meta }: any) {
+export function RgSection({ children, style, label, meta, icon, plain }: any) {
   const styles = stylesFor(useRgTheme());
   // Labelled section (gradient shell round, 2026-11-17): a section
   // with a `label` opens with a header row, a short brand gradient
@@ -1074,9 +1143,15 @@ export function RgSection({ children, style, label, meta }: any) {
     <View style={[styles.section, style]}>
       {label ? (
         <View style={styles.sectionHead}>
-          <View style={styles.sectionBar}>
-            <GradientFill />
-          </View>
+          {icon ? (
+            <View style={styles.sectionChip}>
+              <RgIcon name={icon} size={16} color="onPrimary" />
+            </View>
+          ) : plain ? null : (
+            <View style={styles.sectionBar}>
+              <GradientFill />
+            </View>
+          )}
           <Text style={styles.sectionTitle}>{label}</Text>
           {meta ? <Text style={styles.sectionMeta}>{meta}</Text> : null}
         </View>
@@ -1182,7 +1257,36 @@ export function RgButton({ children, disabled, onPress, badge, style, variant, t
  * `secure` is the password form of the template's type attribute;
  * keyboardType passes the template's email/number choice through.
  */
-export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, label, error, disabled, secure, keyboardType, options, onOptionSelected, mask, variant, style }: any) {
+// The keyboard Done bar (Gmail light round, 2026-11-17): every
+// text field carries an iOS input accessory with a Done button
+// that dismisses the keyboard, the button the stock keyboard
+// lacks. Each field takes a unique accessory id from this
+// counter. Android needs no bar: its fields use returnKeyType
+// done and dismiss on submit. The bar is registered by id and
+// renders nothing in the layout.
+let rgAccessorySeq = 0;
+function useDoneAccessoryId(): string {
+  const ref = useRef<string | null>(null);
+  if (ref.current === null) {
+    rgAccessorySeq += 1;
+    ref.current = 'rg-done-' + rgAccessorySeq;
+  }
+  return ref.current;
+}
+function RgDoneAccessory({ nativeID, styles }: any) {
+  if (Platform.OS !== 'ios') return null;
+  return (
+    <InputAccessoryView nativeID={nativeID}>
+      <View style={styles.keyboardDoneBar}>
+        <Pressable onPress={() => Keyboard.dismiss()}>
+          <Text style={styles.keyboardDoneText}>Done</Text>
+        </Pressable>
+      </View>
+    </InputAccessoryView>
+  );
+}
+
+export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, label, error, disabled, secure, keyboardType, options, onOptionSelected, mask, variant, leadingIcon, onLeading, avatarText, pillTone, style }: any) {
   const t = useRgTheme();
   const styles = stylesFor(t);
   // Autocomplete (Stage 11): while the field is focused and its text
@@ -1193,6 +1297,7 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
   // [(ngModel)] binding updates exactly as if it were typed, and
   // reports the choice through onOptionSelected.
   const [focused, setFocused] = useState(false);
+  const doneId = useDoneAccessoryId();
   const text = value === undefined || value === null ? '' : String(value);
   const matches = focused && Array.isArray(options) && text !== ''
     ? options.filter((o: unknown) => typeof o === 'string' && o.toLowerCase().includes(text.toLowerCase()))
@@ -1213,19 +1318,34 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
     return (
       <View style={style}>
         {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
-        <View style={styles.inputPill}>
-          <RgIcon name="search" size={20} color="textMuted" />
+        <View style={[styles.inputPill, pillTone === 'white' ? { backgroundColor: t.colors.surface } : null]}>
+          {leadingIcon ? (
+            <Pressable onPress={onLeading} style={({ pressed }) => [pressed && styles.buttonPressed]}>
+              <RgIcon name={leadingIcon} size={20} color="textMuted" />
+            </Pressable>
+          ) : (
+            <RgIcon name="search" size={20} color="textMuted" />
+          )}
           <TextInput
             style={styles.inputPillField}
             value={value}
             onChangeText={onChangeText}
             onFocus={() => { setFocused(true); onFocus?.(); }}
             onBlur={() => { setFocused(false); onBlur?.(); }}
+            onSubmitEditing={() => Keyboard.dismiss()}
+            returnKeyType="done"
+            inputAccessoryViewID={Platform.OS === 'ios' ? doneId : undefined}
             placeholder={placeholder}
             placeholderTextColor={t.colors.textMuted}
             editable={!disabled}
           />
+          {avatarText ? (
+            <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: t.colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: t.colors.onPrimary, fontSize: 14, fontWeight: '700' }}>{String(avatarText).charAt(0)}</Text>
+            </View>
+          ) : null}
         </View>
+        <RgDoneAccessory nativeID={doneId} styles={styles} />
         {error ? <Text style={styles.inputError}>{error}</Text> : null}
       </View>
     );
@@ -1247,6 +1367,9 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
           editable={!disabled}
           secureTextEntry={!!secure}
           keyboardType={keyboardType}
+          onSubmitEditing={() => Keyboard.dismiss()}
+          returnKeyType="done"
+          inputAccessoryViewID={Platform.OS === 'ios' ? doneId : undefined}
         />
         {matches.length ? (
           <View style={styles.autoPanel}>
@@ -1258,12 +1381,30 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
           </View>
         ) : null}
       </View>
+      <RgDoneAccessory nativeID={doneId} styles={styles} />
       {error ? <Text style={styles.inputError}>{error}</Text> : null}
     </View>
   );
 }
 
-export function RgSwitch({ checked, disabled, onChange, children, style }: any) {
+// Switch haptic (Gmail light round, 2026-11-17): a switch with
+// the `haptic` attribute answers a toggle with a light selection
+// haptic, the native feel. The module is required lazily inside
+// the press, the file picker pattern, which makes expo-haptics a
+// required dependency of apps on @rangular/ui (the scaffold
+// writes it); an app that somehow lacks it simply stays silent.
+function fireSwitchHaptic(): void {
+  try {
+    const Haptics = require('expo-haptics');
+    if (Haptics && typeof Haptics.selectionAsync === 'function') {
+      void Haptics.selectionAsync();
+    }
+  } catch {
+    // No haptics module in this app: the switch stays silent.
+  }
+}
+
+export function RgSwitch({ checked, disabled, haptic, onChange, children, style }: any) {
   const t = useRgTheme();
   const c = t.colors;
   const styles = stylesFor(t);
@@ -1297,7 +1438,7 @@ export function RgSwitch({ checked, disabled, onChange, children, style }: any) 
       accessibilityRole="switch"
       accessibilityState={{ checked: isOn, disabled: !!disabled }}
       disabled={disabled}
-      onPress={() => onChange?.(!isOn)}
+      onPress={() => { if (haptic) fireSwitchHaptic(); onChange?.(!isOn); }}
       style={[styles.controlRow, disabled && styles.controlDisabled, style]}
     >
       <Animated.View
@@ -1544,7 +1685,7 @@ function SwipeRow({ actions, children }: any) {
   );
 }
 
-export function RgRow({ title, subtitle, detail, time, avatar, avatarText, actionIcon, onAction, onPress, badge, tooltip, children }: any) {
+export function RgRow({ title, subtitle, detail, time, avatar, avatarText, avatarTone, icon, actionIcon, onAction, onPress, badge, tooltip, children }: any) {
   const t = useRgTheme();
   const c = t.colors;
   const styles = stylesFor(t);
@@ -1558,11 +1699,20 @@ export function RgRow({ title, subtitle, detail, time, avatar, avatarText, actio
   const avatarLabel = avatarText !== undefined && avatarText !== null && String(avatarText) !== ''
     ? String(avatarText).slice(0, 2)
     : (title || '\u2022').charAt(0);
+  // Varied avatar tones (Gmail light round, 2026-11-17): with
+  // avatarTone="varied" the avatar circle takes a pastel pair from
+  // the shared palette, chosen by a stable hash of its label, the
+  // Gmail list look where each row's tile carries its own tint.
+  const tonePair = avatarTone === 'varied'
+    ? AVATAR_TONES[[...avatarLabel].reduce((acc, ch) => acc + ch.charCodeAt(0), 0) % AVATAR_TONES.length]
+    : null;
   const content = (
     <>
-            {avatar ? (
-        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: c.onPrimary, fontSize: avatarLabel.length > 1 ? 13 : 16, fontWeight: '600' }}>{avatarLabel}</Text>
+            {icon ? (
+        <RgIcon name={icon} size={22} color="textMuted" />
+      ) : avatar ? (
+        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: tonePair ? tonePair.bg : c.primary, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ color: tonePair ? tonePair.fg : c.onPrimary, fontSize: avatarLabel.length > 1 ? 13 : 16, fontWeight: '600' }}>{avatarLabel}</Text>
         </View>
       ) : null}
       <View style={{ flex: 1 }}>
@@ -1948,7 +2098,7 @@ export function RgTabs({ index, onChange, children, style }: any) {
           );
         })}
       </View>
-      {items[active] ? <View>{items[active].content}</View> : null}
+      {items[active] ? <View style={styles.tabPanel}>{items[active].content}</View> : null}
     </View>
   );
 }
@@ -1956,8 +2106,8 @@ export function RgTabs({ index, onChange, children, style }: any) {
 export function RgAccordion({ children, style }: any) {
   // Single-open coordination, mat-accordion with multi=false: the
   // group holds which direct panel child is open and injects it as
-  // the internal __groupExpanded and __groupToggle props (the same
-  // compiler-internal prop pattern as __rgRoute in routing), so the
+  // the internal __groupExpanded and __groupToggle props (a
+  // compiler-internal prop pattern, invisible to authors), so the
   // author writes plain panels and the coordination stays here. The
   // first panel child whose [expanded] seed is open starts open.
   const items = React.Children.toArray(children)
@@ -2496,7 +2646,7 @@ export function RgStepper({ index, onChange, children, style }: any) {
           );
         })}
       </View>
-      {items[active] ? <View>{items[active].content}</View> : null}
+      {items[active] ? <View style={styles.stepPanel}>{items[active].content}</View> : null}
     </View>
   );
 }
@@ -3225,6 +3375,7 @@ export function RgChart({ type = 'bar', data, width, height, style }: any) {
 export function RgEditor({ value, label, placeholder, disabled, onChange, style }: any) {
   const t = useRgTheme();
   const styles = stylesFor(t);
+  const doneId = useDoneAccessoryId();
   const text = value === undefined || value === null ? '' : String(value);
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const clampSel = (): { start: number; end: number } => {
@@ -3263,7 +3414,9 @@ export function RgEditor({ value, label, placeholder, disabled, onChange, style 
         placeholderTextColor={t.colors.textMuted}
         editable={!disabled}
         multiline
+        inputAccessoryViewID={Platform.OS === 'ios' ? doneId : undefined}
       />
+      <RgDoneAccessory nativeID={doneId} styles={styles} />
     </View>
   );
 }

@@ -131,7 +131,7 @@ export const TAG_MAP: Record<string, TagMapping> = {
   'radio-group': { component: 'RgRadioGroup', fromUi: true },
   radio: { component: 'RgRadio', fromUi: true },
   input: { component: 'RgInput', fromUi: true },
-  form: { component: 'View', fromUi: false },
+  form: { component: 'RgSection', fromUi: true },
   'router-outlet': { component: 'RgOutlet', fromUi: true },
   sheet: { component: 'RgSheet', fromUi: true },
   dialog: { component: 'RgDialog', fromUi: true },
@@ -294,6 +294,7 @@ export const EVENT_PROPS: Record<string, string> = {
   // them here makes them known events, so they map without the
   // fallback comment.
   action: 'onAction',
+  leading: 'onLeading',
   back: 'onBack',
 };
 
@@ -2168,10 +2169,12 @@ class Generator {
         const info = this.childByClassName.get(route.componentName);
         if (!info) continue;
         const fn = componentFunctionName(route.componentName);
-        const needsRoute = (info.constructorDeps ?? []).some((d) => d.typeName === 'ActivatedRoute');
-        if (needsRoute) this.usedRuntime.add('ActivatedRoute');
+        this.usedRuntime.add('ActivatedRoute');
+        this.usedUi.add('ActivatedRouteContext');
         lines.push(`${indent}  {__route.routePath === ${JSON.stringify(route.path)} && (`);
-        lines.push(`${indent}    <${fn} key={__route.path}${needsRoute ? ' __rgRoute={new ActivatedRoute(__route.params, __navigator)}' : ''} />`);
+        lines.push(`${indent}    <ActivatedRouteContext.Provider value={new ActivatedRoute(__route.params, __navigator)}>`);
+        lines.push(`${indent}      <${fn} key={__route.path} />`);
+        lines.push(`${indent}    </ActivatedRouteContext.Provider>`);
         lines.push(`${indent}  )}`);
       }
       lines.push(`${indent}</RgOutlet>`);
@@ -2871,6 +2874,16 @@ class Generator {
       else if (style) props.push(`style={${style}}`);
       if (el.ref) props.push(`ref={${el.ref}Ref}`);
 
+      // Route key on the entry screen (Gmail light round,
+      // 2026-11-17): in a routed app the root screen wraps the
+      // outlet, so every route shares one ScrollView and it keeps
+      // the last screen's scroll offset: a lesson opened from a
+      // scrolled list landed mid-page. Keying the entry screen by
+      // the concrete path remounts it per navigation, so each
+      // route starts at the top with a fresh header slot.
+      if (el.tag.toLowerCase() === 'screen' && opts.entry && this.routingActive) {
+        props.unshift('key={__route.path}');
+      }
       const open = `${indent}<${componentName}${props.length ? ' ' + props.join(' ') : ''}`;
       const childLines: string[] = [];
       // The form context flows to descendants (submit buttons and
@@ -3019,14 +3032,12 @@ class Generator {
       walk(ast.children);
       return found;
     })();
-    // Routing (Stage 9): a component injecting ActivatedRoute receives
-    // its instance through a compiler-owned prop, __rgRoute, which the
-    // outlet supplies per mount. It is not an @Input and never appears
-    // in author templates.
-    const injectsRoute = this.routingActive
-      && (component.constructorDeps ?? []).some((d) => d.typeName === 'ActivatedRoute');
+    // Routing (Stage 9): a component injecting ActivatedRoute reads
+    // the instance from ActivatedRouteContext, which the outlet
+    // provides around the routed subtree. It is not an @Input and
+    // never appears in author templates.
     let propsDecl = '';
-    if (inputs.length || outputs.length || injectsRoute || usesProjection) {
+    if (inputs.length || outputs.length || usesProjection) {
       const destructured: string[] = [];
       const types: string[] = [];
       if (usesProjection) {
@@ -3042,10 +3053,6 @@ class Generator {
         destructured.push(outputPropName(f.name));
         types.push(`${outputPropName(f.name)}?: (value: any) => void`);
       }
-      if (injectsRoute) {
-        destructured.push('__rgRoute');
-        types.push('__rgRoute?: any');
-      }
       propsDecl = `{ ${destructured.join(', ')} }: { ${types.join('; ')} }`;
     }
 
@@ -3059,7 +3066,10 @@ class Generator {
       } else if (this.routingActive && dep.typeName === 'Router') {
         depLines.push(`  const ${dep.propertyName} = __router;`);
       } else if (this.routingActive && dep.typeName === 'ActivatedRoute') {
-        depLines.push(`  const ${dep.propertyName} = __rgRoute;`);
+        this.reactImports.add('useContext');
+        this.usedUi.add('ActivatedRouteContext');
+        this.usedRuntime.add('ActivatedRoute');
+        depLines.push(`  const ${dep.propertyName} = useContext(ActivatedRouteContext) ?? new ActivatedRoute({});`);
       } else if (dep.typeName === 'SnackBar') {
         depLines.push(`  const ${dep.propertyName} = __snackBar;`);
       } else if (this.rootServices.has(dep.typeName)) {

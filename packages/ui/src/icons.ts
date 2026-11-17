@@ -101,6 +101,9 @@ export const ICON_PATHS: Record<string, string[]> = {
   sun: [
     'M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm-1 16.95h2V19.5h-2v2.95zm-7.45-3.91l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z',
   ],
+  // Code (Gmail light round, 2026-11-17): the brand mark of the
+  // tutorial's drawer header, the angle brackets of a code file.
+  code: ['M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4z', 'M14.6 16.6l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z'],
   // Bookmarks (gradient shell round, 2026-11-17): the filled
   // bookmark is the saved state, the outline is the unsaved state,
   // the pair Material ships as bookmark and bookmark_border. The

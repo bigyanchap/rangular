@@ -257,21 +257,20 @@ test('mini-mail example: zero diagnostics, doctor clean, golden and style snapsh
   assert.deepEqual(snap, committed);
 });
 
-test('mini-mail codegen: navigator, outlet conditionals, route prop and link presses', () => {
+test('mini-mail codegen: navigator, outlet conditionals, route context and link presses', () => {
   const { result } = compileExample('mini-mail');
   const code = normalize(result.code);
   assert.ok(code.includes('const __navigator = new RgNavigator([{"path":"","redirectTo":"inbox"},{"path":"inbox"},{"path":"mail/:id"},{"path":"**"}]);'));
   assert.ok(code.includes('const __router = new Router(__navigator);'));
   assert.ok(code.includes('import { ActivatedRoute, Container, ReactiveService, RgNavigator, Router } from \'@rangular/runtime\';'));
   // Outlet: one conditional per component route, keyed by concrete path.
-  assert.ok(code.includes('{__route.routePath === "inbox" && ( <Inbox key={__route.path} /> )}'));
-  assert.ok(code.includes('{__route.routePath === "mail/:id" && ( <MailDetail key={__route.path} __rgRoute={new ActivatedRoute(__route.params, __navigator)} /> )}'));
+  assert.ok(code.includes('{__route.routePath === "inbox" && ( <ActivatedRouteContext.Provider value={new ActivatedRoute(__route.params, __navigator)}> <Inbox key={__route.path} /> </ActivatedRouteContext.Provider> )}'));
+  assert.ok(code.includes('{__route.routePath === "mail/:id" && ( <ActivatedRouteContext.Provider value={new ActivatedRoute(__route.params, __navigator)}> <MailDetail key={__route.path} /> </ActivatedRouteContext.Provider> )}'));
   // The shell mirrors the navigator in state so navigation re-renders.
   assert.ok(code.includes('const [__route, __setRoute] = useState(__navigator.current);'));
   assert.ok(code.includes('useEffect(() => __navigator.subscribe(() => __setRoute(__navigator.current)), []);'));
-  // Dependency lines: the route prop and the shared router.
-  assert.ok(code.includes('export function MailDetail({ __rgRoute }: { __rgRoute?: any }) {'));
-  assert.ok(code.includes('const route = __rgRoute;'));
+  // Dependency lines: the route from context and the shared router.
+  assert.ok(code.includes('const route = useContext(ActivatedRouteContext) ?? new ActivatedRoute({});'));
   assert.ok(code.includes('const router = __router;'));
   // Links: array form through navigate, string form through navigateByUrl,
   // and the translated method body keeps the Router call as written.
@@ -596,4 +595,40 @@ test('Stage 9 generated goldens: only known components, no web-only APIs', () =>
     assert.ok(known.has(m[1]), `unknown component ${m[1]}`);
   }
   assert.ok(!/\b(document|window|localStorage)\b/.test(result.code), 'no web-only APIs in generated code');
+});
+
+
+test('route context: a child of a routed component can inject ActivatedRoute', () => {
+  const { result } = compileProject({
+    'app.component.ts': `
+import { Component } from '@angular/core';
+@Component({ selector: 'app-root', template: \`<screen><router-outlet></router-outlet></screen>\` })
+export class AppComponent {}
+`,
+    'detail.component.ts': `
+import { Component } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { BadgeComponent } from './badge.component';
+@Component({ selector: 'app-detail', template: \`<p>{{ route.snapshot.params.id }}</p><app-badge></app-badge>\` })
+export class DetailComponent { constructor(public route: ActivatedRoute) {} }
+`,
+    'badge.component.ts': `
+import { Component } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+@Component({ selector: 'app-badge', template: \`<p>{{ route.snapshot.params.id }}</p>\` })
+export class BadgeComponent { constructor(public route: ActivatedRoute) {} }
+`,
+    'app.routes.ts': `
+import { Routes } from '@angular/router';
+import { DetailComponent } from './detail.component';
+export const routes: Routes = [{ path: 'detail/:id', component: DetailComponent }];
+`,
+  }, 'app.component.ts', { routesSpecifier: './app.routes.ts' });
+  assert.equal(hasErrors(result.diagnostics), false, JSON.stringify(result.diagnostics));
+  const code = normalize(result.code!);
+  // The outlet provides the route to the whole subtree.
+  assert.ok(code.includes('<ActivatedRouteContext.Provider value={new ActivatedRoute(__route.params, __navigator)}>'), 'the outlet provides ActivatedRoute through context');
+  // Both the routed component and its child read the same context.
+  assert.equal(code.split('useContext(ActivatedRouteContext) ?? new ActivatedRoute({})').length - 1, 2, 'routed component and child both read the route context');
+  assert.ok(!code.includes('__rgRoute'), 'the old routed-only prop is gone');
 });

@@ -398,7 +398,15 @@ Angular.
   from inside the component instead.
 - **Parameters.** Inject `ActivatedRoute`
   (`constructor(private route: ActivatedRoute)`): the outlet creates
-  one instance per mount from the current entry.
+  one instance per mount from the current entry and provides it
+  through a context around the routed subtree, so ANY component
+  under the routed component can inject it, not only the routed
+  component itself (Angular provides it through the outlet's
+  injector the same way). A component mounted outside any outlet
+  reads an empty route instead of crashing. Before 2026-11-17 the
+  instance travelled as a prop to the routed component only, and a
+  child injecting it received undefined and crashed on
+  `route.snapshot`; the tutorial's ActivatedRoute lesson caught it.
   `route.snapshot.params` is a plain object of strings, and
   `route.paramMap` is an Observable-lite that emits the current
   params on subscribe and again on each navigation while subscribed.
@@ -1167,6 +1175,104 @@ stand out from their rows.
   through the header slot above the ScrollView. Close, not
   identical, and this note is the record. The `gradient-shell`
   example is the recipe card for the whole round.
+
+## The Gmail light round (2026-11-17)
+
+Bigyan's phone verdict on the gradient shell: try the Gmail light
+design instead, and fix four behaviours he hit on the device. The
+gradient shell stays in the catalog; this round adds the light
+shell beside it and the behaviour fixes under both.
+
+- App bar `tone="plain"`: a full width white band with a soft
+  shadow. A bar with no title, no search text and no slot content
+  renders no title row at all, so a bar whose whole face is a
+  projected child (the Gmail search pill) has no empty band above
+  the child. The pinned bar also registers into the screen's
+  header slot in a layout effect, so it is present on the first
+  painted frame; with a passive effect the content painted one
+  frame without its bar and then jumped, the jitter seen on back
+  navigation.
+- The search pill grew the Gmail furniture: `leadingIcon` names
+  an icon that replaces the search glyph, wired to `(leading)`;
+  `avatarText` draws the round initial at the pill's right. The
+  pill fill is the surfaceVariant role by default (the Gmail
+  grey); `pillTone="white"` keeps it white, the form for a pill
+  sitting in a gradient bar.
+- Section headers have three faces now: an `icon` opens the
+  header with a round solid chip holding the icon; `plain` opens
+  with the bare title and meta; with neither, the gradient bar
+  from the gradient shell round remains the default.
+- A row takes `icon` for a leading icon in the avatar's place
+  (the drawer row shape), and `avatarTone="varied"` gives the
+  avatar tile a pastel pair from AVATAR_TONES in palette.ts,
+  chosen by a stable hash of its label, the Gmail list look.
+- The keyboard contract: RgScreen wraps its scroll area in a
+  KeyboardAvoidingView (padding on iOS, height on Android) and
+  the ScrollView carries keyboardShouldPersistTaps="handled" and
+  a platform keyboardDismissMode, so a focused field is never
+  left under the keyboard. Every text field (both input forms
+  and the editor) carries returnKeyType="done", dismisses on
+  submit, and on iOS registers an InputAccessoryView with a Done
+  button under a per-field id. The browser preview has no
+  software keyboard and draws none of this; that is the stated
+  grain, the behaviour is native-only.
+- Route scroll: in a routed app the generated root keys the
+  entry `<screen>` by the concrete path, so each navigation
+  remounts the screen and every route opens at the top. Before
+  this, all routes shared one ScrollView and a lesson opened
+  from a scrolled list landed mid-page.
+- Switch `haptic`: an opt-in attribute on the one switch. With
+  it, a toggle answers with a light selection haptic through
+  expo-haptics, required lazily inside the press, the file
+  picker pattern; without it the switch is silent, exactly as
+  before. expo-haptics (~58.0.8) is therefore a required
+  dependency of apps on @rangular/ui and the scaffold writes
+  it. The preview answers with navigator.vibrate where the
+  browser offers it.
+- The icon set is 30: `code` joins, the angle brackets mark of
+  the tutorial's drawer header.
+- Worked example: examples/gmail-shell, one screen proving the
+  plain bar with its pill, the chip and plain section headers,
+  varied row tiles, an icon row, and the two switches, one with
+  `haptic` and one without.
+
+## The spacing rule round (2026-11-17)
+
+One rule for how close components may sit, taken from Material
+Design, the system Angular Material implements, and now owned by
+the framework so no author separates siblings by hand:
+
+- **Two touch targets never touch.** The floor between any two
+  controls is `spacing.sm` (8), Material's minimum distance
+  between targets. Related buttons in a row (an `<actions>` row,
+  a dialog's buttons) sit exactly at that floor.
+- **Stacked blocks and controls sit at the one rhythm gap,**
+  `spacing.md` (12), the same gap screens, sections and cards
+  have always stacked with.
+- **The container owns the gap.** Every container that stacks
+  children carries the rhythm gap itself: screen, section, card,
+  form, dialog, sheet, drawer, accordion panel, tab panel and
+  step page. A block never relies on its children's margins to
+  separate them. This round found the holes by measuring a real
+  app: `<form>` compiled to a bare `View`, so a form's Save and
+  Clear buttons stacked at gap 0; the tab panel, the stepper's
+  step page, the dialog, the sheet, the drawer and the accordion
+  panel body had the same hole. All six are closed, in the
+  primitives, in codegen (form now compiles to `RgSection`) and
+  in both preview renderers.
+- **One control may touch inside itself.** Composites that read
+  as a single control are exempt inside their own bounds: tab
+  bars, calendar grids, swipe-action trays, segmented switchers,
+  and full-width choice rows (radio, checkbox, switch), whose
+  glyphs are separated by the row's own padding. The exemption
+  ends at the composite's edge: a switcher or a choice group
+  still keeps the rhythm gap from its neighbours.
+
+The audit method is part of the rule: the tutorial app was walked
+in a browser in phone mode and the rendered gap between every
+pair of neighbouring controls was measured. Anything under 8
+that is not a composite above is a framework bug until proved
+otherwise.
 
 ## Child components (Stage 3, M5)
 

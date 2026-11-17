@@ -4,7 +4,7 @@ import { formatDateTimeValue, parseDateTimeValue, daysInMonth, MONTH_SHORT } fro
 import type { PickerMode } from '../../../ui/src/datetime';
 import { applyMask } from '../../../ui/src/mask';
 import { chartModel } from '../../../ui/src/chart';
-import { COLOR_SWATCHES } from '../../../ui/src/palette';
+import { AVATAR_TONES, COLOR_SWATCHES } from '../../../ui/src/palette';
 import { ActivatedRoute, FormGroup, matchRoute, RouteMatch, ValidatorFn, Validators, validateValue } from '../../../runtime/src/index';
 import { ComponentField, ComponentInfo, DirectiveInfo, PipeInfo, ServiceInfo } from '../class/parseComponent';
 import { DirectiveStyleAssign, directiveStyles } from '../class/parseDirective';
@@ -693,9 +693,11 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
       // Search pill (gradient shell round): variant="search" draws
       // the field as a pill with the search icon inside at the left.
       if (el.attrs['variant'] === 'search') {
+        const leadIcon = bound(el, 'leadingIcon', scope);
+        const pillAvatar = bound(el, 'avatarText', scope);
         return `<div class="field">` +
           (labelText ? `<span class="field-label">${escapeHtml(labelText)}</span>` : '') +
-          `<div class="input-search">${iconSvg('search', 20, 'textMuted')}<input type="text"${placeholder ? ` placeholder="${escapeHtml(placeholder)}"` : ''} value="${escapeHtml(value)}"${disabled ? ' disabled' : ''}></div>` +
+          `<div class="input-search${el.attrs['pillTone'] === 'white' ? ' white' : ''}">${iconSvg(leadIcon ?? 'search', 20, 'textMuted')}<input type="text"${placeholder ? ` placeholder="${escapeHtml(placeholder)}"` : ''} value="${escapeHtml(value)}"${disabled ? ' disabled' : ''}>${pillAvatar ? `<span class="pill-avatar">${escapeHtml(String(pillAvatar).charAt(0))}</span>` : ''}</div>` +
           (errorText ? `<span class="field-error">${escapeHtml(errorText)}</span>` : '') +
           `</div>`;
       }
@@ -731,7 +733,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
         return `<div class="tab-header${i === active ? ' selected' : ''}"><span class="tab-label">${escapeHtml(label)}</span>${i === active ? '<span class="tab-indicator"></span>' : ''}</div>`;
       }).join('');
       const content = tabEls[active] ? renderNodes(tabEls[active].children, scope) : '';
-      return `<div class="tabs"><div class="tab-headers">${headers}</div>${content}</div>`;
+      return `<div class="tabs"><div class="tab-headers">${headers}</div><div class="tab-panel">${content}</div></div>`;
     }
     if (el.tag === 'accordion') {
       const prev = panelClaim;
@@ -803,7 +805,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
         return `${i > 0 ? '<span class="step-connector"></span>' : ''}<div class="step-head${cls}"><span class="step-circle">${circle}</span>${stepLabel ? `<span class="step-label">${escapeHtml(stepLabel)}</span>` : ''}</div>`;
       }).join('');
       const content = stepEls[active] ? renderNodes(stepEls[active].children, scope) : '';
-      return `<div class="stepper"><div class="stepper-headers">${headers}</div>${content}</div>`;
+      return `<div class="stepper"><div class="stepper-headers">${headers}</div><div class="step-panel">${content}</div></div>`;
     }
     if (el.tag === 'select') {
       const optionEls = el.children.filter(
@@ -1032,6 +1034,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
         // render under the title row in an appbar-children block.
         const gradientBar = el.attrs['tone'] === 'gradient';
         const barCls = 'appbar' + (gradientBar ? ' gradient' : '')
+          + (el.attrs['tone'] === 'plain' ? ' plain' : '')
           + (el.booleanAttrs.includes('pin') ? ' pin' : '')
           + (inner ? ' has-children' : '');
         const iconRole = gradientBar ? 'onPrimary' : 'textMuted';
@@ -1050,6 +1053,11 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
           ? `<span class="appbar-side">${leftIcon}</span>${midNode}<span class="appbar-side end">${rightNode}</span>`
           : `${leftIcon}${midNode}${rightNode}`;
         const rowHtml = inner ? `<div class="appbar-row">${zones}</div>` : zones;
+        // Empty title row (Gmail light round, 2026-11-17): a bar
+        // whose whole face is a child renders no title row, like
+        // RgAppbar, so no empty band sits above the child.
+        const hasRow = !!(title || search || leftIcon || rightNode);
+        if (!hasRow && inner) return `<header class="${barCls}">${inner}</header>`;
         return `<header class="${barCls}">${rowHtml}${inner ? `<div class="appbar-children">${inner}</div>` : ''}</header>`;
       }
 
@@ -1257,9 +1265,13 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
         const time = bound(el, 'time', scope) ?? '';
         const avatarText = bound(el, 'avatarText', scope);
         const initial = avatarText ? String(avatarText).slice(0, 2) : (rowTitle || '•').charAt(0);
+        const rowIcon = bound(el, 'icon', scope);
+        const variedPair = el.attrs['avatarTone'] === 'varied'
+          ? AVATAR_TONES[[...initial].reduce((acc, ch) => acc + ch.charCodeAt(0), 0) % AVATAR_TONES.length]
+          : null;
         const rowActionIcon = bound(el, 'actionIcon', scope);
         const rowTip = bound(el, 'tooltip', scope);
-        const rowHtml = `<div class="row"${rowTip ? ` title="${escapeHtml(rowTip)}"` : ''}>${el.booleanAttrs.includes('avatar') ? `<span class="avatar-lg">${escapeHtml(initial)}</span>` : ''}` +
+        const rowHtml = `<div class="row"${rowTip ? ` title="${escapeHtml(rowTip)}"` : ''}>${rowIcon ? iconSvg(rowIcon, 22, 'textMuted') : el.booleanAttrs.includes('avatar') ? `<span class="avatar-lg"${variedPair ? ` style="background:${variedPair.bg};color:${variedPair.fg}"` : ''}>${escapeHtml(initial)}</span>` : ''}` +
           `<span class="row-main"><span class="row-title">${escapeHtml(rowTitle)}</span>` +
           (sub ? `<span class="row-sub">${escapeHtml(sub)}</span>` : '') +
           (detail ? `<span class="row-detail">${escapeHtml(detail)}</span>` : '') +
@@ -1299,8 +1311,12 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
       case 'section': {
         const secLabel = bound(el, 'label', scope);
         const secMeta = bound(el, 'meta', scope);
+        const secIcon = bound(el, 'icon', scope);
+        const secDeco = secIcon
+          ? `<span class="section-chip">${iconSvg(secIcon, 16, 'onPrimary')}</span>`
+          : el.booleanAttrs.includes('plain') ? '' : '<span class="section-bar"></span>';
         const secHead = secLabel
-          ? `<div class="section-head"><span class="section-bar"></span><span class="section-title">${escapeHtml(secLabel)}</span>${secMeta ? `<span class="section-meta">${escapeHtml(secMeta)}</span>` : ''}</div>`
+          ? `<div class="section-head">${secDeco}<span class="section-title">${escapeHtml(secLabel)}</span>${secMeta ? `<span class="section-meta">${escapeHtml(secMeta)}</span>` : ''}</div>`
           : '';
         return `<section class="stack"${dirStyle}>${secHead}${inner}</section>`;
       }
@@ -1351,6 +1367,11 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
      it above the scroll through the screen's header slot. Close,
      not identical, and this note is the record. */
   .appbar.gradient { background: linear-gradient(115deg, ${t.colors.gradientFrom}, ${t.colors.gradientVia} 52%, ${t.colors.gradientTo}); border-radius: 0; color: var(--on-primary); }
+  .appbar.plain { background: var(--surface); border-radius: 0; box-shadow: 0 1px 4px rgba(0,0,0,.14); }
+  .appbar-children.flush { margin-top: 0; }
+  .section-chip { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); display: inline-flex; align-items: center; justify-content: center; flex: 0 0 28px; }
+  .pill-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex: 0 0 32px; }
+  .pill-lead { display: inline-flex; cursor: pointer; }
   .appbar.pin { position: sticky; top: 0; z-index: 30; }
   .appbar.has-children { flex-direction: column; align-items: stretch; }
   .appbar-row { display: flex; align-items: center; gap: ${t.spacing.md}px; }
@@ -1361,7 +1382,8 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .section-bar { width: 4px; height: 20px; border-radius: 2px; background: linear-gradient(180deg, ${t.colors.gradientVia}, ${t.colors.gradientTo}); flex: 0 0 4px; }
   .section-title { flex: 1; font-size: ${t.typography.title.fontSize}px; font-weight: 700; }
   .section-meta { font-size: ${t.typography.caption.fontSize}px; color: var(--text-muted); }
-  .input-search { display: flex; align-items: center; gap: ${t.spacing.sm}px; background: var(--role-surface); border: 1px solid var(--border); border-radius: ${t.radius.full}px; padding: 0 ${t.spacing.md}px; min-height: 48px; }
+  .input-search { display: flex; align-items: center; gap: ${t.spacing.sm}px; background: var(--surface-variant); border: 1px solid var(--border); border-radius: ${t.radius.full}px; padding: 0 ${t.spacing.md}px; min-height: 48px; }
+  .input-search.white { background: var(--role-surface); }
   .input-search input { flex: 1; border: none; background: transparent; font-size: ${t.typography.bodyLarge.fontSize}px; color: var(--text); padding: 10px 0; outline: none; min-width: 0; }
   .row-action { background: none; border: none; padding: 4px; cursor: pointer; display: inline-flex; align-items: center; }
   /* Code block (tutorial round): a dark editor surface and a
@@ -1383,7 +1405,9 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .stack { display: flex; flex-direction: column; gap: ${t.spacing.md}px; }
   .btn-text { background: transparent; color: var(--primary); text-align: left; padding: 0 ${t.spacing.sm}px; }
   .icon-btn { align-self: flex-start; width: 48px; height: 48px; display: inline-flex; align-items: center; justify-content: flex-start; background: transparent; border: none; padding: 0; cursor: pointer; }
-  .form { display: flex; flex-direction: column; }
+  .form { display: flex; flex-direction: column; gap: ${t.spacing.md}px; }
+  .tab-panel { display: flex; flex-direction: column; gap: ${t.spacing.md}px; }
+  .step-panel { display: flex; flex-direction: column; gap: ${t.spacing.md}px; }
   .field { display: flex; flex-direction: column; gap: ${t.spacing.xs}px; margin: ${t.spacing.md}px 0 0; }
   .field-label { font-size: ${t.typography.label.fontSize}px; font-weight: 600; color: var(--text-muted); }
   .field-input { font: inherit; font-size: ${t.typography.bodyLarge.fontSize}px; color: var(--text); background: var(--role-surface); border: 1px solid var(--border); border-radius: ${t.radius.sm}px; padding: 10px ${t.spacing.md}px; }
@@ -1417,11 +1441,11 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .overlay { position: absolute; inset: 0; z-index: 10; display: flex; align-items: flex-end; }
   .overlay-center { align-items: center; justify-content: center; padding: 0 ${t.spacing.lg}px; }
   .overlay-backdrop { position: absolute; inset: 0; background: var(--role-scrim); opacity: .32; }
-  .sheet { position: relative; width: 100%; background: var(--role-surface); border-radius: ${t.radius.xl}px ${t.radius.xl}px 0 0; padding: ${t.spacing.sm}px ${t.spacing.lg}px ${t.spacing.xxl}px; box-shadow: 0 -4px 18px rgba(0,0,0,.18); animation: sheet-up .22s linear; max-height: 88%; overflow-y: auto; }
+  .sheet { display: flex; flex-direction: column; gap: ${t.spacing.md}px; position: relative; width: 100%; background: var(--role-surface); border-radius: ${t.radius.xl}px ${t.radius.xl}px 0 0; padding: ${t.spacing.sm}px ${t.spacing.lg}px ${t.spacing.xxl}px; box-shadow: 0 -4px 18px rgba(0,0,0,.18); animation: sheet-up .22s linear; max-height: 88%; overflow-y: auto; }
   .sheet .btn, .dialog .btn { width: 100%; }
   .sheet-handle { width: 36px; height: 4px; border-radius: ${t.radius.full}px; background: var(--border); margin: 0 auto ${t.spacing.md}px; }
   @keyframes sheet-up { from { transform: translateY(24px); } to { transform: translateY(0); } }
-  .dialog { position: relative; width: 100%; background: var(--role-surface); border-radius: ${t.radius.xl}px; padding: ${t.spacing.xl}px; box-shadow: 0 10px 28px rgba(0,0,0,.25); animation: dialog-in .15s linear; }
+  .dialog { display: flex; flex-direction: column; gap: ${t.spacing.md}px; position: relative; width: 100%; background: var(--role-surface); border-radius: ${t.radius.xl}px; padding: ${t.spacing.xl}px; box-shadow: 0 10px 28px rgba(0,0,0,.25); animation: dialog-in .15s linear; }
   .dialog-title { font-size: ${t.typography.title.fontSize}px; line-height: ${t.typography.title.lineHeight}px; font-weight: 600; margin-bottom: ${t.spacing.md}px; }
   @keyframes dialog-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
   .actions { display: flex; justify-content: flex-end; align-items: center; gap: ${t.spacing.sm}px; margin-top: ${t.spacing.lg}px; }
@@ -1456,7 +1480,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .panel-subtitle { font-size: ${t.typography.caption.fontSize}px; color: var(--text-muted); }
   .panel-chevron { display: inline-flex; transform: rotate(90deg); }
   .panel-chevron.open { transform: rotate(-90deg); }
-  .panel-body { padding: 0 0 ${t.spacing.lg}px; }
+  .panel-body { display: flex; flex-direction: column; gap: ${t.spacing.md}px; padding: 0 0 ${t.spacing.lg}px; }
   .table { margin: 0; }
   .table-row { display: flex; gap: ${t.spacing.md}px; padding: 11px 0; border-bottom: 1px solid var(--border); }
   .table-cell { flex: 1; font-size: ${t.typography.body.fontSize}px; color: var(--text); }
@@ -1488,7 +1512,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .menu-item { display: flex; align-items: center; gap: ${t.spacing.md}px; min-height: 48px; padding: 0 ${t.spacing.lg}px; font-size: ${t.typography.body.fontSize}px; color: var(--text); cursor: pointer; }
   .menu-item:hover { background: var(--surface-variant); }
   .overlay-left { align-items: stretch; justify-content: flex-start; }
-  .drawer { position: relative; width: 280px; max-width: 85%; background: var(--role-surface); padding: ${t.spacing.xxl}px ${t.spacing.lg}px ${t.spacing.lg}px; box-shadow: 4px 0 18px rgba(0,0,0,.18); animation: drawer-in .22s linear; overflow-y: auto; }
+  .drawer { display: flex; flex-direction: column; gap: ${t.spacing.md}px; position: relative; width: 280px; max-width: 85%; background: var(--role-surface); padding: ${t.spacing.xxl}px ${t.spacing.lg}px ${t.spacing.lg}px; box-shadow: 4px 0 18px rgba(0,0,0,.18); animation: drawer-in .22s linear; overflow-y: auto; }
   @keyframes drawer-in { from { transform: translateX(-40px); } to { transform: translateX(0); } }
   .select-options { display: block; }
   .select-option { display: flex; align-items: center; gap: ${t.spacing.md}px; min-height: 48px; padding: 0 ${t.spacing.sm}px; font-size: ${t.typography.bodyLarge.fontSize}px; color: var(--text); cursor: pointer; }
@@ -1746,6 +1770,7 @@ export function previewScript(
 // State and methods are live: (click) handlers mutate state and re-render.
 const TEMPLATE = ${jsonForScript(ast)};
 const ICONS = ${jsonForScript(ICON_PATHS)};
+const AVATAR_TONES = ${jsonForScript(AVATAR_TONES)};
 const state = ${jsonForScript(serialState)};
 const FORM_INITS = ${jsonForScript(rootFormInits)};
 const EXPR_INITS = ${jsonForScript(rootExprInits)};
@@ -3303,12 +3328,31 @@ function __buildInput(el, scope, form, path) {
   if (el.attrs['variant'] === 'search') {
     // Search pill (gradient shell round): the field sits in a pill
     // with the search icon inside at the left; the input keeps the
-    // same value wiring as the plain field.
+    // same value wiring as the plain field. Gmail light round: a
+    // leadingIcon replaces the search glyph and is wired to the
+    // (leading) event, and an avatarText draws the round initial
+    // at the pill's right, mirroring RgInput.
     var pill = document.createElement('div');
-    pill.className = 'input-search';
-    pill.appendChild(__icon('search', 20, 'textMuted'));
+    pill.className = 'input-search' + (el.attrs['pillTone'] === 'white' ? ' white' : '');
+    var leadIcon = __attr(el, 'leadingIcon', scope);
+    if (leadIcon) {
+      var leadBtn = document.createElement('span');
+      leadBtn.className = 'pill-lead';
+      leadBtn.appendChild(__icon(leadIcon, 20, 'textMuted'));
+      leadBtn.addEventListener('click', function () { __runEvent(el, scope, 'leading', undefined); });
+      pill.appendChild(leadBtn);
+    } else {
+      pill.appendChild(__icon('search', 20, 'textMuted'));
+    }
     input.className = '';
     pill.appendChild(input);
+    var pillAv = __attr(el, 'avatarText', scope);
+    if (pillAv) {
+      var pav = document.createElement('span');
+      pav.className = 'pill-avatar';
+      pav.textContent = String(pillAv).charAt(0);
+      pill.appendChild(pav);
+    }
     wrap.appendChild(pill);
   } else {
     wrap.appendChild(input);
@@ -3435,7 +3479,10 @@ function __buildTabs(el, scope, path, form) {
   wrap.appendChild(headers);
   var activeTab = tabEls[active];
   if (activeTab) {
-    __buildNodes(activeTab.children, scope, path + '/tab' + active, form).forEach(function (k) { wrap.appendChild(k); });
+    var panel = document.createElement('div');
+    panel.className = 'tab-panel';
+    __buildNodes(activeTab.children, scope, path + '/tab' + active, form).forEach(function (k) { panel.appendChild(k); });
+    wrap.appendChild(panel);
   }
   return wrap;
 }
@@ -3681,7 +3728,10 @@ function __buildStepper(el, scope, path, form) {
   wrap.appendChild(headers);
   var activeStep = stepEls[active];
   if (activeStep) {
-    __buildNodes(activeStep.children, scope, path + '/step' + active, form).forEach(function (k) { wrap.appendChild(k); });
+    var panel = document.createElement('div');
+    panel.className = 'step-panel';
+    __buildNodes(activeStep.children, scope, path + '/step' + active, form).forEach(function (k) { panel.appendChild(k); });
+    wrap.appendChild(panel);
   }
   return wrap;
 }
@@ -4562,6 +4612,7 @@ function __buildCore(el, scope, path, form) {
       // the static renderer.
       var gradientBar = el.attrs['tone'] === 'gradient';
       bar.className = 'appbar' + (gradientBar ? ' gradient' : '')
+        + (el.attrs['tone'] === 'plain' ? ' plain' : '')
         + (el.booleanAttrs.indexOf('pin') >= 0 ? ' pin' : '');
       var iconRole = gradientBar ? 'onPrimary' : 'textMuted';
       var centeredBar = el.attrs['titleAlign'] === 'center';
@@ -4591,22 +4642,25 @@ function __buildCore(el, scope, path, form) {
         rightZone.className = 'appbar-side end';
         if (rightIcon) rightZone.appendChild(rightIcon);
       }
+      var hasRowLive = !!(title || search || leftIcon || rightIcon);
       if (kids.length) {
         bar.className += ' has-children';
-        var zones = document.createElement('div');
-        zones.className = 'appbar-row';
-        if (centeredBar) {
-          zones.appendChild(leftZone);
-          zones.appendChild(mid);
-          zones.appendChild(rightZone);
-        } else {
-          if (leftIcon) zones.appendChild(leftIcon);
-          zones.appendChild(mid);
-          if (rightIcon) zones.appendChild(rightIcon);
+        if (hasRowLive) {
+          var zones = document.createElement('div');
+          zones.className = 'appbar-row';
+          if (centeredBar) {
+            zones.appendChild(leftZone);
+            zones.appendChild(mid);
+            zones.appendChild(rightZone);
+          } else {
+            if (leftIcon) zones.appendChild(leftIcon);
+            zones.appendChild(mid);
+            if (rightIcon) zones.appendChild(rightIcon);
+          }
+          bar.appendChild(zones);
         }
-        bar.appendChild(zones);
         var childWrap = document.createElement('div');
-        childWrap.className = 'appbar-children';
+        childWrap.className = 'appbar-children' + (hasRowLive ? '' : ' flush');
         kids.forEach(function (k) { childWrap.appendChild(k); });
         bar.appendChild(childWrap);
       } else if (centeredBar) {
@@ -4812,7 +4866,10 @@ function __buildCore(el, scope, path, form) {
       kids.forEach(function (k) { swLabel.appendChild(k); });
       sw.appendChild(swLabel);
       if (__truthy(__controlValue(el, 'disabled', scope))) sw.disabled = true;
-      else sw.addEventListener('click', function () { __runChange(el, scope, !switchChecked); });
+      else sw.addEventListener('click', function () {
+        if (el.booleanAttrs.indexOf('haptic') >= 0 && navigator.vibrate) navigator.vibrate(8);
+        __runChange(el, scope, !switchChecked);
+      });
       return [sw];
     }
     case 'checkbox': {
@@ -4925,11 +4982,22 @@ function __buildCore(el, scope, path, form) {
     case 'row': {
       var row = document.createElement('div');
       row.className = 'row';
-      if (el.booleanAttrs.indexOf('avatar') >= 0) {
+      var rowIconLive = __attr(el, 'icon', scope);
+      if (rowIconLive) {
+        row.appendChild(__icon(rowIconLive, 22, 'textMuted'));
+      } else if (el.booleanAttrs.indexOf('avatar') >= 0) {
         var avl = document.createElement('span');
         avl.className = 'avatar-lg';
         var avText = __attr(el, 'avatarText', scope);
         avl.textContent = avText ? String(avText).slice(0, 2) : (title ? String(title) : '•').charAt(0);
+        if (el.attrs['avatarTone'] === 'varied') {
+          var avLabel = avl.textContent;
+          var avHash = 0;
+          for (var avI = 0; avI < avLabel.length; avI++) avHash += avLabel.charCodeAt(avI);
+          var avPair = AVATAR_TONES[avHash % AVATAR_TONES.length];
+          avl.style.background = avPair.bg;
+          avl.style.color = avPair.fg;
+        }
         row.appendChild(avl);
       }
       var main = document.createElement('span');
@@ -5073,9 +5141,17 @@ function __buildCore(el, scope, path, form) {
       sec.className = 'stack';
       var head = document.createElement('div');
       head.className = 'section-head';
-      var barEl = document.createElement('span');
-      barEl.className = 'section-bar';
-      head.appendChild(barEl);
+      var secIconLive = __attr(el, 'icon', scope);
+      if (secIconLive) {
+        var chipEl = document.createElement('span');
+        chipEl.className = 'section-chip';
+        chipEl.appendChild(__icon(secIconLive, 16, 'onPrimary'));
+        head.appendChild(chipEl);
+      } else if (el.booleanAttrs.indexOf('plain') < 0) {
+        var barEl = document.createElement('span');
+        barEl.className = 'section-bar';
+        head.appendChild(barEl);
+      }
       var titleEl = document.createElement('span');
       titleEl.className = 'section-title';
       titleEl.textContent = String(secLabel);

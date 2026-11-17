@@ -67,7 +67,8 @@ function compileProject(files: Record<string, string>, entryName: string): { dir
 test('Stage 8: TAG_MAP, events and diagnostics register the forms surface', () => {
   assert.equal(TAG_MAP['input'].component, 'RgInput');
   assert.equal(TAG_MAP['input'].fromUi, true);
-  assert.equal(TAG_MAP['form'].component, 'View');
+  assert.equal(TAG_MAP['form'].component, 'RgSection');
+  assert.equal(TAG_MAP['form'].fromUi, true);
   assert.equal(EVENT_PROPS['blur'], 'onBlur');
   for (const code of ['GEN_NGMODEL_TARGET', 'GEN_NGMODEL_EXPR', 'GEN_FORM_CONTROL', 'GEN_FORMGROUP_TYPE', 'GEN_FORM_INITIALIZER']) {
     assert.ok(DIAGNOSTIC_CODES[code], `missing diagnostic code ${code}`);

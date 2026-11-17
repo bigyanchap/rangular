@@ -20,3 +20,17 @@ export const COLOR_SWATCHES: string[] = [
   '#9334e6', '#e37400', '#12a5af', '#c2185b',
   '#5f6368', '#80868b', '#202124', '#ffffff',
 ];
+
+/**
+ * Avatar tones (Gmail light round, 2026-11-17): pastel background
+ * and foreground pairs for row avatar tiles that vary by label,
+ * the Gmail list look. Data colours, like the swatches above:
+ * they do not change with the theme.
+ */
+export const AVATAR_TONES: { bg: string; fg: string }[] = [
+  { bg: '#e8f0fe', fg: '#0b57d0' },
+  { bg: '#f3e8fd', fg: '#9334e6' },
+  { bg: '#fce8e6', fg: '#c5221f' },
+  { bg: '#e6f4ea', fg: '#137333' },
+  { bg: '#fef7e0', fg: '#b06000' },
+];

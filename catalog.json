@@ -139,8 +139,8 @@
     },
     {
       "tag": "form",
-      "component": "View",
-      "from": "react-native"
+      "component": "RgSection",
+      "from": "@rangular/ui"
     },
     {
       "tag": "router-outlet",
@@ -438,6 +438,10 @@
       "rnProp": "onAction"
     },
     {
+      "event": "leading",
+      "rnProp": "onLeading"
+    },
+    {
       "event": "back",
       "rnProp": "onBack"
     },
@@ -632,6 +636,14 @@
         {
           "name": "meta",
           "type": "any"
+        },
+        {
+          "name": "icon",
+          "type": "any"
+        },
+        {
+          "name": "plain",
+          "type": "any"
         }
       ]
     },
@@ -771,6 +783,22 @@
           "type": "any"
         },
         {
+          "name": "leadingIcon",
+          "type": "any"
+        },
+        {
+          "name": "onLeading",
+          "type": "any"
+        },
+        {
+          "name": "avatarText",
+          "type": "any"
+        },
+        {
+          "name": "pillTone",
+          "type": "any"
+        },
+        {
           "name": "style",
           "type": "any"
         }
@@ -785,6 +813,10 @@
         },
         {
           "name": "disabled",
+          "type": "any"
+        },
+        {
+          "name": "haptic",
           "type": "any"
         },
         {
@@ -981,6 +1013,14 @@
         },
         {
           "name": "avatarText",
+          "type": "any"
+        },
+        {
+          "name": "avatarTone",
+          "type": "any"
+        },
+        {
+          "name": "icon",
           "type": "any"
         },
         {
@@ -2051,6 +2091,7 @@
     "chevron-left",
     "chevron-right",
     "close",
+    "code",
     "delete",
     "edit",
     "heart",

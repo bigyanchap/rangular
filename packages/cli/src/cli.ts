@@ -209,7 +209,8 @@ function fileDepOf(fromDir: string, toDir: string): string {
  * ~58.0.5: RgFilePicker names both in literal requires, and Metro
  * resolves every literal require when an app bundles, so both are
  * required dependencies of any app built on @rangular/ui, not an
- * option an app picks per kind. The set moved from SDK 54 to
+ * option an app picks per kind. The same holds for expo-haptics
+ * ~58.0.8, which RgSwitch requires lazily for its haptic answer. The set moved from SDK 54 to
  * SDK 58 on 2026-11-12 because the store build of Expo Go supports
  * SDK 58 only and refused an SDK 54 app. The pins come from the
  * SDK's published compatibility set; they were not installed or
@@ -269,6 +270,7 @@ function initApp(dirArg: string): void {
       '@rangular/ui': fileDepOf(appDir, path.join(repoRoot, 'packages', 'ui')),
       expo: '~58.0.0',
       'expo-document-picker': '~58.0.5',
+      'expo-haptics': '~58.0.8',
       'expo-image-picker': '~58.0.10',
       react: '19.3.0',
       'react-native': '0.88.1',
@@ -406,6 +408,9 @@ the generated app behaves.
   names both in literal requires, and Metro resolves every literal
   require when the app bundles, so the bundle fails without either
   one. Keep both even if this app never shows a file picker.
+- \`expo-haptics\` is required the same way: \`RgSwitch\` requires
+  it lazily to answer a toggle with a haptic when a switch carries
+  the \`haptic\` attribute. Keep it even if no switch uses it.
 - \`metro.config.js\` is the standard monorepo config: it watches the
   Rangular repo root (so the file: packages resolve) and looks for
   node_modules in both the app and the repo root.

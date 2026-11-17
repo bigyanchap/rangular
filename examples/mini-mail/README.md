@@ -95,9 +95,11 @@ const __router = new Router(__navigator);
 <RgRow key={m?.id ?? index} avatar title={m.from} subtitle={m.subject} detail={m.snippet} time={m.time} onPress={() => __router.navigate(['/mail', m.id])} />
 <RgRow title="Archived (old link)" detail="This folder moved away" onPress={() => __router.navigateByUrl("/archive")} />
 
-// ActivatedRoute is a compiler-owned prop the outlet supplies per mount.
-export function MailDetail({ __rgRoute }: { __rgRoute?: any }) {
-  const route = __rgRoute;
+// ActivatedRoute comes from a context the outlet provides around
+// the routed subtree, so children of a routed component inject
+// the same route (the way Angular's outlet injector provides it).
+export function MailDetail() {
+  const route = useContext(ActivatedRouteContext) ?? new ActivatedRoute({});
   const router = __router;
   // ...
   const ngOnInit = () => {
@@ -115,7 +117,9 @@ export default function MiniMail() {
       <RgAppbar title="Mini Mail" />
       <RgOutlet>
         {__route.routePath === "mail/:id" && (
-          <MailDetail key={__route.path} __rgRoute={new ActivatedRoute(__route.params, __navigator)} />
+          <ActivatedRouteContext.Provider value={new ActivatedRoute(__route.params, __navigator)}>
+            <MailDetail key={__route.path} />
+          </ActivatedRouteContext.Provider>
         )}
         {/* ...one conditional per component route... */}
       </RgOutlet>
