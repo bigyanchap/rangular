@@ -34,3 +34,17 @@ export const AVATAR_TONES: { bg: string; fg: string }[] = [
   { bg: '#e6f4ea', fg: '#137333' },
   { bg: '#fef7e0', fg: '#b06000' },
 ];
+
+/**
+ * The same five pairs under names (Option A round, 2026-11-17),
+ * so a row can ask for a tone by meaning: a done lesson's tile is
+ * `green`, the current lesson's is `blue`. `varied` keeps the
+ * hash pick from the array above.
+ */
+export const AVATAR_TONE_NAMES: Record<string, { bg: string; fg: string }> = {
+  blue: AVATAR_TONES[0],
+  purple: AVATAR_TONES[1],
+  red: AVATAR_TONES[2],
+  green: AVATAR_TONES[3],
+  amber: AVATAR_TONES[4],
+};

@@ -79,9 +79,9 @@ test('Stage 7: the icon set is exactly the curated list, every name has path dat
   const expected = ['menu', 'search', 'close', 'check', 'chevron-left', 'chevron-right',
     'arrow-left', 'arrow-right', 'plus', 'minus', 'bell', 'heart', 'star', 'settings',
     'home', 'person', 'calendar', 'alarm', 'play', 'pause', 'edit', 'delete', 'share',
-    'info', 'warning', 'mail', 'sun', 'code', 'bookmark', 'bookmark-outline'];
+    'info', 'warning', 'mail', 'sun', 'code', 'chart', 'bookmark', 'bookmark-outline'];
   assert.deepEqual(ICON_NAMES, [...expected].sort());
-  assert.equal(ICON_NAMES.length, 30);
+  assert.equal(ICON_NAMES.length, 31);
   for (const name of ICON_NAMES) {
     assert.ok(Array.isArray(ICON_PATHS[name]) && ICON_PATHS[name].length >= 1, `${name} has no path data`);
     for (const d of ICON_PATHS[name]) assert.ok(d.startsWith('M'), `${name} path does not start with M`);
@@ -252,10 +252,10 @@ test('icons preview: server paint draws every icon with its label, coloured by r
     children: result.children,
     services: result.services,
   });
-  // 30 set icons + 4 usage icons + 3 icon buttons, in the server paint
+  // 31 set icons + 4 usage icons + 3 icon buttons, in the server paint
   // (everything before the page script). The appbar draws no menu: it
   // has no menu handler, and a dead control is not drawn.
-  assert.equal((html.split('<script>')[0].match(/<svg /g) ?? []).length, 37);
+  assert.equal((html.split('<script>')[0].match(/<svg /g) ?? []).length, 38);
   for (const name of ICON_NAMES) {
     assert.ok(html.includes(`<path d="${ICON_PATHS[name][0]}"`), `preview missing path for ${name}`);
     assert.ok(html.includes(`>${name}<`), `preview missing label for ${name}`);
@@ -333,7 +333,7 @@ test('icons preview behaviour: the page runtime draws the same paths as the serv
   const app = loadPreview(html);
   const iconEls = findAll(app, (e) => e.className === 'icon');
   // 29 in the *ngFor set + 4 usage icons + 3 icon buttons, at runtime.
-  assert.equal(iconEls.length, 37);
+  assert.equal(iconEls.length, 38);
   const runtimeMarkup = iconEls.map((e) => e.markup).join('\n');
   for (const name of ICON_NAMES) {
     // Parity: the identical path data the server painted and RgIcon ships.
