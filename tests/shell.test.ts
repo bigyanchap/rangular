@@ -81,7 +81,7 @@ test('gradient pinned app bar compiles tone, pin and the projected search input'
 
 test('RgAppbar registers a pinned bar into the screen header slot', () => {
   assert.match(primitivesSrc, /RgHeaderSlotContext/);
-  assert.match(primitivesSrc, /slot\.register\(pinKey, bar\)/);
+  assert.match(primitivesSrc, /slot\.register\(pinKey, bar, chrome\)/);
   assert.match(primitivesSrc, /headerNode/);
 });
 
@@ -314,4 +314,53 @@ test('spacing rule: the preview mirrors the container gaps', () => {
   assert.ok(css.includes('.tab-panel { display: flex; flex-direction: column; gap: 12px; }'), 'the preview tab panel carries the rhythm gap');
   const body = html.split('</style>')[1].split('<script>')[0];
   assert.ok(body.includes('class="tab-panel"'), 'tab content renders inside the panel');
+});
+
+test('the bottom slot lets a routed tab bar pin under the scroll (Option A round)', () => {
+  assert.ok(primitivesSrc.includes('const RgBottomSlotContext'), 'the screen lends a bottom slot');
+  assert.ok(primitivesSrc.includes('function useRgBottom'), 'bottom nav registers through the hook');
+  assert.ok(primitivesSrc.includes('{bottomNode}'), 'the screen renders the registered bar');
+  assert.ok(primitivesSrc.includes('slotted ? null : tree'), 'RgBottomNav renders in place only outside a screen');
+  assert.ok(primitivesSrc.includes('navItemIconWrapSelected'), 'the selected tab icon carries the pill');
+});
+
+test('appbar tint, second action and progress compile and paint (Option A round)', () => {
+  const tpl = '<appbar title="Rangular" tone="tint" pin menu (menu)="open()" actionIcon="search" (action)="goSearch()" actionIcon2="bookmark" (action2)="goSaved()" [progress]="pct"></appbar>';
+  const cls = 'pct = 30; open() {} goSearch() {} goSaved() {}';
+  const { code, diagnostics } = compileSnippet(tpl, cls);
+  assert.equal(hasErrors(diagnostics), false, JSON.stringify(diagnostics));
+  assert.ok(code.includes('tone="tint"'), 'the tint tone compiles through');
+  assert.ok(code.includes('actionIcon2="bookmark"'), 'the second action compiles through');
+  assert.ok(code.includes('progress={pct}'), 'the progress binding compiles through');
+  const body = bodyOf(previewOf(tpl, cls));
+  assert.ok(body.includes('appbar tint'), 'the preview paints the tint band');
+  assert.ok(body.includes('appbar-progress'), 'the preview paints the progress line');
+  assert.ok(body.includes('width:30%'), 'the preview paints the progress width');
+  assert.ok(previewOf(tpl, cls).includes('nav-item.selected .nav-item-icon'), 'the page shell carries the selected tab pill css');
+});
+
+test('the chrome blend, fade veil and pill touch box are in the shipped primitives (Option A round)', () => {
+  assert.ok(primitivesSrc.includes('chrome ? { backgroundColor: chrome } : null'), 'the safe area takes the bar colour');
+  assert.ok(primitivesSrc.includes("const chrome = tint ? c.surfaceVariant : plain ? c.background : undefined"), 'flat bands lend their colour');
+  assert.ok(primitivesSrc.includes('VEIL_STEPS'), 'the fade veil strips exist');
+  assert.ok(primitivesSrc.includes('onEndReached || fade ? handleScroll : undefined'), 'the screen tracks scroll when fading');
+  assert.ok(primitivesSrc.includes('inputPillLeading'), 'the pill leading button has a full touch box');
+  const { code, diagnostics } = compileSnippet('<screen fade><p>Hi</p></screen>');
+  assert.equal(hasErrors(diagnostics), false, JSON.stringify(diagnostics));
+  assert.ok(code.includes('fade'), 'the screen fade attribute compiles through');
+});
+
+test('a selected row compiles and paints its pill (Option A round)', () => {
+  const tpl = '<row title="Learn" icon="home" [selected]="here"></row>';
+  const { code, diagnostics } = compileSnippet(tpl, 'here = true;');
+  assert.equal(hasErrors(diagnostics), false, JSON.stringify(diagnostics));
+  assert.ok(code.includes('selected={here}'), 'the selected binding compiles through');
+  assert.ok(bodyOf(previewOf(tpl, 'here = true;')).includes('row selected'), 'the preview paints the selected pill');
+  assert.ok(primitivesSrc.includes('rowSelected'), 'RgRow carries the selected style');
+});
+
+test('a named avatar tone paints its pair in the preview (Option A round)', () => {
+  const body = bodyOf(previewOf('<row avatar avatarText="3" avatarTone="green" title="Done lesson"></row>'));
+  assert.ok(body.includes('background:#e6f4ea;color:#137333'), 'the green pair paints');
+  assert.ok(primitivesSrc.includes('AVATAR_TONE_NAMES[avatarTone]'), 'RgRow resolves named tones');
 });

@@ -9,7 +9,7 @@ import { Component } from '@angular/core';
   `],
 })
 export class IconsComponent {
-  names = ['menu', 'search', 'close', 'check', 'chevron-left', 'chevron-right', 'arrow-left', 'arrow-right', 'plus', 'minus', 'bell', 'heart', 'star', 'settings', 'home', 'person', 'calendar', 'alarm', 'play', 'pause', 'edit', 'delete', 'share', 'info', 'warning', 'mail', 'sun', 'bookmark', 'bookmark-outline'];
+  names = ['menu', 'search', 'close', 'check', 'chevron-left', 'chevron-right', 'arrow-left', 'arrow-right', 'plus', 'minus', 'bell', 'heart', 'star', 'settings', 'home', 'person', 'calendar', 'alarm', 'play', 'pause', 'edit', 'delete', 'share', 'info', 'warning', 'mail', 'sun', 'code', 'chart', 'bookmark', 'bookmark-outline'];
   lastTap = '';
 
   tapIcon(name: string) {

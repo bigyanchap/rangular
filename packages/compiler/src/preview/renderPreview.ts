@@ -4,7 +4,7 @@ import { formatDateTimeValue, parseDateTimeValue, daysInMonth, MONTH_SHORT } fro
 import type { PickerMode } from '../../../ui/src/datetime';
 import { applyMask } from '../../../ui/src/mask';
 import { chartModel } from '../../../ui/src/chart';
-import { AVATAR_TONES, COLOR_SWATCHES } from '../../../ui/src/palette';
+import { AVATAR_TONES, AVATAR_TONE_NAMES, COLOR_SWATCHES } from '../../../ui/src/palette';
 import { ActivatedRoute, FormGroup, matchRoute, RouteMatch, ValidatorFn, Validators, validateValue } from '../../../runtime/src/index';
 import { ComponentField, ComponentInfo, DirectiveInfo, PipeInfo, ServiceInfo } from '../class/parseComponent';
 import { DirectiveStyleAssign, directiveStyles } from '../class/parseDirective';
@@ -1035,6 +1035,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
         const gradientBar = el.attrs['tone'] === 'gradient';
         const barCls = 'appbar' + (gradientBar ? ' gradient' : '')
           + (el.attrs['tone'] === 'plain' ? ' plain' : '')
+          + (el.attrs['tone'] === 'tint' ? ' tint' : '')
           + (el.booleanAttrs.includes('pin') ? ' pin' : '')
           + (inner ? ' has-children' : '');
         const iconRole = gradientBar ? 'onPrimary' : 'textMuted';
@@ -1042,9 +1043,17 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
           ? iconSvg('chevron-left', 24, iconRole)
           : el.booleanAttrs.includes('menu') ? iconSvg('menu', 24, iconRole) : '';
         const actionIcon = bound(el, 'actionIcon', scope);
-        const rightNode = actionIcon
-          ? `<span class="appbar-action">${iconSvg(actionIcon, 24, gradientBar ? 'onPrimary' : 'primary')}</span>`
+        const actionIcon2 = bound(el, 'actionIcon2', scope);
+        const actionNode = actionIcon
+          ? `<span class="appbar-action">${iconSvg(actionIcon, 24, gradientBar ? 'onPrimary' : 'primary')}</span>` : '';
+        const action2Node = actionIcon2
+          ? `<span class="appbar-action">${iconSvg(actionIcon2, 24, gradientBar ? 'onPrimary' : 'primary')}</span>` : '';
+        const rightNode = (actionNode || action2Node)
+          ? `<span class="appbar-actions">${actionNode}${action2Node}</span>`
           : avatar ? `<span class="avatar">${escapeHtml(String(avatar).charAt(0))}</span>` : '';
+        const progRaw = rawBound(el, 'progress', scope);
+        const progHtml = typeof progRaw === 'number'
+          ? `<div class="appbar-progress"><div style="width:${Math.min(100, Math.max(0, progRaw))}%"></div></div>` : '';
         const centered = el.attrs['titleAlign'] === 'center';
         const midNode = search
           ? `<span class="search${centered ? ' center' : ''}">${escapeHtml(search)}</span>`
@@ -1057,8 +1066,8 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
         // whose whole face is a child renders no title row, like
         // RgAppbar, so no empty band sits above the child.
         const hasRow = !!(title || search || leftIcon || rightNode);
-        if (!hasRow && inner) return `<header class="${barCls}">${inner}</header>`;
-        return `<header class="${barCls}">${rowHtml}${inner ? `<div class="appbar-children">${inner}</div>` : ''}</header>`;
+        if (!hasRow && inner) return `<header class="${barCls}">${inner}</header>` + progHtml;
+        return `<header class="${barCls}">${rowHtml}${inner ? `<div class="appbar-children">${inner}</div>` : ''}</header>` + progHtml;
       }
 
       case 'h1': return `<h1 class="display"${dirStyle}>${inner}</h1>`;
@@ -1268,10 +1277,11 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
         const rowIcon = bound(el, 'icon', scope);
         const variedPair = el.attrs['avatarTone'] === 'varied'
           ? AVATAR_TONES[[...initial].reduce((acc, ch) => acc + ch.charCodeAt(0), 0) % AVATAR_TONES.length]
-          : null;
+          : el.attrs['avatarTone'] ? AVATAR_TONE_NAMES[el.attrs['avatarTone']] ?? null : null;
         const rowActionIcon = bound(el, 'actionIcon', scope);
         const rowTip = bound(el, 'tooltip', scope);
-        const rowHtml = `<div class="row"${rowTip ? ` title="${escapeHtml(rowTip)}"` : ''}>${rowIcon ? iconSvg(rowIcon, 22, 'textMuted') : el.booleanAttrs.includes('avatar') ? `<span class="avatar-lg"${variedPair ? ` style="background:${variedPair.bg};color:${variedPair.fg}"` : ''}>${escapeHtml(initial)}</span>` : ''}` +
+        const rowSel = el.booleanAttrs.includes('selected') || truthy(rawBound(el, 'selected', scope));
+        const rowHtml = `<div class="row${rowSel ? ' selected' : ''}"${rowTip ? ` title="${escapeHtml(rowTip)}"` : ''}>${rowIcon ? iconSvg(rowIcon, 22, 'textMuted') : el.booleanAttrs.includes('avatar') ? `<span class="avatar-lg"${variedPair ? ` style="background:${variedPair.bg};color:${variedPair.fg}"` : ''}>${escapeHtml(initial)}</span>` : ''}` +
           `<span class="row-main"><span class="row-title">${escapeHtml(rowTitle)}</span>` +
           (sub ? `<span class="row-sub">${escapeHtml(sub)}</span>` : '') +
           (detail ? `<span class="row-detail">${escapeHtml(detail)}</span>` : '') +
@@ -1368,6 +1378,11 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
      not identical, and this note is the record. */
   .appbar.gradient { background: linear-gradient(115deg, ${t.colors.gradientFrom}, ${t.colors.gradientVia} 52%, ${t.colors.gradientTo}); border-radius: 0; color: var(--on-primary); }
   .appbar.plain { background: var(--surface); border-radius: 0; box-shadow: 0 1px 4px rgba(0,0,0,.14); }
+  .appbar.tint { background: var(--surface-variant); border-radius: 0; box-shadow: none; }
+  .appbar-progress { height: 3px; background: ${t.colors.border}; }
+  .appbar-progress div { height: 3px; background: var(--primary); }
+  .appbar-actions { display: inline-flex; align-items: center; gap: 12px; }
+  .row.selected { background: ${t.colors.primaryContainer}; border-radius: ${t.radius.lg}px; }
   .appbar-children.flush { margin-top: 0; }
   .section-chip { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); display: inline-flex; align-items: center; justify-content: center; flex: 0 0 28px; }
   .pill-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex: 0 0 32px; }
@@ -1545,6 +1560,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .nav-badge { position: absolute; top: -6px; right: -14px; background: var(--error); color: #fff; border-radius: ${t.radius.full}px; font-size: 10px; font-weight: 700; padding: 1px 5px; }
   .nav-item-label { font-size: ${t.typography.caption.fontSize}px; color: var(--text-muted); }
   .nav-item.selected .nav-item-label { color: var(--primary); font-weight: 600; }
+  .nav-item.selected .nav-item-icon { background: ${t.colors.primaryContainer}; border-radius: 999px; padding: 3px 14px; }
   .refresh-row { display: flex; justify-content: center; padding: ${t.spacing.md}px 0; }
   .refresh-row .spinner svg { animation: spin 1s linear infinite; }
   .skeleton { background: var(--surface-variant); animation: skeleton-pulse 1.4s linear infinite; }
@@ -1771,6 +1787,7 @@ export function previewScript(
 const TEMPLATE = ${jsonForScript(ast)};
 const ICONS = ${jsonForScript(ICON_PATHS)};
 const AVATAR_TONES = ${jsonForScript(AVATAR_TONES)};
+const AVATAR_TONE_NAMES = ${jsonForScript(AVATAR_TONE_NAMES)};
 const state = ${jsonForScript(serialState)};
 const FORM_INITS = ${jsonForScript(rootFormInits)};
 const EXPR_INITS = ${jsonForScript(rootExprInits)};
@@ -4613,6 +4630,7 @@ function __buildCore(el, scope, path, form) {
       var gradientBar = el.attrs['tone'] === 'gradient';
       bar.className = 'appbar' + (gradientBar ? ' gradient' : '')
         + (el.attrs['tone'] === 'plain' ? ' plain' : '')
+        + (el.attrs['tone'] === 'tint' ? ' tint' : '')
         + (el.booleanAttrs.indexOf('pin') >= 0 ? ' pin' : '');
       var iconRole = gradientBar ? 'onPrimary' : 'textMuted';
       var centeredBar = el.attrs['titleAlign'] === 'center';
@@ -4624,9 +4642,15 @@ function __buildCore(el, scope, path, form) {
       if (search) { mid.className = centeredBar ? 'search center' : 'search'; mid.textContent = String(search); }
       else { mid.className = centeredBar ? 'appbar-title center' : 'appbar-title'; mid.textContent = title ? String(title) : ''; }
       var actionIcon = __attr(el, 'actionIcon', scope);
+      var actionIcon2 = __attr(el, 'actionIcon2', scope);
       var avatar = __attr(el, 'avatar', scope);
       var rightIcon = null;
-      if (actionIcon) rightIcon = __icon(actionIcon, 24, gradientBar ? 'onPrimary' : 'primary');
+      if (actionIcon || actionIcon2) {
+        rightIcon = document.createElement('span');
+        rightIcon.className = 'appbar-actions';
+        if (actionIcon) rightIcon.appendChild(__icon(actionIcon, 24, gradientBar ? 'onPrimary' : 'primary'));
+        if (actionIcon2) rightIcon.appendChild(__icon(actionIcon2, 24, gradientBar ? 'onPrimary' : 'primary'));
+      }
       else if (avatar) {
         rightIcon = document.createElement('span');
         rightIcon.className = 'avatar';
@@ -4671,6 +4695,15 @@ function __buildCore(el, scope, path, form) {
         if (leftIcon) bar.appendChild(leftIcon);
         bar.appendChild(mid);
         if (rightIcon) bar.appendChild(rightIcon);
+      }
+      var progVal = __attr(el, 'progress', scope);
+      if (typeof progVal === 'number') {
+        var prog = document.createElement('div');
+        prog.className = 'appbar-progress';
+        var progFill = document.createElement('div');
+        progFill.style.width = Math.min(100, Math.max(0, progVal)) + '%';
+        prog.appendChild(progFill);
+        return [bar, prog];
       }
       return [bar];
     }
@@ -4981,7 +5014,7 @@ function __buildCore(el, scope, path, form) {
     }
     case 'row': {
       var row = document.createElement('div');
-      row.className = 'row';
+      row.className = 'row' + ((el.booleanAttrs.indexOf('selected') >= 0 || __attr(el, 'selected', scope)) ? ' selected' : '');
       var rowIconLive = __attr(el, 'icon', scope);
       if (rowIconLive) {
         row.appendChild(__icon(rowIconLive, 22, 'textMuted'));
@@ -4990,13 +5023,17 @@ function __buildCore(el, scope, path, form) {
         avl.className = 'avatar-lg';
         var avText = __attr(el, 'avatarText', scope);
         avl.textContent = avText ? String(avText).slice(0, 2) : (title ? String(title) : '•').charAt(0);
-        if (el.attrs['avatarTone'] === 'varied') {
+        var avTone = __attr(el, 'avatarTone', scope) || el.attrs['avatarTone'];
+        if (avTone === 'varied') {
           var avLabel = avl.textContent;
           var avHash = 0;
           for (var avI = 0; avI < avLabel.length; avI++) avHash += avLabel.charCodeAt(avI);
           var avPair = AVATAR_TONES[avHash % AVATAR_TONES.length];
           avl.style.background = avPair.bg;
           avl.style.color = avPair.fg;
+        } else if (avTone && AVATAR_TONE_NAMES[avTone]) {
+          avl.style.background = AVATAR_TONE_NAMES[avTone].bg;
+          avl.style.color = AVATAR_TONE_NAMES[avTone].fg;
         }
         row.appendChild(avl);
       }

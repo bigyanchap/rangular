@@ -103,6 +103,9 @@ export const ICON_PATHS: Record<string, string[]> = {
   ],
   // Code (Gmail light round, 2026-11-17): the brand mark of the
   // tutorial's drawer header, the angle brackets of a code file.
+  chart: [
+    'M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zM16.2 13H19v6h-2.8z',
+  ],
   code: ['M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4z', 'M14.6 16.6l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z'],
   // Bookmarks (gradient shell round, 2026-11-17): the filled
   // bookmark is the saved state, the outline is the unsaved state,
