@@ -204,13 +204,12 @@ function buildStyles(t: Theme) {
       width: 28, height: 28, borderRadius: 14, flexShrink: 0,
       backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center',
     },
-    // The keyboard Done bar (Gmail light round, 2026-11-17): the
-    // iOS input accessory every text field carries, a right aligned
-    // Done that dismisses the keyboard.
+    // The keyboard Done (Gmail light round, 2026-11-17; bar
+    // removed at his word later the same day): the iOS input
+    // accessory every text field carries paints no bar of its
+    // own, just the Done at the keyboard's top right.
     keyboardDoneBar: {
       flexDirection: 'row', justifyContent: 'flex-end',
-      backgroundColor: c.surfaceVariant,
-      borderTopWidth: 1, borderTopColor: c.border,
       paddingHorizontal: t.spacing.md, paddingVertical: t.spacing.sm,
     },
     keyboardDoneText: {
@@ -939,6 +938,63 @@ function childrenKeyOf(children: unknown): string {
     .join(';');
 }
 
+/**
+ * The overlay slot: the screen lends its overlays (dialog, sheet,
+ * drawer, lightbox) a place above the ScrollView. Inside the
+ * scrollable content an absolutely positioned overlay anchors to
+ * the tall content box on native, so a centered dialog lands far
+ * below the fold and a bottom sheet lands at the end of the page
+ * (the web renderer anchors to the visible box, which hid this).
+ * While open, an overlay registers its tree here and renders
+ * nothing in place; the screen draws the tree over its whole
+ * box. Outside a screen there is no slot and the overlay renders
+ * in place, as before. Registration is keyed on the tree's
+ * content, so a re-render with the same content cannot loop.
+ */
+const RgOverlaySlotContext = createContext<{
+  register: (id: string, key: string, node: React.ReactNode) => void;
+  clear: (id: string) => void;
+} | null>(null);
+
+/** A content key for an overlay tree: element types and scalar
+ * props, walked recursively, so any visible change inside the
+ * overlay changes the key and the slotted copy follows it. */
+function overlayKeyOf(node: unknown, depth = 0): string {
+  if (node === null || node === undefined || typeof node === 'boolean') return '';
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map((n) => overlayKeyOf(n, depth)).join(';');
+  if (!React.isValidElement(node) || depth > 6) return '';
+  const el = node as React.ReactElement<any>;
+  const typeName = typeof el.type === 'function'
+    ? ((el.type as any).name ?? 'el')
+    : String(el.type);
+  const scalars = Object.entries(el.props ?? {})
+    .filter(([k, v]) => k !== 'children' && (v === null || ['string', 'number', 'boolean'].includes(typeof v)))
+    .map(([k, v]) => `${k}=${String(v)}`)
+    .join(',');
+  return `${typeName}(${scalars})[${overlayKeyOf(el.props?.children, depth + 1)}]`;
+}
+
+let rgOverlaySeq = 0;
+function useRgOverlay(tree: React.ReactNode, active: boolean): boolean {
+  const slot = useContext(RgOverlaySlotContext);
+  const ref = useRef<string | null>(null);
+  if (ref.current === null) {
+    rgOverlaySeq += 1;
+    ref.current = 'rg-overlay-' + rgOverlaySeq;
+  }
+  const id = ref.current;
+  useLayoutEffect(() => {
+    if (!slot) return;
+    if (active) slot.register(id, overlayKeyOf(tree), tree);
+    else slot.clear(id);
+  });
+  useEffect(() => () => {
+    if (slot) slot.clear(id);
+  }, [slot, id]);
+  return slot !== null;
+}
+
 export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, onEndReached }: any) {
   const inherited = useRgTheme();
   const active = mode === 'dark' || mode === 'light' ? makeTheme(mode) : inherited;
@@ -964,6 +1020,34 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
       }
     },
   }).current;
+  // The overlay slot: overlays inside the scrollable content
+  // register here while open, and the screen draws them above
+  // everything, anchored to the screen box.
+  const [overlayMap, setOverlayMap] = useState(
+    () => new Map<string, { key: string; node: React.ReactNode }>(),
+  );
+  const overlaySlot = useRef({
+    register: (id: string, key: string, node: React.ReactNode) => {
+      setOverlayMap((prev) => {
+        const cur = prev.get(id);
+        if (cur && cur.key === key) return prev;
+        const next = new Map(prev);
+        next.set(id, { key, node });
+        return next;
+      });
+    },
+    clear: (id: string) => {
+      setOverlayMap((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Map(prev);
+        next.delete(id);
+        return next;
+      });
+    },
+  }).current;
+  const overlayNodes = [...overlayMap.entries()].map(([id, entry]) => (
+    <React.Fragment key={id}>{entry.node}</React.Fragment>
+  ));
   // A bottom navigation bar is a screen child in the template but
   // not a scrolling one: the screen lifts it out of the ScrollView
   // and pins it under the content, the way a real app shell does.
@@ -977,6 +1061,7 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
   return (
     <RgThemeContext.Provider value={active}>
       <SafeAreaView style={[styles.screen, style]}>
+        <RgOverlaySlotContext.Provider value={overlaySlot}>
         <RgHeaderSlotContext.Provider value={headerSlot}>
           {headerNode}
           <KeyboardAvoidingView
@@ -997,7 +1082,9 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
           </ScrollView>
           </KeyboardAvoidingView>
           {navs}
+          {overlayNodes}
         </RgHeaderSlotContext.Provider>
+        </RgOverlaySlotContext.Provider>
       </SafeAreaView>
     </RgThemeContext.Provider>
   );
@@ -1806,10 +1893,9 @@ export function RgSheet({ open, onClose, children, style }: any) {
     }
   }, [isOpen, progress]);
 
-  if (!isOpen) return null;
   const backdropOpacity = progress.interpolate({ inputRange: [0, 1], outputRange: [0, 0.32] });
   const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [260, 0] });
-  return (
+  const tree = (
     <View style={styles.overlayRoot}>
       <Animated.View style={[styles.overlayBackdrop, { opacity: backdropOpacity }]}>
         <Pressable style={styles.overlayFill} onPress={onClose} accessibilityLabel="Close" />
@@ -1820,6 +1906,9 @@ export function RgSheet({ open, onClose, children, style }: any) {
       </Animated.View>
     </View>
   );
+  const slotted = useRgOverlay(tree, isOpen);
+  if (!isOpen) return null;
+  return slotted ? null : tree;
 }
 
 /**
@@ -1848,10 +1937,9 @@ export function RgDialog({ open, onClose, title, children, style }: any) {
     }
   }, [isOpen, progress]);
 
-  if (!isOpen) return null;
   const backdropOpacity = progress.interpolate({ inputRange: [0, 1], outputRange: [0, 0.32] });
   const scale = progress.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] });
-  return (
+  const tree = (
     <View style={styles.overlayRootCenter}>
       <Animated.View style={[styles.overlayBackdrop, { opacity: backdropOpacity }]}>
         <Pressable style={styles.overlayFill} onPress={onClose} accessibilityLabel="Close" />
@@ -1862,6 +1950,9 @@ export function RgDialog({ open, onClose, title, children, style }: any) {
       </Animated.View>
     </View>
   );
+  const slotted = useRgOverlay(tree, isOpen);
+  if (!isOpen) return null;
+  return slotted ? null : tree;
 }
 
 /**
@@ -2509,10 +2600,9 @@ export function RgDrawer({ open, onClose, children, style }: any) {
       }).start();
     }
   }, [isOpen, progress]);
-  if (!isOpen) return null;
   const backdropOpacity = progress.interpolate({ inputRange: [0, 1], outputRange: [0, 0.32] });
   const translateX = progress.interpolate({ inputRange: [0, 1], outputRange: [-280, 0] });
-  return (
+  const tree = (
     <View style={styles.overlayRootLeft}>
       <Animated.View style={[styles.overlayBackdrop, { opacity: backdropOpacity }]}>
         <Pressable style={styles.overlayFill} onPress={onClose} accessibilityLabel="Close" />
@@ -2522,6 +2612,9 @@ export function RgDrawer({ open, onClose, children, style }: any) {
       </Animated.View>
     </View>
   );
+  const slotted = useRgOverlay(tree, isOpen);
+  if (!isOpen) return null;
+  return slotted ? null : tree;
 }
 
 /** The text of a declaration's children, for select option labels. */
@@ -3460,8 +3553,7 @@ export function RgImage({ src, width, height, resize, style }: any) {
 export function RgLightbox({ open, onClose, src, children, style }: any) {
   const styles = stylesFor(useRgTheme());
   const isOpen = open === undefined ? true : open === 'false' ? false : !!open;
-  if (!isOpen) return null;
-  return (
+  const tree = (
     <View style={styles.overlayRootCenter}>
       <View style={[styles.overlayBackdrop, { opacity: 0.92 }]}>
         <Pressable style={styles.overlayFill} onPress={onClose} accessibilityLabel="Close" />
@@ -3484,6 +3576,9 @@ export function RgLightbox({ open, onClose, src, children, style }: any) {
       {children ? <View style={styles.lightboxCaption}>{children}</View> : null}
     </View>
   );
+  const slotted = useRgOverlay(tree, isOpen);
+  if (!isOpen) return null;
+  return slotted ? null : tree;
 }
 
 /**

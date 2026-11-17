@@ -292,6 +292,21 @@ test('spacing rule: every stack container in the primitives owns the rhythm gap'
   assert.ok(panelBody.includes('gap: t.spacing.md'), 'the accordion panel body carries the rhythm gap');
 });
 
+test('overlays register into the screen overlay slot while open', () => {
+  // The slot exists, the screen provides it and draws the
+  // registered overlays above the scroll content.
+  assert.ok(primitivesSrc.includes('const RgOverlaySlotContext = createContext'), 'the overlay slot exists');
+  assert.ok(primitivesSrc.includes('<RgOverlaySlotContext.Provider value={overlaySlot}>'), 'the screen provides the slot');
+  assert.ok(primitivesSrc.includes('{overlayNodes}'), 'the screen draws the registered overlays');
+  // Registration is keyed on the tree content, so a repeat
+  // registration with the same key cannot loop.
+  assert.ok(primitivesSrc.includes('if (cur && cur.key === key) return prev;'), 'registration is keyed');
+  // All four overlays route their tree through the slot while
+  // open, and the datetime picker rides on the sheet.
+  assert.equal((primitivesSrc.match(/const slotted = useRgOverlay\(tree, isOpen\);/g) ?? []).length, 4, 'dialog, sheet, drawer and lightbox use the slot');
+  assert.ok(primitivesSrc.includes('return slotted ? null : tree;'), 'a slotted overlay renders nothing in place');
+});
+
 test('spacing rule: the preview mirrors the container gaps', () => {
   const html = previewOf('<form (submit)="save()"><button type="submit">Save</button></form><tabs><tab label="One"><p>First</p><button>Go</button></tab></tabs>', 'save() {}');
   const css = html.split('</style>')[0];

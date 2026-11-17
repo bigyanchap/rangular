@@ -1274,6 +1274,10 @@ pair of neighbouring controls was measured. Anything under 8
 that is not a composite above is a framework bug until proved
 otherwise.
 
+## The overlay slot round (2026-11-17)
+
+Found on a phone, invisible on the web: a dialog declared inside a screen's scrollable content anchors its absolute root to the tall content box on native, so the backdrop dims the page and the panel centers far below the fold; a bottom sheet lands at the end of the page the same way. The web renderer anchors to the visible box, which is why every web gate passed while the phone showed a dim page with no dialog. The fix follows the pinned header pattern: RgScreen lends an overlay slot above its ScrollView, and RgDialog, RgSheet, RgDrawer and RgLightbox register their tree there while open (keyed on the tree's content, so registration cannot loop) and render nothing in place. The datetime picker rides on the sheet, so its wheels are covered; the snackbar already mounts outside the screen and is untouched. Outside a screen there is no slot and an overlay renders in place, as before. The same day, at his word, the keyboard accessory lost its bar: the iOS Done paints no strip of its own and sits alone at the keyboard's top right.
+
 ## Child components (Stage 3, M5)
 
 - **Resolution is by import.** The compiler follows the entry component's
