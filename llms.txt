@@ -17,6 +17,7 @@
 - [UI polish system](docs/UI_POLISH.md): How generated UI stays polished, tokens only, pre-polished primitives, compiler defaults, screenshot proof
 - [Vibe-coding layer](docs/VIBE_CODING.md): What makes this repo AI-buildable, plus the full delta tables (Rangular vs Angular, Rangular vs React)
 - [Playbook](docs/PLAYBOOK.md): How work on the framework gets done, for human contributors and AI agents: named playbooks for features, bug fixes, refactors, shipping and more, the tutorial app as the living integration test, and verification in a browser in phone mode
+- docs/BY_DESIGN.md: what the framework does not do, by design, and what to do instead (no DOM, no Angular web libraries, the language and CSS subsets, heavy widgets, preview limits).
 - [Roadmap](docs/ROADMAP.md): The approved plan for Stages 6 to 12, controls, icons, forms, routing, pickers and overlays, data display, language completeness and app readiness
 - [Security](SECURITY.md): The security audit, findings and fixes, and the project root boundary rule for templateUrl, styleUrls and imports
 
