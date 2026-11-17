@@ -68,6 +68,11 @@
       "from": "@rangular/ui"
     },
     {
+      "tag": "gradient",
+      "component": "RgGradient",
+      "from": "@rangular/ui"
+    },
+    {
       "tag": "card",
       "component": "RgCard",
       "from": "@rangular/ui"
@@ -429,6 +434,14 @@
       "rnProp": "onEndReached"
     },
     {
+      "event": "action",
+      "rnProp": "onAction"
+    },
+    {
+      "event": "back",
+      "rnProp": "onBack"
+    },
+    {
       "event": "input",
       "rnProp": "onChangeText",
       "note": "On <input> only; on any other tag (input) maps to onInput and the compiler notes it has no standard RN prop."
@@ -465,6 +478,19 @@
         },
         {
           "name": "badge",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "RgGradient",
+      "props": [
+        {
+          "name": "children",
           "type": "any"
         },
         {
@@ -528,6 +554,34 @@
         {
           "name": "titleAlign",
           "type": "any"
+        },
+        {
+          "name": "tone",
+          "type": "any"
+        },
+        {
+          "name": "pin",
+          "type": "any"
+        },
+        {
+          "name": "back",
+          "type": "any"
+        },
+        {
+          "name": "onBack",
+          "type": "any"
+        },
+        {
+          "name": "actionIcon",
+          "type": "any"
+        },
+        {
+          "name": "onAction",
+          "type": "any"
+        },
+        {
+          "name": "children",
+          "type": "any"
         }
       ]
     },
@@ -569,6 +623,14 @@
         },
         {
           "name": "style",
+          "type": "any"
+        },
+        {
+          "name": "label",
+          "type": "any"
+        },
+        {
+          "name": "meta",
           "type": "any"
         }
       ]
@@ -702,6 +764,10 @@
         },
         {
           "name": "mask",
+          "type": "any"
+        },
+        {
+          "name": "variant",
           "type": "any"
         },
         {
@@ -911,6 +977,18 @@
         },
         {
           "name": "avatar",
+          "type": "any"
+        },
+        {
+          "name": "avatarText",
+          "type": "any"
+        },
+        {
+          "name": "actionIcon",
+          "type": "any"
+        },
+        {
+          "name": "onAction",
           "type": "any"
         },
         {
@@ -1966,6 +2044,8 @@
     "arrow-left",
     "arrow-right",
     "bell",
+    "bookmark",
+    "bookmark-outline",
     "calendar",
     "check",
     "chevron-left",
@@ -2089,7 +2169,10 @@
         "codeText": "#d4d4d4",
         "toastSurface": "#000000d9",
         "toastText": "#f1f3f4",
-        "toastAction": "#a8c7fa"
+        "toastAction": "#a8c7fa",
+        "gradientFrom": "#3b0764",
+        "gradientVia": "#7c3aed",
+        "gradientTo": "#db2777"
       },
       "dark": {
         "primary": "#a8c7fa",
@@ -2119,7 +2202,10 @@
         "codeText": "#d4d4d4",
         "toastSurface": "#000000d9",
         "toastText": "#f1f3f4",
-        "toastAction": "#a8c7fa"
+        "toastAction": "#a8c7fa",
+        "gradientFrom": "#3b0764",
+        "gradientVia": "#7c3aed",
+        "gradientTo": "#db2777"
       }
     },
     "elevation": {
@@ -2238,7 +2324,10 @@
           "codeText": "#d4d4d4",
           "toastSurface": "#000000d9",
           "toastText": "#f1f3f4",
-          "toastAction": "#a8c7fa"
+          "toastAction": "#a8c7fa",
+          "gradientFrom": "#3b0764",
+          "gradientVia": "#7c3aed",
+          "gradientTo": "#db2777"
         },
         "elevation": {
           "level0": {
@@ -2356,7 +2445,10 @@
           "codeText": "#d4d4d4",
           "toastSurface": "#000000d9",
           "toastText": "#f1f3f4",
-          "toastAction": "#a8c7fa"
+          "toastAction": "#a8c7fa",
+          "gradientFrom": "#3b0764",
+          "gradientVia": "#7c3aed",
+          "gradientTo": "#db2777"
         },
         "elevation": {
           "level0": {

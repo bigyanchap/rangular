@@ -1,0 +1,16 @@
+<screen>
+  <appbar title="Rangular Tutorial" tone="gradient" pin menu (menu)="openNav()" titleAlign="center">
+    <input variant="search" placeholder="Search lessons" [(ngModel)]="q">
+  </appbar>
+  <gradient>
+    <h2>Write Angular. Run native.</h2>
+    <p>One gradient surface, the brand band of the shell.</p>
+  </gradient>
+  <section label="Your bookmarks" meta="1 saved">
+    <row avatar avatarText="4" title="Buttons and events" subtitle="Tap, count, toast"
+      [actionIcon]="savedFirst ? 'bookmark' : 'bookmark-outline'" (action)="toggleFirst()"></row>
+    <row avatar avatarText="41" title="Forms" subtitle="Inputs, validation, submit"
+      [actionIcon]="savedSecond ? 'bookmark' : 'bookmark-outline'" (action)="toggleSecond()"></row>
+  </section>
+  <p *ngIf="q">Searching for: {{ q }}</p>
+</screen>

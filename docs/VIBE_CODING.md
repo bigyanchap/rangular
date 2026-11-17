@@ -1106,6 +1106,68 @@ framework first so the app only consumes them.
   same hairline border. The two are close, not identical, and
   this note is the record of that.
 
+## The gradient shell round (2026-11-17)
+
+The shell surface the Rangular Tutorial redesign asked for, built
+in the framework first so the app only consumes it. The design
+reference is the Google app frame: a top bar that stays while the
+content scrolls, search inside that bar, and section titles that
+stand out from their rows.
+
+- **The brand gradient.** Three new colour roles, `gradientFrom`
+  `#3b0764`, `gradientVia` `#7c3aed` and `gradientTo` `#db2777`,
+  carry the one brand gradient; the same stops in both themes, a
+  brand band does not change with the theme. `<gradient>` compiles
+  to `RgGradient`: a rounded surface the gradient fills (one
+  shared SVG fill layer, also used by the gradient app bar and
+  the section header bar), whose children read as on-primary
+  content through a derived theme that swaps the text roles to
+  the on-primary colour.
+
+- **The gradient pinned app bar.** `<appbar tone="gradient">`
+  turns the pill into a full width gradient band with light
+  foreground. `pin` lifts the bar out of the scroll: the bar
+  registers itself into the nearest screen's header slot and the
+  screen draws it above its ScrollView, so title and search stay
+  while content scrolls under them. Registration is keyed by the
+  bar's props and its children's scalar values, so a pinned bar
+  follows a search field's typed text without re-render loops.
+  An app bar with no screen above it, or without `pin`, renders
+  in place exactly as before. Children projected into the bar
+  render under the title row; before this round bar children were
+  dropped silently, which the golden rule forbids. Two new slots:
+  `back` puts a chevron at the left wired to `(back)`, and
+  `actionIcon` names a trailing icon button wired to `(action)`;
+  each takes its slot over the menu and the avatar. `(back)` and
+  `(action)` are known events from this round.
+
+- **The search pill.** `<input variant="search">` draws the field
+  as a full radius surface with the search icon inside at the
+  left and no border of its own, the shape search takes in the
+  Google apps. The value contract is unchanged: value in,
+  onChangeText out, `[(ngModel)]` as usual.
+
+- **Row avatar text and row action.** `avatarText` overrides the
+  row avatar circle's letter with the text the app passes (a
+  lesson number, a count; two characters at most). `actionIcon`
+  names a trailing icon button on the row, wired to `(action)`,
+  beside the row's own press: a bookmark on a lesson row. The
+  bookmark and bookmark-outline icons join the curated set (29
+  names) as the saved and unsaved states of that action; the app
+  binds the name, the icon carries the state.
+
+- **Labelled sections.** A `<section>` with a `label` opens with
+  a header row: a short gradient bar, the label in the title
+  step at semibold weight, and an optional `meta` line at the
+  right (a count, a range). A section without a label renders
+  exactly as before.
+
+- **Preview grain.** The browser preview paints a pinned bar
+  with `position: sticky` inside its scroll frame; the app pins
+  through the header slot above the ScrollView. Close, not
+  identical, and this note is the record. The `gradient-shell`
+  example is the recipe card for the whole round.
+
 ## Child components (Stage 3, M5)
 
 - **Resolution is by import.** The compiler follows the entry component's

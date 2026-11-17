@@ -79,9 +79,9 @@ test('Stage 7: the icon set is exactly the curated list, every name has path dat
   const expected = ['menu', 'search', 'close', 'check', 'chevron-left', 'chevron-right',
     'arrow-left', 'arrow-right', 'plus', 'minus', 'bell', 'heart', 'star', 'settings',
     'home', 'person', 'calendar', 'alarm', 'play', 'pause', 'edit', 'delete', 'share',
-    'info', 'warning', 'mail', 'sun'];
+    'info', 'warning', 'mail', 'sun', 'bookmark', 'bookmark-outline'];
   assert.deepEqual(ICON_NAMES, [...expected].sort());
-  assert.equal(ICON_NAMES.length, 27);
+  assert.equal(ICON_NAMES.length, 29);
   for (const name of ICON_NAMES) {
     assert.ok(Array.isArray(ICON_PATHS[name]) && ICON_PATHS[name].length >= 1, `${name} has no path data`);
     for (const d of ICON_PATHS[name]) assert.ok(d.startsWith('M'), `${name} path does not start with M`);
@@ -238,7 +238,7 @@ test('primitives: RgIcon draws with react-native-svg; appbar and checkbox use re
   assert.ok(source.includes("from 'react-native-svg'"));
   assert.ok(source.includes('export function RgIcon'));
   assert.ok(source.includes('ICON_PATHS'));
-  assert.ok(source.includes('<RgIcon name="menu" size={24} color="textMuted" />'));
+  assert.ok(source.includes('<RgIcon name="menu" size={24} color={iconRole} />'));
   assert.ok(source.includes('<RgIcon name="check" size={20} color="onPrimary" />'));
   assert.ok(!source.includes('☰'), 'appbar still fakes the menu with a character');
   assert.ok(!source.includes('✓'), 'a check mark is still faked with a character');
@@ -252,10 +252,10 @@ test('icons preview: server paint draws every icon with its label, coloured by r
     children: result.children,
     services: result.services,
   });
-  // 27 set icons + 4 usage icons + 3 icon buttons, in the server paint
+  // 29 set icons + 4 usage icons + 3 icon buttons, in the server paint
   // (everything before the page script). The appbar draws no menu: it
   // has no menu handler, and a dead control is not drawn.
-  assert.equal((html.split('<script>')[0].match(/<svg /g) ?? []).length, 34);
+  assert.equal((html.split('<script>')[0].match(/<svg /g) ?? []).length, 36);
   for (const name of ICON_NAMES) {
     assert.ok(html.includes(`<path d="${ICON_PATHS[name][0]}"`), `preview missing path for ${name}`);
     assert.ok(html.includes(`>${name}<`), `preview missing label for ${name}`);
@@ -332,8 +332,8 @@ test('icons preview behaviour: the page runtime draws the same paths as the serv
   });
   const app = loadPreview(html);
   const iconEls = findAll(app, (e) => e.className === 'icon');
-  // 27 in the *ngFor set + 4 usage icons + 3 icon buttons, at runtime.
-  assert.equal(iconEls.length, 34);
+  // 29 in the *ngFor set + 4 usage icons + 3 icon buttons, at runtime.
+  assert.equal(iconEls.length, 36);
   const runtimeMarkup = iconEls.map((e) => e.markup).join('\n');
   for (const name of ICON_NAMES) {
     // Parity: the identical path data the server painted and RgIcon ships.

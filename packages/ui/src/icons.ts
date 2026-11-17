@@ -101,6 +101,17 @@ export const ICON_PATHS: Record<string, string[]> = {
   sun: [
     'M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm-1 16.95h2V19.5h-2v2.95zm-7.45-3.91l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z',
   ],
+  // Bookmarks (gradient shell round, 2026-11-17): the filled
+  // bookmark is the saved state, the outline is the unsaved state,
+  // the pair Material ships as bookmark and bookmark_border. The
+  // tutorial app asked for them: a lesson is saved from its row or
+  // its app bar, and the two states must read at a glance.
+  bookmark: [
+    'M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z',
+  ],
+  'bookmark-outline': [
+    'M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z',
+  ],
 };
 
 /** Every valid icon name, sorted. The compiler validates against this. */

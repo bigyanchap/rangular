@@ -33,7 +33,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Svg, Path, Rect, Circle, Text as SvgText } from 'react-native-svg';
+import { Svg, Path, Rect, Circle, Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 import { theme as makeTheme } from './tokens';
 import type { Theme } from './tokens';
 import { ICON_PATHS } from './icons';
@@ -175,6 +175,22 @@ function buildStyles(t: Theme) {
       paddingHorizontal: t.spacing.lg, paddingVertical: 10,
       backgroundColor: c.surfaceVariant, borderRadius: t.radius.full,
     },
+    // Gradient app bar (gradient shell round, 2026-11-17): the bar
+    // becomes a full width band, square corners, the brand gradient
+    // drawn behind it by a GradientFill layer, so the surface colour
+    // and the pill radius of the default bar do not apply.
+    appbarGradient: {
+      borderRadius: 0, backgroundColor: 'transparent',
+      paddingVertical: t.spacing.md,
+    },
+    appbarChildren: { marginTop: t.spacing.sm },
+    // The gradient surface (gradient shell round, 2026-11-17): a
+    // rounded container the brand gradient fills; children sit in a
+    // column with the rhythm gap and read as on-primary content.
+    gradient: {
+      borderRadius: t.radius.lg, overflow: 'hidden',
+      padding: t.spacing.md, gap: t.spacing.sm, flexDirection: 'column',
+    },
     // A plain container (section, div, header) is a stack: it stacks
     // its children in a column with the one rhythm gap, the same gap
     // the screen and the card use. Before this fix containers compiled
@@ -184,6 +200,26 @@ function buildStyles(t: Theme) {
     // screens whose blocks were direct children of the screen got the
     // rhythm. Found by the Rangular Tutorial app, 2026-11-12.
     section: { flexDirection: 'column', gap: t.spacing.md },
+    // Section header (gradient shell round, 2026-11-17): a labelled
+    // section opens with a header row, a short brand gradient bar,
+    // the title in the title step, and an optional muted meta line
+    // at the right (a count, a range). The header makes a section
+    // title stand out from the rows under it, which plain stacked
+    // text never did.
+    sectionHead: {
+      flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm,
+    },
+    sectionBar: {
+      width: 4, height: 20, borderRadius: 2, overflow: 'hidden',
+      position: 'relative', flexShrink: 0,
+    },
+    sectionTitle: {
+      flex: 1, fontSize: t.typography.title.fontSize,
+      fontWeight: '700', color: c.text,
+    },
+    sectionMeta: {
+      fontSize: t.typography.caption.fontSize, color: c.textMuted,
+    },
     // An icon button: the Google pattern for actions like Back. A
     // 48 square touch target that hugs the left edge (alignSelf
     // flex-start, glyph left aligned) so the chevron lines up with
@@ -240,6 +276,20 @@ function buildStyles(t: Theme) {
       fontSize: t.typography.bodyLarge.fontSize, color: c.text,
     },
     inputFieldError: { borderColor: c.error },
+    // Search pill (gradient shell round, 2026-11-17): the search
+    // variant of the input, a full radius surface with the search
+    // icon inside at the left, the shape search takes in the Google
+    // apps. The field inside carries no border of its own.
+    inputPill: {
+      flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm,
+      backgroundColor: c.surface, borderRadius: t.radius.full,
+      paddingHorizontal: t.spacing.md, minHeight: 48,
+      borderWidth: 1, borderColor: c.border,
+    },
+    inputPillField: {
+      flex: 1, fontSize: t.typography.bodyLarge.fontSize,
+      color: c.text, paddingVertical: 10,
+    },
     inputError: {
       color: c.error, fontSize: t.typography.caption.fontSize, marginTop: t.spacing.xs,
     },
@@ -296,6 +346,10 @@ function buildStyles(t: Theme) {
     rowTitle: { fontSize: t.typography.body.fontSize, fontWeight: '600', color: c.text },
     rowSub: { fontSize: 13, color: c.text },
     rowDetail: { fontSize: 12.5, color: c.textMuted },
+    // Row action (gradient shell round, 2026-11-17): the trailing
+    // icon button a row carries when it declares actionIcon, a
+    // compact press target at the row's right edge.
+    rowAction: { padding: t.spacing.xs, flexShrink: 0 },
     fab: {
       position: 'absolute', right: t.spacing.lg, bottom: t.spacing.xxl,
       backgroundColor: c.primaryContainer, borderRadius: t.radius.lg,
@@ -737,11 +791,130 @@ function endReachedScrollHandler(onEndReached?: () => void) {
   };
 }
 
+/**
+ * The brand gradient as an absolute fill layer (gradient shell
+ * round, 2026-11-17): an SVG linear gradient through the theme's
+ * three brand stops, drawn behind the content of the surface that
+ * hosts it. The host clips it with its own radius and overflow.
+ * One shared definition: RgGradient, the gradient app bar and the
+ * section header bar all draw this same fill.
+ */
+function GradientFill() {
+  const t = useRgTheme();
+  const c = t.colors;
+  const rawId = React.useId();
+  const id = 'rggrad' + rawId.replace(/[^a-zA-Z0-9]/g, '');
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+      <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <Defs>
+          <LinearGradient id={id} x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={c.gradientFrom} />
+            <Stop offset="0.52" stopColor={c.gradientVia} />
+            <Stop offset="1" stopColor={c.gradientTo} />
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100" height="100" fill={`url(#${id})`} />
+      </Svg>
+    </View>
+  );
+}
+
+/**
+ * A gradient surface: a rounded container the brand gradient
+ * fills, with its children stacked inside in the rhythm gap.
+ * Children read as on-primary content: the surface provides a
+ * derived theme whose text roles are the on-primary colour, so
+ * headings, paragraphs and icons drawn with the text roles come
+ * out light on the gradient, the way content on a coloured band
+ * must. This is the banner an app shell opens with, the header
+ * band of a drawer, a highlighted card.
+ */
+export function RgGradient({ children, style }: any) {
+  const t = useRgTheme();
+  const styles = stylesFor(t);
+  const onGradient: Theme = {
+    ...t,
+    colors: {
+      ...t.colors,
+      text: t.colors.onPrimary,
+      onSurface: t.colors.onPrimary,
+      textMuted: t.colors.onPrimary,
+      onSurfaceVariant: t.colors.onPrimary,
+    },
+  };
+  return (
+    <View style={[styles.gradient, style]}>
+      <GradientFill />
+      <RgThemeContext.Provider value={onGradient}>
+        {children}
+      </RgThemeContext.Provider>
+    </View>
+  );
+}
+
+/**
+ * The header slot a screen offers its pinned app bar (gradient
+ * shell round, 2026-11-17). An app bar written with `pin` inside a
+ * screen registers its rendered bar here instead of rendering in
+ * place, and the screen draws the registered bar above its
+ * ScrollView, so the bar stays fixed while the content scrolls
+ * under it, the way the top bar of the Google apps stays. The
+ * registration is keyed: the bar re-registers only when its key
+ * (its props and its children's values) changes, so a re-render
+ * with the same key cannot loop. An app bar with no screen above
+ * it, or without `pin`, renders in place exactly as before.
+ */
+const RgHeaderSlotContext = createContext<{
+  register: (key: string, node: React.ReactNode) => void;
+  clear: (key: string) => void;
+} | null>(null);
+
+/** A stable key for a pinned bar's children: element types plus
+ * their scalar prop values, so a search field's typed text (a
+ * value prop) changes the key and the pinned bar follows it. */
+function childrenKeyOf(children: unknown): string {
+  return React.Children.toArray(children as any)
+    .map((child) => {
+      if (!React.isValidElement(child)) return String(child);
+      const el = child as React.ReactElement<any>;
+      const typeName = typeof el.type === 'function'
+        ? ((el.type as any).name ?? 'el')
+        : String(el.type);
+      const scalars = Object.entries(el.props ?? {})
+        .filter(([, v]) => v === null || ['string', 'number', 'boolean'].includes(typeof v))
+        .map(([k, v]) => `${k}=${String(v)}`)
+        .join(',');
+      return `${typeName}(${scalars})`;
+    })
+    .join(';');
+}
+
 export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, onEndReached }: any) {
   const inherited = useRgTheme();
   const active = mode === 'dark' || mode === 'light' ? makeTheme(mode) : inherited;
   const styles = stylesFor(active);
   const onScroll = useRef(endReachedScrollHandler(onEndReached)).current;
+  // The pinned header slot: a pinned app bar anywhere in this
+  // screen registers its bar, and the screen draws it above the
+  // ScrollView. Registration is keyed so a repeat registration
+  // with the same key is a no-op.
+  const [headerNode, setHeaderNode] = useState<React.ReactNode>(null);
+  const headerKeyRef = useRef<string | null>(null);
+  const headerSlot = useRef({
+    register: (key: string, node: React.ReactNode) => {
+      if (headerKeyRef.current !== key) {
+        headerKeyRef.current = key;
+        setHeaderNode(node);
+      }
+    },
+    clear: (key: string) => {
+      if (headerKeyRef.current === key) {
+        headerKeyRef.current = null;
+        setHeaderNode(null);
+      }
+    },
+  }).current;
   // A bottom navigation bar is a screen child in the template but
   // not a scrolling one: the screen lifts it out of the ScrollView
   // and pins it under the content, the way a real app shell does.
@@ -755,26 +928,32 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
   return (
     <RgThemeContext.Provider value={active}>
       <SafeAreaView style={[styles.screen, style]}>
-        <ScrollView
-          contentContainerStyle={styles.screenContent}
-          refreshControl={onRefresh
-            ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} />
-            : undefined}
-          onScroll={onEndReached ? onScroll : undefined}
-          scrollEventThrottle={64}
-        >
-          {body}
-        </ScrollView>
-        {navs}
+        <RgHeaderSlotContext.Provider value={headerSlot}>
+          {headerNode}
+          <ScrollView
+            contentContainerStyle={styles.screenContent}
+            refreshControl={onRefresh
+              ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} />
+              : undefined}
+            onScroll={onEndReached ? onScroll : undefined}
+            scrollEventThrottle={64}
+          >
+            {body}
+          </ScrollView>
+          {navs}
+        </RgHeaderSlotContext.Provider>
       </SafeAreaView>
     </RgThemeContext.Provider>
   );
 }
 
-export function RgAppbar({ title, search, menu, avatar, onMenu, titleAlign }: any) {
+export function RgAppbar({ title, search, menu, avatar, onMenu, titleAlign, tone, pin, back, onBack, actionIcon, onAction, children }: any) {
   const t = useRgTheme();
   const c = t.colors;
   const styles = stylesFor(t);
+  const slot = useContext(RgHeaderSlotContext);
+  const gradient = tone === 'gradient';
+  const iconRole = gradient ? 'onPrimary' : 'textMuted';
   // Menu and avatar are opt-in. An app bar shows a menu button only
   // when the app asks for one (the boolean `menu` attribute), and an
   // avatar only when the app passes `avatar` text. Before this fix the
@@ -783,38 +962,84 @@ export function RgAppbar({ title, search, menu, avatar, onMenu, titleAlign }: an
   // in at all (found by the Rangular Tutorial app, 2026-11-12).
   const menuNode = menu ? (onMenu ? (
     <Pressable onPress={onMenu} style={({ pressed }) => [pressed && styles.buttonPressed]}>
-      <RgIcon name="menu" size={24} color="textMuted" />
+      <RgIcon name="menu" size={24} color={iconRole} />
     </Pressable>
-  ) : <RgIcon name="menu" size={24} color="textMuted" />) : null;
+  ) : <RgIcon name="menu" size={24} color={iconRole} />) : null;
+  // Back (gradient shell round, 2026-11-17): the boolean `back`
+  // attribute puts a chevron at the left, wired to (back); it takes
+  // the left slot over the menu, a screen shows one or the other.
+  const backNode = back ? (onBack ? (
+    <Pressable onPress={onBack} style={({ pressed }) => [pressed && styles.buttonPressed]}>
+      <RgIcon name="chevron-left" size={24} color={iconRole} />
+    </Pressable>
+  ) : <RgIcon name="chevron-left" size={24} color={iconRole} />) : null;
   const avatarNode = avatar ? (
     <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: c.avatar, alignItems: 'center', justifyContent: 'center' }}>
       <Text style={{ color: c.onAvatar, fontSize: 12, fontWeight: '600' }}>{String(avatar).charAt(0)}</Text>
     </View>
   ) : null;
+  // Action (gradient shell round, 2026-11-17): `actionIcon` names
+  // an icon button at the right of the bar, wired to (action); it
+  // takes the right slot over the avatar. A lesson bar carries its
+  // bookmark here, filled or outline by the icon name the app
+  // binds, so the state reads at a glance.
+  const actionNode = actionIcon ? (onAction ? (
+    <Pressable onPress={onAction} style={({ pressed }) => [pressed && styles.buttonPressed]}>
+      <RgIcon name={actionIcon} size={24} color={gradient ? 'onPrimary' : 'primary'} />
+    </Pressable>
+  ) : <RgIcon name={actionIcon} size={24} color={gradient ? 'onPrimary' : 'primary'} />) : null;
+  const leftNode = back ? backNode : menuNode;
+  const rightNode = actionIcon ? actionNode : avatarNode;
+  const titleNode = search
+    ? <Text style={[styles.searchText, gradient ? { color: c.onPrimary } : null, titleAlign === 'center' ? styles.appbarTitleCenter : null]}>{search}</Text>
+    : <Text style={[styles.appbarTitle, gradient ? { color: c.onPrimary } : null, titleAlign === 'center' ? styles.appbarTitleCenter : null]}>{title}</Text>;
   // Centered title (tutorial round, 2026-11-13): `titleAlign="center"`
   // switches the bar to the standard three zone layout, a fixed
   // width left zone, the title centered in a flex middle zone, and
   // a balancing right zone, so the title sits at the true centre of
   // the bar even with a menu icon at the left. The default (no
-  // titleAlign, or "start") renders exactly the row above.
-  if (titleAlign === 'center') {
-    return (
-      <View style={styles.appbar}>
-        <View style={styles.appbarSide}>{menuNode}</View>
-        {search
-          ? <Text style={[styles.searchText, styles.appbarTitleCenter]}>{search}</Text>
-          : <Text style={[styles.appbarTitle, styles.appbarTitleCenter]}>{title}</Text>}
-        <View style={styles.appbarSideEnd}>{avatarNode}</View>
+  // titleAlign, or "start") renders the plain row.
+  // Children (gradient shell round, 2026-11-17): content projected
+  // into the bar renders under the title row, inside the bar: a
+  // search pill under the title of a gradient shell bar is the
+  // shape this exists for. Before this, bar children were dropped.
+  const bar = (
+    <View style={[styles.appbar, { flexDirection: 'column', alignItems: 'stretch' }, gradient ? styles.appbarGradient : null]}>
+      {gradient ? <GradientFill /> : null}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md }}>
+        {titleAlign === 'center' ? (
+          <>
+            <View style={styles.appbarSide}>{leftNode}</View>
+            {titleNode}
+            <View style={styles.appbarSideEnd}>{rightNode}</View>
+          </>
+        ) : (
+          <>
+            {leftNode}
+            {titleNode}
+            {rightNode}
+          </>
+        )}
       </View>
-    );
-  }
-  return (
-    <View style={styles.appbar}>
-      {menuNode}
-      {search ? <Text style={styles.searchText}>{search}</Text> : <Text style={styles.appbarTitle}>{title}</Text>}
-      {avatarNode}
+      {children ? <View style={styles.appbarChildren}>{children}</View> : null}
     </View>
   );
+  // Pin (gradient shell round, 2026-11-17): with `pin` and a screen
+  // above it, the bar registers into the screen's header slot and
+  // renders nothing in place; the screen draws it above the scroll.
+  // The key carries every prop that changes the bar's face, plus
+  // its children's scalar values, so the pinned bar follows a
+  // search field's typed text but never loops on a plain re-render.
+  const pinKey = pin
+    ? [title ?? '', search ?? '', back ? 'back' : '', menu ? 'menu' : '', avatar ?? '', actionIcon ?? '', titleAlign ?? '', tone ?? '', childrenKeyOf(children)].join('|')
+    : '';
+  useEffect(() => {
+    if (!pin || !slot) return;
+    slot.register(pinKey, bar);
+    return () => slot.clear(pinKey);
+  }, [pinKey]);
+  if (pin && slot) return null;
+  return bar;
 }
 
 export function RgIconButton({ name, size = 28, color, onPress, style, tooltip }: any) {
@@ -837,9 +1062,28 @@ export function RgIconButton({ name, size = 28, color, onPress, style, tooltip }
   );
 }
 
-export function RgSection({ children, style }: any) {
+export function RgSection({ children, style, label, meta }: any) {
   const styles = stylesFor(useRgTheme());
-  return <View style={[styles.section, style]}>{children}</View>;
+  // Labelled section (gradient shell round, 2026-11-17): a section
+  // with a `label` opens with a header row, a short brand gradient
+  // bar, the label in the title step, and an optional muted `meta`
+  // line at the right (a count, a range). The header is what makes
+  // a section title stand out from the rows under it. A section
+  // without a label renders exactly as before.
+  return (
+    <View style={[styles.section, style]}>
+      {label ? (
+        <View style={styles.sectionHead}>
+          <View style={styles.sectionBar}>
+            <GradientFill />
+          </View>
+          <Text style={styles.sectionTitle}>{label}</Text>
+          {meta ? <Text style={styles.sectionMeta}>{meta}</Text> : null}
+        </View>
+      ) : null}
+      {children}
+    </View>
+  );
 }
 
 export function RgCard({ children, style }: any) {
@@ -938,7 +1182,7 @@ export function RgButton({ children, disabled, onPress, badge, style, variant, t
  * `secure` is the password form of the template's type attribute;
  * keyboardType passes the template's email/number choice through.
  */
-export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, label, error, disabled, secure, keyboardType, options, onOptionSelected, mask, style }: any) {
+export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, label, error, disabled, secure, keyboardType, options, onOptionSelected, mask, variant, style }: any) {
   const t = useRgTheme();
   const styles = stylesFor(t);
   // Autocomplete (Stage 11): while the field is focused and its text
@@ -960,6 +1204,32 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
     onOptionSelected?.(option);
     setFocused(false);
   };
+  // Search pill (gradient shell round, 2026-11-17): variant="search"
+  // draws the field as a full radius surface with the search icon
+  // inside at the left and no border of its own, the shape search
+  // takes in the Google apps and in a gradient shell bar. The value
+  // contract is the same field contract: value in, onChangeText out.
+  if (variant === 'search') {
+    return (
+      <View style={style}>
+        {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
+        <View style={styles.inputPill}>
+          <RgIcon name="search" size={20} color="textMuted" />
+          <TextInput
+            style={styles.inputPillField}
+            value={value}
+            onChangeText={onChangeText}
+            onFocus={() => { setFocused(true); onFocus?.(); }}
+            onBlur={() => { setFocused(false); onBlur?.(); }}
+            placeholder={placeholder}
+            placeholderTextColor={t.colors.textMuted}
+            editable={!disabled}
+          />
+        </View>
+        {error ? <Text style={styles.inputError}>{error}</Text> : null}
+      </View>
+    );
+  }
   return (
     <View style={[styles.inputWrap, style]}>
       {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
@@ -1274,16 +1544,25 @@ function SwipeRow({ actions, children }: any) {
   );
 }
 
-export function RgRow({ title, subtitle, detail, time, avatar, onPress, badge, tooltip, children }: any) {
+export function RgRow({ title, subtitle, detail, time, avatar, avatarText, actionIcon, onAction, onPress, badge, tooltip, children }: any) {
   const t = useRgTheme();
   const c = t.colors;
   const styles = stylesFor(t);
   const tip = useTooltipBubble(tooltip, styles);
+  // Avatar text and row action (gradient shell round, 2026-11-17):
+  // `avatarText` overrides the avatar circle's letter with the text
+  // the app passes (a lesson number, a count), and `actionIcon`
+  // names a trailing icon button wired to (action), the row's own
+  // button beside its navigation press: a bookmark on a lesson row,
+  // filled or outline by the icon name the app binds.
+  const avatarLabel = avatarText !== undefined && avatarText !== null && String(avatarText) !== ''
+    ? String(avatarText).slice(0, 2)
+    : (title || '\u2022').charAt(0);
   const content = (
     <>
-      {avatar ? (
+            {avatar ? (
         <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: c.onPrimary, fontSize: 16, fontWeight: '600' }}>{(title || '•').charAt(0)}</Text>
+          <Text style={{ color: c.onPrimary, fontSize: avatarLabel.length > 1 ? 13 : 16, fontWeight: '600' }}>{avatarLabel}</Text>
         </View>
       ) : null}
       <View style={{ flex: 1 }}>
@@ -1294,6 +1573,11 @@ export function RgRow({ title, subtitle, detail, time, avatar, onPress, badge, t
       </View>
       {time ? <Text style={{ fontSize: 11, color: c.textMuted }}>{time}</Text> : null}
       <BadgeDot value={badge} styles={styles} offset={{ top: 8, right: 0 }} />
+      {actionIcon ? (
+        <Pressable onPress={onAction} style={({ pressed }) => [styles.rowAction, pressed && { opacity: 0.6 }]}>
+          <RgIcon name={actionIcon} size={20} color="primary" />
+        </Pressable>
+      ) : null}
     </>
   );
   // A row with an onPress (a (click) handler or a routerLink in the

@@ -117,6 +117,7 @@ export const TAG_MAP: Record<string, TagMapping> = {
   button: { component: 'RgButton', fromUi: true },
   screen: { component: 'RgScreen', fromUi: true },
   appbar: { component: 'RgAppbar', fromUi: true },
+  gradient: { component: 'RgGradient', fromUi: true },
   card: { component: 'RgCard', fromUi: true },
   list: { component: 'RgList', fromUi: true },
   row: { component: 'RgRow', fromUi: true },
@@ -288,6 +289,12 @@ export const EVENT_PROPS: Record<string, string> = {
   // handler just runs.
   refresh: 'onRefresh',
   endReached: 'onEndReached',
+  // Gradient shell round (2026-11-17): the trailing action of a
+  // row and of an app bar, and the app bar's back chevron. Naming
+  // them here makes them known events, so they map without the
+  // fallback comment.
+  action: 'onAction',
+  back: 'onBack',
 };
 
 /** Map a template (event) to its React Native prop name. */
@@ -2620,7 +2627,7 @@ class Generator {
           'GEN_UNKNOWN_TAG',
           `Unknown tag <${el.tag}>, emitted as <View>. Use a known block or a component tag.`,
           el.pos.line, el.pos.column,
-          'Known blocks: screen, appbar, card, list, row, fab, button, input, form, switch, switcher, checkbox, radio-group, tabs, accordion, panel, table, slider, progress-bar, spinner, chips, chip, sheet, dialog, datetime-picker, menu, menu-item, drawer, select, stepper, step, grid-list, grid-tile, tree, tree-node, divider, bottom-nav, nav-item, skeleton, row-action, rating, otp, file-picker, color-picker, editor, carousel, timeline, timeline-item, calendar, avatar, avatar-group, empty-state, chart, image, lightbox, breadcrumbs, crumb, h1, h2, h3, p, span, label, code, div, section, header, or use a Capitalised component tag',
+          'Known blocks: screen, appbar, gradient, card, list, row, fab, button, input, form, switch, switcher, checkbox, radio-group, tabs, accordion, panel, table, slider, progress-bar, spinner, chips, chip, sheet, dialog, datetime-picker, menu, menu-item, drawer, select, stepper, step, grid-list, grid-tile, tree, tree-node, divider, bottom-nav, nav-item, skeleton, row-action, rating, otp, file-picker, color-picker, editor, carousel, timeline, timeline-item, calendar, avatar, avatar-group, empty-state, chart, image, lightbox, breadcrumbs, crumb, h1, h2, h3, p, span, label, code, div, section, header, or use a Capitalised component tag',
         ));
         componentName = 'View';
         this.usedRn.add('View');

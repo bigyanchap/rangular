@@ -75,6 +75,14 @@ export interface ColourRoles {
   toastSurface: string;
   toastText: string;
   toastAction: string;
+  // Brand gradient (gradient shell round, 2026-11-17): the three
+  // stops of the one brand gradient, drawn by RgGradient and the
+  // gradient app bar. The same stops in both modes on purpose: a
+  // brand band does not change with the theme, the way the code
+  // surface does not.
+  gradientFrom: string;
+  gradientVia: string;
+  gradientTo: string;
 }
 
 export const colours: Record<'light' | 'dark', ColourRoles> = {
@@ -107,6 +115,9 @@ export const colours: Record<'light' | 'dark', ColourRoles> = {
     toastSurface: '#000000d9',
     toastText: '#f1f3f4',
     toastAction: '#a8c7fa',
+    gradientFrom: '#3b0764',
+    gradientVia: '#7c3aed',
+    gradientTo: '#db2777',
   },
   dark: {
     primary: '#a8c7fa',
@@ -137,6 +148,9 @@ export const colours: Record<'light' | 'dark', ColourRoles> = {
     toastSurface: '#000000d9',
     toastText: '#f1f3f4',
     toastAction: '#a8c7fa',
+    gradientFrom: '#3b0764',
+    gradientVia: '#7c3aed',
+    gradientTo: '#db2777',
   },
 };
 

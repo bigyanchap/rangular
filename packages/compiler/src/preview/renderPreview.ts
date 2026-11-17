@@ -690,6 +690,15 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
       // the same shared formatter the app and the runtime use.
       const maskText = bound(el, 'mask', scope);
       if (maskText) value = applyMask(value, maskText);
+      // Search pill (gradient shell round): variant="search" draws
+      // the field as a pill with the search icon inside at the left.
+      if (el.attrs['variant'] === 'search') {
+        return `<div class="field">` +
+          (labelText ? `<span class="field-label">${escapeHtml(labelText)}</span>` : '') +
+          `<div class="input-search">${iconSvg('search', 20, 'textMuted')}<input type="text"${placeholder ? ` placeholder="${escapeHtml(placeholder)}"` : ''} value="${escapeHtml(value)}"${disabled ? ' disabled' : ''}></div>` +
+          (errorText ? `<span class="field-error">${escapeHtml(errorText)}</span>` : '') +
+          `</div>`;
+      }
       return `<div class="field">` +
         (labelText ? `<span class="field-label">${escapeHtml(labelText)}</span>` : '') +
         `<input class="field-input" type="${inputType}"${placeholder ? ` placeholder="${escapeHtml(placeholder)}"` : ''} value="${escapeHtml(value)}"${disabled ? ' disabled' : ''}>` +
@@ -1016,22 +1025,34 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
       case 'appbar': {
         const search = bound(el, 'search', scope);
         const avatar = bound(el, 'avatar', scope);
-        // Centered title (tutorial round): three zones, the side
-        // zones fixed at the avatar width, so the title centers on
-        // the bar itself even with a menu icon at the left.
-        if (el.attrs['titleAlign'] === 'center') {
-          return `<header class="appbar"><span class="appbar-side">${el.booleanAttrs.includes('menu') ? iconSvg('menu', 24, 'textMuted') : ''}</span>` +
-            (search
-              ? `<span class="search center">${escapeHtml(search)}</span>`
-              : `<span class="appbar-title center">${escapeHtml(title)}</span>`) +
-            `<span class="appbar-side end">${avatar ? `<span class="avatar">${escapeHtml(String(avatar).charAt(0))}</span>` : ''}</span></header>`;
-        }
-        return `<header class="appbar">${el.booleanAttrs.includes('menu') ? iconSvg('menu', 24, 'textMuted') : ''}` +
-          (search
-            ? `<span class="search">${escapeHtml(search)}</span>`
-            : `<span class="appbar-title">${escapeHtml(title)}</span>`) +
-          (avatar ? `<span class="avatar">${escapeHtml(String(avatar).charAt(0))}</span>` : '') + `</header>`;
+        // Gradient shell round (2026-11-17): tone="gradient" paints
+        // the brand gradient band and lightens the icons, `pin`
+        // marks the bar pinned (the preview paints it sticky), back
+        // and actionIcon take the two slots, and projected children
+        // render under the title row in an appbar-children block.
+        const gradientBar = el.attrs['tone'] === 'gradient';
+        const barCls = 'appbar' + (gradientBar ? ' gradient' : '')
+          + (el.booleanAttrs.includes('pin') ? ' pin' : '')
+          + (inner ? ' has-children' : '');
+        const iconRole = gradientBar ? 'onPrimary' : 'textMuted';
+        const leftIcon = el.booleanAttrs.includes('back')
+          ? iconSvg('chevron-left', 24, iconRole)
+          : el.booleanAttrs.includes('menu') ? iconSvg('menu', 24, iconRole) : '';
+        const actionIcon = bound(el, 'actionIcon', scope);
+        const rightNode = actionIcon
+          ? `<span class="appbar-action">${iconSvg(actionIcon, 24, gradientBar ? 'onPrimary' : 'primary')}</span>`
+          : avatar ? `<span class="avatar">${escapeHtml(String(avatar).charAt(0))}</span>` : '';
+        const centered = el.attrs['titleAlign'] === 'center';
+        const midNode = search
+          ? `<span class="search${centered ? ' center' : ''}">${escapeHtml(search)}</span>`
+          : `<span class="appbar-title${centered ? ' center' : ''}">${escapeHtml(title)}</span>`;
+        const zones = centered
+          ? `<span class="appbar-side">${leftIcon}</span>${midNode}<span class="appbar-side end">${rightNode}</span>`
+          : `${leftIcon}${midNode}${rightNode}`;
+        const rowHtml = inner ? `<div class="appbar-row">${zones}</div>` : zones;
+        return `<header class="${barCls}">${rowHtml}${inner ? `<div class="appbar-children">${inner}</div>` : ''}</header>`;
       }
+
       case 'h1': return `<h1 class="display"${dirStyle}>${inner}</h1>`;
       case 'h2': return `<h2 class="heading"${dirStyle}>${inner}</h2>`;
       case 'h3': return `<h3 class="title"${dirStyle}>${inner}</h3>`;
@@ -1043,6 +1064,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
         return cls ? `<span class="${escapeHtml(cls)}"${dirStyle}>${inner}</span>` : `<span${dirStyle}>${inner}</span>`;
       }
       case 'card': return `<section class="card"${dirStyle}>${inner}</section>`;
+      case 'gradient': return `<div class="gradient"${dirStyle}>${inner}</div>`;
       case 'sheet': {
         const open = rawBound(el, 'open', scope);
         if (open !== undefined && !truthy(open)) return '';
@@ -1233,7 +1255,9 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
         const sub = bound(el, 'subtitle', scope) ?? '';
         const detail = bound(el, 'detail', scope) ?? '';
         const time = bound(el, 'time', scope) ?? '';
-        const initial = (rowTitle || '•').charAt(0);
+        const avatarText = bound(el, 'avatarText', scope);
+        const initial = avatarText ? String(avatarText).slice(0, 2) : (rowTitle || '•').charAt(0);
+        const rowActionIcon = bound(el, 'actionIcon', scope);
         const rowTip = bound(el, 'tooltip', scope);
         const rowHtml = `<div class="row"${rowTip ? ` title="${escapeHtml(rowTip)}"` : ''}>${el.booleanAttrs.includes('avatar') ? `<span class="avatar-lg">${escapeHtml(initial)}</span>` : ''}` +
           `<span class="row-main"><span class="row-title">${escapeHtml(rowTitle)}</span>` +
@@ -1243,7 +1267,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
           // page runtime do (e.g. an unread dot <span *ngIf="m.unread">),
           // unless the children already served as the title fallback.
           (titleBound !== undefined ? inner : '') +
-          `</span>${time ? `<span class="row-time">${escapeHtml(time)}</span>` : ''}${badgeHtml(el, scope)}</div>`;
+          `</span>${time ? `<span class="row-time">${escapeHtml(time)}</span>` : ''}${badgeHtml(el, scope)}${rowActionIcon ? `<button class="row-action">${iconSvg(rowActionIcon, 20, 'primary')}</button>` : ''}</div>`;
         // Stage 15: swipe actions paint as a tray in the DOM,
         // unrevealed; the page runtime toggles the revealed state.
         const actionEls = el.children.filter(
@@ -1272,7 +1296,14 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
       }
       case 'fab': return `<div class="fab">${inner || escapeHtml(bound(el, 'label', scope) ?? 'Compose')}</div>`;
       case 'header': return `<header class="stack"${dirStyle}>${inner}</header>`;
-      case 'section': return `<section class="stack"${dirStyle}>${inner}</section>`;
+      case 'section': {
+        const secLabel = bound(el, 'label', scope);
+        const secMeta = bound(el, 'meta', scope);
+        const secHead = secLabel
+          ? `<div class="section-head"><span class="section-bar"></span><span class="section-title">${escapeHtml(secLabel)}</span>${secMeta ? `<span class="section-meta">${escapeHtml(secMeta)}</span>` : ''}</div>`
+          : '';
+        return `<section class="stack"${dirStyle}>${secHead}${inner}</section>`;
+      }
       default: return `<div class="stack"${dirStyle}>${inner}</div>`;
     }
   };
@@ -1313,6 +1344,26 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .appbar-side { width: 28px; flex: 0 0 28px; display: inline-flex; align-items: center; }
   .appbar-side.end { justify-content: flex-end; }
   .appbar-title.center, .search.center { text-align: center; }
+  /* Gradient shell round (2026-11-17): the gradient app bar band,
+     the pinned bar, bar children, the gradient surface, labelled
+     section heads, the search pill and the row action. The preview
+     paints a pinned bar sticky in its scroll frame; the app pins
+     it above the scroll through the screen's header slot. Close,
+     not identical, and this note is the record. */
+  .appbar.gradient { background: linear-gradient(115deg, ${t.colors.gradientFrom}, ${t.colors.gradientVia} 52%, ${t.colors.gradientTo}); border-radius: 0; color: var(--on-primary); }
+  .appbar.pin { position: sticky; top: 0; z-index: 30; }
+  .appbar.has-children { flex-direction: column; align-items: stretch; }
+  .appbar-row { display: flex; align-items: center; gap: ${t.spacing.md}px; }
+  .appbar-children { margin-top: ${t.spacing.sm}px; }
+  .appbar-action { display: inline-flex; }
+  .gradient { background: linear-gradient(115deg, ${t.colors.gradientFrom}, ${t.colors.gradientVia} 52%, ${t.colors.gradientTo}); color: var(--on-primary); --text: var(--on-primary); --text-muted: var(--on-primary); border-radius: ${t.radius.lg}px; padding: ${t.spacing.md}px; display: flex; flex-direction: column; gap: ${t.spacing.sm}px; }
+  .section-head { display: flex; align-items: center; gap: ${t.spacing.sm}px; }
+  .section-bar { width: 4px; height: 20px; border-radius: 2px; background: linear-gradient(180deg, ${t.colors.gradientVia}, ${t.colors.gradientTo}); flex: 0 0 4px; }
+  .section-title { flex: 1; font-size: ${t.typography.title.fontSize}px; font-weight: 700; }
+  .section-meta { font-size: ${t.typography.caption.fontSize}px; color: var(--text-muted); }
+  .input-search { display: flex; align-items: center; gap: ${t.spacing.sm}px; background: var(--role-surface); border: 1px solid var(--border); border-radius: ${t.radius.full}px; padding: 0 ${t.spacing.md}px; min-height: 48px; }
+  .input-search input { flex: 1; border: none; background: transparent; font-size: ${t.typography.bodyLarge.fontSize}px; color: var(--text); padding: 10px 0; outline: none; min-width: 0; }
+  .row-action { background: none; border: none; padding: 4px; cursor: pointer; display: inline-flex; align-items: center; }
   /* Code block (tutorial round): a dark editor surface and a
      monospace stack in both themes; long lines scroll sideways. */
   .code { background: var(--role-code-surface); color: var(--role-code-text); border-radius: ${t.radius.md}px; padding: ${t.spacing.md}px ${t.spacing.lg}px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: ${t.typography.body.fontSize}px; line-height: ${t.typography.body.lineHeight}px; white-space: pre; overflow-x: auto; margin: 0; }
@@ -3249,7 +3300,19 @@ function __buildInput(el, scope, form, path) {
       if (ev.name === 'focus') __runHandler(ev.expression, scope, undefined);
     });
   });
-  wrap.appendChild(input);
+  if (el.attrs['variant'] === 'search') {
+    // Search pill (gradient shell round): the field sits in a pill
+    // with the search icon inside at the left; the input keeps the
+    // same value wiring as the plain field.
+    var pill = document.createElement('div');
+    pill.className = 'input-search';
+    pill.appendChild(__icon('search', 20, 'textMuted'));
+    input.className = '';
+    pill.appendChild(input);
+    wrap.appendChild(pill);
+  } else {
+    wrap.appendChild(input);
+  }
   // Autocomplete (Stage 11): with an [options] binding, while the
   // field is focused and its text is non-empty, a panel under the
   // field lists the options containing the text (case-insensitive
@@ -4494,41 +4557,70 @@ function __buildCore(el, scope, path, form) {
     }
     case 'appbar': {
       var bar = document.createElement('header');
-      bar.className = 'appbar';
-      // Centered title (tutorial round): three zones, side zones
-      // fixed at the avatar width, title centered on the bar.
+      // Gradient shell round (2026-11-17): tone, pin, back,
+      // actionIcon and projected children, mirroring RgAppbar and
+      // the static renderer.
+      var gradientBar = el.attrs['tone'] === 'gradient';
+      bar.className = 'appbar' + (gradientBar ? ' gradient' : '')
+        + (el.booleanAttrs.indexOf('pin') >= 0 ? ' pin' : '');
+      var iconRole = gradientBar ? 'onPrimary' : 'textMuted';
       var centeredBar = el.attrs['titleAlign'] === 'center';
-      var leftZone = null;
-      if (centeredBar) {
-        leftZone = document.createElement('span');
-        leftZone.className = 'appbar-side';
-        bar.appendChild(leftZone);
-      }
-      if (el.booleanAttrs.indexOf('menu') >= 0) (leftZone || bar).appendChild(__icon('menu', 24, 'textMuted'));
+      var leftIcon = null;
+      if (el.booleanAttrs.indexOf('back') >= 0) leftIcon = __icon('chevron-left', 24, iconRole);
+      else if (el.booleanAttrs.indexOf('menu') >= 0) leftIcon = __icon('menu', 24, iconRole);
       var search = __attr(el, 'search', scope);
       var mid = document.createElement('span');
       if (search) { mid.className = centeredBar ? 'search center' : 'search'; mid.textContent = String(search); }
       else { mid.className = centeredBar ? 'appbar-title center' : 'appbar-title'; mid.textContent = title ? String(title) : ''; }
-      bar.appendChild(mid);
+      var actionIcon = __attr(el, 'actionIcon', scope);
       var avatar = __attr(el, 'avatar', scope);
+      var rightIcon = null;
+      if (actionIcon) rightIcon = __icon(actionIcon, 24, gradientBar ? 'onPrimary' : 'primary');
+      else if (avatar) {
+        rightIcon = document.createElement('span');
+        rightIcon.className = 'avatar';
+        rightIcon.textContent = String(avatar).charAt(0);
+      }
+      var leftZone = null;
+      var rightZone = null;
       if (centeredBar) {
-        var rightZone = document.createElement('span');
+        leftZone = document.createElement('span');
+        leftZone.className = 'appbar-side';
+        if (leftIcon) leftZone.appendChild(leftIcon);
+        rightZone = document.createElement('span');
         rightZone.className = 'appbar-side end';
-        if (avatar) {
-          var avc = document.createElement('span');
-          avc.className = 'avatar';
-          avc.textContent = String(avatar).charAt(0);
-          rightZone.appendChild(avc);
+        if (rightIcon) rightZone.appendChild(rightIcon);
+      }
+      if (kids.length) {
+        bar.className += ' has-children';
+        var zones = document.createElement('div');
+        zones.className = 'appbar-row';
+        if (centeredBar) {
+          zones.appendChild(leftZone);
+          zones.appendChild(mid);
+          zones.appendChild(rightZone);
+        } else {
+          if (leftIcon) zones.appendChild(leftIcon);
+          zones.appendChild(mid);
+          if (rightIcon) zones.appendChild(rightIcon);
         }
+        bar.appendChild(zones);
+        var childWrap = document.createElement('div');
+        childWrap.className = 'appbar-children';
+        kids.forEach(function (k) { childWrap.appendChild(k); });
+        bar.appendChild(childWrap);
+      } else if (centeredBar) {
+        bar.appendChild(leftZone);
+        bar.appendChild(mid);
         bar.appendChild(rightZone);
-      } else if (avatar) {
-        var av = document.createElement('span');
-        av.className = 'avatar';
-        av.textContent = String(avatar).charAt(0);
-        bar.appendChild(av);
+      } else {
+        if (leftIcon) bar.appendChild(leftIcon);
+        bar.appendChild(mid);
+        if (rightIcon) bar.appendChild(rightIcon);
       }
       return [bar];
     }
+
     case 'h1': return wrap('h1', 'display');
     case 'h2': return wrap('h2', 'heading');
     case 'h3': return wrap('h3', 'title');
@@ -4836,7 +4928,8 @@ function __buildCore(el, scope, path, form) {
       if (el.booleanAttrs.indexOf('avatar') >= 0) {
         var avl = document.createElement('span');
         avl.className = 'avatar-lg';
-        avl.textContent = (title ? String(title) : '•').charAt(0);
+        var avText = __attr(el, 'avatarText', scope);
+        avl.textContent = avText ? String(avText).slice(0, 2) : (title ? String(title) : '•').charAt(0);
         row.appendChild(avl);
       }
       var main = document.createElement('span');
@@ -4870,6 +4963,23 @@ function __buildCore(el, scope, path, form) {
       }
       var rowDot = __badgeDot(el, scope);
       if (rowDot) row.appendChild(rowDot);
+      // Row action (gradient shell round): a trailing icon button
+      // wired to the row's (action) event; it stops the click so
+      // the row's own press does not also fire.
+      var actIcon = __attr(el, 'actionIcon', scope);
+      if (actIcon) {
+        var actBtn = document.createElement('button');
+        actBtn.type = 'button';
+        actBtn.className = 'row-action';
+        actBtn.appendChild(__icon(actIcon, 20, 'primary'));
+        actBtn.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          el.eventBindings.forEach(function (e) {
+            if (e.name === 'action') __runHandler(e.expression, scope, undefined);
+          });
+        });
+        row.appendChild(actBtn);
+      }
       var rTip = __controlValue(el, 'tooltip', scope);
       if (rTip) row.title = String(rTip);
       __attachEvents(row, el, scope);
@@ -4955,7 +5065,32 @@ function __buildCore(el, scope, path, form) {
       return [f];
     }
     case 'header': return wrap('header', 'stack');
-    case 'section': return wrap('section', 'stack');
+    case 'gradient': return wrap('div', 'gradient');
+    case 'section': {
+      var secLabel = __attr(el, 'label', scope);
+      if (!secLabel) return wrap('section', 'stack');
+      var sec = document.createElement('section');
+      sec.className = 'stack';
+      var head = document.createElement('div');
+      head.className = 'section-head';
+      var barEl = document.createElement('span');
+      barEl.className = 'section-bar';
+      head.appendChild(barEl);
+      var titleEl = document.createElement('span');
+      titleEl.className = 'section-title';
+      titleEl.textContent = String(secLabel);
+      head.appendChild(titleEl);
+      var secMeta = __attr(el, 'meta', scope);
+      if (secMeta) {
+        var metaEl = document.createElement('span');
+        metaEl.className = 'section-meta';
+        metaEl.textContent = String(secMeta);
+        head.appendChild(metaEl);
+      }
+      sec.appendChild(head);
+      kids.forEach(function (k) { sec.appendChild(k); });
+      return [sec];
+    }
     case 'div': return wrap('div', 'stack');
     default: return wrap('div', '');
   }
