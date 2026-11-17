@@ -4,7 +4,7 @@ import { Text, StyleSheet } from 'react-native';
 import { RgAppbar, RgIcon, RgIconButton, RgScreen, RgSection, RgText } from '@rangular/ui';
 
 export default function Icons() {
-  const names = ['menu', 'search', 'close', 'check', 'chevron-left', 'chevron-right', 'arrow-left', 'arrow-right', 'plus', 'minus', 'bell', 'heart', 'star', 'settings', 'home', 'person', 'calendar', 'alarm', 'play', 'pause', 'edit', 'delete', 'share', 'info', 'warning', 'mail', 'sun', 'bookmark', 'bookmark-outline'];
+  const names = ['menu', 'search', 'close', 'check', 'chevron-left', 'chevron-right', 'arrow-left', 'arrow-right', 'plus', 'minus', 'bell', 'heart', 'star', 'settings', 'home', 'person', 'calendar', 'alarm', 'play', 'pause', 'edit', 'delete', 'share', 'info', 'warning', 'mail', 'sun', 'code', 'bookmark', 'bookmark-outline'];
   const [lastTap, setLastTap] = useState('');
   const tapIcon = (name: string) => {
     setLastTap(name);

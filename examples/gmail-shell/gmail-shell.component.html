@@ -1,0 +1,22 @@
+<screen>
+  <appbar pin tone="plain">
+    <input variant="search" leadingIcon="menu" avatarText="R" placeholder="Search lessons" [(ngModel)]="q" (leading)="openNav()">
+  </appbar>
+  <h1>Learn Rangular</h1>
+  <p>Short lessons, in order. Each one runs live on the screen.</p>
+  <section label="Continue where you left off" icon="play" meta="Lesson 4 of 95">
+    <row avatar avatarText="4" avatarTone="varied" title="Buttons and events" subtitle="Tap, count, toast"
+      [actionIcon]="savedFirst ? 'bookmark' : 'bookmark-outline'" (action)="toggleFirst()"></row>
+  </section>
+  <section label="Getting started" plain meta="Lessons 1 to 8">
+    <row avatar avatarText="1" avatarTone="varied" title="What Rangular is" subtitle="Angular in, native out"></row>
+    <row avatar avatarText="2" avatarTone="varied" title="Your first screen" subtitle="Blocks on a screen"
+      [actionIcon]="savedSecond ? 'bookmark' : 'bookmark-outline'" (action)="toggleSecond()"></row>
+    <row icon="home" title="Home" subtitle="Back to the lesson list"></row>
+  </section>
+  <section label="Feel" plain>
+    <switch haptic [checked]="wifi" (change)="flipWifi($event)">Wi-Fi, with haptic</switch>
+    <switch [checked]="wifi" (change)="flipWifi($event)">Wi-Fi, silent</switch>
+  </section>
+  <p *ngIf="q">Searching for: {{ q }}</p>
+</screen>
