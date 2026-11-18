@@ -7,7 +7,7 @@ import { Component } from '@angular/core';
 export class InsightsComponent {
   day = '2026-11-13T00:00:00';
   brand = '#0b57d0';
-  notes = 'Saw the **sunrise** again.\n- Walked\n- Meditated';
+  notes = 'Saw the **sunrise** again.\n- Walked\n- Took photos';
   photoOpen = false;
 
   week = [
@@ -25,7 +25,7 @@ export class InsightsComponent {
   ];
 
   split = [
-    { label: 'Practice', value: 50 },
+    { label: 'Reading', value: 50 },
     { label: 'Study', value: 30 },
     { label: 'Rest', value: 20 },
   ];

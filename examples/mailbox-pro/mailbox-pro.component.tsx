@@ -19,12 +19,12 @@ export default function MailboxPro() {
     { name: 'Trash', count: 4 },
   ];
   const inboxMails = [
-    { from: 'Sarju', subject: 'Train tickets for Friday' },
+    { from: 'Emma', subject: 'Train tickets for Friday' },
     { from: 'Google', subject: 'Your storage is almost full' },
     { from: 'Medium', subject: 'Your weekly reading list' },
   ];
   const starredMails = [
-    { from: 'Awaken Me', subject: 'Launch checklist' },
+    { from: 'Design Team', subject: 'Launch checklist' },
     { from: 'Pankaj Shukla', subject: 'New deck on agents' },
   ];
   const onTab = (index: number) => {

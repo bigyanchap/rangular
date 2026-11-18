@@ -20,8 +20,8 @@ export class FeedComponent {
   lastAction = '';
 
   posts = [
-    { id: 1, from: 'Sarju', subject: 'Photos from the weekend', snippet: 'Sharing the album with you', time: '9:12 am' },
-    { id: 2, from: 'Awaken Me', subject: 'Build finished successfully', snippet: 'Your latest build is ready to test', time: '8:03 am' },
+    { id: 1, from: 'Emma', subject: 'Photos from the weekend', snippet: 'Sharing the album with you', time: '9:12 am' },
+    { id: 2, from: 'App Builds', subject: 'Build finished successfully', snippet: 'Your latest build is ready to test', time: '8:03 am' },
     { id: 3, from: 'Medium', subject: 'Your weekly reading list', snippet: 'Stories picked for you', time: 'Yesterday' },
     { id: 4, from: 'Field Notes', subject: 'Transformer testing, day one', snippet: 'Megger readings from the yard', time: 'Tue' },
   ];

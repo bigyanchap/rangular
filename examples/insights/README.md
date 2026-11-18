@@ -62,8 +62,8 @@ export class InsightsComponent {
 
   <label>Your people</label>
   <avatar-group max="3">
-    <avatar text="Sarju Chapagain"></avatar>
-    <avatar text="Bigyan Chapagain"></avatar>
+    <avatar text="Emma Wilson"></avatar>
+    <avatar text="Alex Carter"></avatar>
     <avatar text="Monika Sogam"></avatar>
     <avatar text="Acharya Rajan"></avatar>
     <avatar text="Maya Dev"></avatar>
@@ -136,7 +136,7 @@ Key lines of the generated `insights.component.tsx`:
 **Rules used**
 
 - **Breadcrumbs are declarations, and the last crumb is not a link.** `<crumb>` items join with chevron icons (the icon set, never a font glyph); every crumb but the last takes a `routerLink` or `(click)`, and the last renders as the current page in plain semibold text. A crumb outside `<breadcrumbs>`, or anything else inside, warns `GEN_CONTROL_NESTING`.
-- **An avatar is initials or a photo.** `<avatar text="Sarju Chapagain">` draws the first letters of the first two words on the theme's avatar colour; `src` draws the image instead, and `size` sets the diameter. An `<avatar-group max="3">` overlaps its avatars and folds the rest into a +N circle; anything but an avatar inside the group warns.
+- **An avatar is initials or a photo.** `<avatar text="Emma Wilson">` draws the first letters of the first two words on the theme's avatar colour; `src` draws the image instead, and `size` sets the diameter. An `<avatar-group max="3">` overlaps its avatars and folds the rest into a +N circle; anything but an avatar inside the group warns.
 - **Charts take one data shape.** `[data]` is an array of `{ label, value }` pairs; a point may carry its own `color`. `type` is `bar` (the default), `line` or `pie`, and anything else is a compile error, `GEN_CHART_TYPE`. The same small geometry engine draws in the app (react-native-svg) and in both previews (inline SVG), so the three agree. Scope, stated plainly: one series, no axes, no gridlines, no animation, no interaction; bar and pie treat a negative value as 0.
 - **The calendar is a month view, not a picker.** It renders as a screen element for looking at a month and tapping a day; `[value]` and `(change)` carry the selected day as an ISO string, the picker's language. Choosing a moment inside a form stays the wheel `<datetime-picker>`'s job, a different component on purpose.
 - **A timeline is a rail of items.** `<timeline-item title time>` declarations stack on a dotted rail; the last item's line stops at its dot. Anything else inside `<timeline>` warns `GEN_CONTROL_NESTING`.

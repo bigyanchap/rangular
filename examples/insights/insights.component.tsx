@@ -5,7 +5,7 @@ import { RgAppbar, RgAvatar, RgAvatarGroup, RgBreadcrumbs, RgButton, RgCalendar,
 export default function Insights() {
   const [day, setDay] = useState('2026-11-13T00:00:00');
   const [brand, setBrand] = useState('#0b57d0');
-  const [notes, setNotes] = useState('Saw the **sunrise** again.\n- Walked\n- Meditated');
+  const [notes, setNotes] = useState('Saw the **sunrise** again.\n- Walked\n- Took photos');
   const [photoOpen, setPhotoOpen] = useState(false);
   const week = [
     { label: 'Mon', value: 12 },
@@ -20,7 +20,7 @@ export default function Insights() {
     { label: 'W4', value: 9 },
   ];
   const split = [
-    { label: 'Practice', value: 50 },
+    { label: 'Reading', value: 50 },
     { label: 'Study', value: 30 },
     { label: 'Rest', value: 20 },
   ];
@@ -51,8 +51,8 @@ export default function Insights() {
       </RgBreadcrumbs>
       <RgText variant="label">Your people</RgText>
       <RgAvatarGroup max="3">
-        <RgAvatar text="Sarju Chapagain" />
-        <RgAvatar text="Bigyan Chapagain" />
+        <RgAvatar text="Emma Wilson" />
+        <RgAvatar text="Alex Carter" />
         <RgAvatar text="Monika Sogam" />
         <RgAvatar text="Acharya Rajan" />
         <RgAvatar text="Maya Dev" />

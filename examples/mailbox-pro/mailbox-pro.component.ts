@@ -21,12 +21,12 @@ export class MailboxProComponent {
     { name: 'Trash', count: 4 },
   ];
   inboxMails = [
-    { from: 'Sarju', subject: 'Train tickets for Friday' },
+    { from: 'Emma', subject: 'Train tickets for Friday' },
     { from: 'Google', subject: 'Your storage is almost full' },
     { from: 'Medium', subject: 'Your weekly reading list' },
   ];
   starredMails = [
-    { from: 'Awaken Me', subject: 'Launch checklist' },
+    { from: 'Design Team', subject: 'Launch checklist' },
     { from: 'Pankaj Shukla', subject: 'New deck on agents' },
   ];
 
