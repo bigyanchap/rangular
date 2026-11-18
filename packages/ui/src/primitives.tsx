@@ -1540,8 +1540,18 @@ export function RgSection({ children, style, label, meta, icon, plain }: any) {
   );
 }
 
-export function RgCard({ children, style }: any) {
+export function RgCard({ children, style, onPress }: any) {
   const styles = stylesFor(useRgTheme());
+  // A card with a (click) is a Pressable (button audit round,
+  // 2026-11-18): the whole card is the tap target, the way a
+  // Material card behaves; without one it stays a plain surface.
+  if (onPress) {
+    return (
+      <Pressable onPress={onPress} style={({ pressed }) => [styles.card, style, pressed && styles.buttonPressed]}>
+        {children}
+      </Pressable>
+    );
+  }
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
@@ -1731,6 +1741,16 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
             placeholderTextColor={t.colors.textMuted}
             editable={!disabled}
           />
+          {text !== '' && !disabled ? (
+            <Pressable
+              onPress={() => { onChangeText?.(''); pillRef.current?.focus(); }}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              accessibilityLabel="Clear search"
+              style={({ pressed }) => [styles.inputPillLeading, pressed && styles.buttonPressed]}
+            >
+              <RgIcon name="close" size={18} color="textMuted" />
+            </Pressable>
+          ) : null}
           {avatarText ? (
             <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: t.colors.primary, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ color: t.colors.onPrimary, fontSize: 14, fontWeight: '700' }}>{String(avatarText).charAt(0)}</Text>

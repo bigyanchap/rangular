@@ -1,6 +1,6 @@
 {
   "name": "rangular",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "tags": [
     {
       "tag": "div",
@@ -676,6 +676,10 @@
         },
         {
           "name": "style",
+          "type": "any"
+        },
+        {
+          "name": "onPress",
           "type": "any"
         }
       ]

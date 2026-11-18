@@ -47,6 +47,15 @@ test('the wash tokens exist in both themes and the tint bar wears the wash', () 
   assert.ok(primitivesSrc.includes('c.washFrom : plain'), 'the tint bar lends the wash top as its chrome');
 });
 
+test('the search pill carries its own clear tap', () => {
+  assert.ok(primitivesSrc.includes('accessibilityLabel="Clear search"'), 'the clear tap is labelled');
+  assert.ok(primitivesSrc.includes("onChangeText?.('')"), 'tapping it empties the field through the value contract');
+});
+
+test('a card with a click is a pressable, a card without one is a surface', () => {
+  assert.ok(primitivesSrc.includes('A card with a (click) is a Pressable'), 'the card honours onPress');
+});
+
 test('the entry screen persists across routes and resets scroll by key', () => {
   assert.ok(primitivesSrc.includes('scrollKey'), 'the screen takes a scroll key');
   assert.ok(
