@@ -16,7 +16,7 @@ import { colours } from '../packages/ui/src/tokens';
 
 const ROOT = path.join(__dirname, '..', '..');
 const cliPath = path.join(ROOT, 'dist', 'packages', 'cli', 'src', 'cli.js');
-const EXAMPLES = ['hello', 'counter', 'inbox', 'profile', 'favourite', 'shared-inbox', 'showcase', 'dinacharya-row'];
+const EXAMPLES = ['hello', 'counter', 'inbox', 'profile', 'favourite', 'shared-inbox', 'showcase', 'day-plan-row'];
 const normalize = (s: string) => s.replace(/\s+/g, ' ').trim();
 
 function compileExample(name: string): { dir: string; entry: string; result: CompileResult } {
@@ -333,7 +333,7 @@ test('doctor: the allow-hex suppression comment silences DOC_HEX_COLOR only', ()
   assert.ok(findings.some((f) => f.code === 'DOC_OFF_SCALE'), 'other rules still run');
 });
 
-test('doctor: showcase passes with no errors; dinacharya-row is fully clean', () => {
+test('doctor: showcase passes with no errors; day-plan-row is fully clean', () => {
   const showcase = compileExample('showcase');
   const showcaseFindings = runDoctor({
     result: showcase.result,
@@ -346,7 +346,7 @@ test('doctor: showcase passes with no errors; dinacharya-row is fully clean', ()
   const cli = spawnSync('node', [cliPath, 'doctor', showcase.entry], { encoding: 'utf8' });
   assert.equal(cli.status, 0, cli.stdout + cli.stderr);
 
-  const dina = compileExample('dinacharya-row');
+  const dina = compileExample('day-plan-row');
   const dinaFindings = runDoctor({
     result: dina.result,
     entryFile: dina.entry,
@@ -383,31 +383,31 @@ test('CLI doctor --json: shape, exit 1 on the error finding', () => {
 
 // --- E: dogfood example ----------------------------------------------------------------------
 
-test('dogfood: dinacharya-row compiles with zero diagnostics and matches its golden', () => {
-  const { dir, result } = compileExample('dinacharya-row');
+test('dogfood: day-plan-row compiles with zero diagnostics and matches its golden', () => {
+  const { dir, result } = compileExample('day-plan-row');
   assert.deepEqual(result.diagnostics, [], JSON.stringify(result.diagnostics));
-  const golden = fs.readFileSync(path.join(dir, 'dinacharya-row.component.tsx'), 'utf8');
+  const golden = fs.readFileSync(path.join(dir, 'day-plan-row.component.tsx'), 'utf8');
   assert.equal(normalize(result.code), normalize(golden));
-  // The real app's values survive untouched: 34 by 34 is not snapped, gold is gold.
-  assert.match(result.code, /checkOn: \{"width":34,"height":34,"borderRadius":12,"backgroundColor":"#d9a441"/);
+  // The modelled app's values survive untouched: 34 by 34 is not snapped, the brand green is the brand green.
+  assert.match(result.code, /checkOn: \{"width":34,"height":34,"borderRadius":12,"backgroundColor":"#2f9e44"/);
 });
 
 test('dogfood: preview behaviour, tapping the featured row toggles the check square', () => {
-  const { result } = compileExample('dinacharya-row');
+  const { result } = compileExample('day-plan-row');
   const html = renderPreview(result.component!, result.ast!, {
     children: result.children,
     services: result.services,
   });
   const app = loadPreview(html);
-  assert.ok(app.textContent.includes('Morning Yoga'));
+  assert.ok(app.textContent.includes('Morning Run'));
   assert.ok(app.textContent.includes('3 pieces, 2 done'));
-  // Featured row starts not done: only the Puja row shows a check mark.
+  // Featured row starts not done: only the Team Standup row shows a check mark.
   assert.equal((app.textContent.match(/✓/g) ?? []).length, 1);
   const rows = findAll(app, (e) => e.className === 'row');
   assert.equal(rows.length, 4);
   rows[0].click();
   assert.equal((app.textContent.match(/✓/g) ?? []).length, 2);
-  assert.ok(app.textContent.includes('Morning Yoga is done'));
+  assert.ok(app.textContent.includes('Morning Run is done'));
   findAll(app, (e) => e.className === 'row')[0].click();
   assert.equal((app.textContent.match(/✓/g) ?? []).length, 1);
 });
@@ -423,13 +423,13 @@ test('style snapshots: every example matches its committed styles.snapshot.json'
   }
 });
 
-test('style snapshots: both themes resolve from the token values, dogfood gold is pinned', () => {
-  const { result } = compileExample('dinacharya-row');
-  const snap = buildStyleSnapshot('dinacharya-row', result.component!, result.ast!, result.css!, result.children);
+test('style snapshots: both themes resolve from the token values, dogfood colour is pinned', () => {
+  const { result } = compileExample('day-plan-row');
+  const snap = buildStyleSnapshot('day-plan-row', result.component!, result.ast!, result.css!, result.children);
   assert.equal(snap.themes.light.roles.screen.background, colours.light.background);
   assert.equal(snap.themes.dark.roles.screen.background, colours.dark.background);
   assert.notEqual(snap.themes.light.roles.appbar.background, snap.themes.dark.roles.appbar.background);
-  assert.equal(snap.themes.light.styles['check-on'].backgroundColor, '#d9a441');
+  assert.equal(snap.themes.light.styles['check-on'].backgroundColor, '#2f9e44');
   assert.equal(snap.themes.light.styles['check-on'].width, 34);
 });
 

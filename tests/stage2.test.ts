@@ -119,10 +119,10 @@ test('counter preview embeds live state, translated methods and the runtime', ()
 test('inbox preview serializes the mails and server-renders all four rows', () => {
   const { result } = compileExample('inbox');
   const html = renderPreview(result.component!, result.ast!);
-  assert.match(html, /"from":"Sarju"/);
-  assert.match(html, /"from":"Awaken Me"/);
+  assert.match(html, /"from":"Emma"/);
+  assert.match(html, /"from":"App Builds"/);
   const initial = html.split('<script>')[0];
-  for (const name of ['Sarju', 'Google', 'Medium', 'Awaken Me']) {
+  for (const name of ['Emma', 'Google', 'Medium', 'App Builds']) {
     assert.match(initial, new RegExp(`row-title">${name}`), `row for ${name}`);
   }
   assert.doesNotMatch(initial, /No mail\. Enjoy the quiet\./);

@@ -571,7 +571,7 @@ test('preview behaviour: masonry carries its class, and the server paint covers 
     + '<otp length="4" [value]="code"></otp>'
     + '<calendar [value]="day"></calendar>'
     + '<chart type="bar" [data]="pts"></chart>'
-    + '<avatar text="Sarju Chapagain"></avatar>'
+    + '<avatar text="Emma Wilson"></avatar>'
     + '<empty-state icon="mail" title="No mail"></empty-state>'
     + '<image src="a.jpg" width="100" height="50"></image>'
     + '<breadcrumbs><crumb>Home</crumb><crumb>Here</crumb></breadcrumbs></screen>',
@@ -582,7 +582,7 @@ test('preview behaviour: masonry carries its class, and the server paint covers 
   assert.equal((paint.match(/class="otp-box/g) ?? []).length, 4, 'four otp boxes paint');
   assert.ok(paint.includes('calendar-day selected'), 'the calendar paints its selected day');
   assert.ok(paint.includes('<svg') && paint.includes('<rect'), 'the chart paints real SVG shapes');
-  assert.ok(paint.includes('>SC</span>'), 'the avatar paints initials');
+  assert.ok(paint.includes('>EW</span>'), 'the avatar paints initials');
   assert.ok(paint.includes('No mail'), 'the empty state paints its title');
   assert.ok(paint.includes('<img class="rg-image"'), 'the image paints');
   assert.ok(paint.includes('class="crumb current"'), 'the last crumb paints as current');

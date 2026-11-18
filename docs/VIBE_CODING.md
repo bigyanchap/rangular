@@ -949,7 +949,7 @@ recipe cards.
   a full height panel from the left (MatSidenav's over mode; a
   fixed side column is just a section, not a drawer).
 - **Select is a control.** `<select label="City" [value]="city"
-  (change)="onCity($event)">` with `<option value="ktm">Kathmandu
+  (change)="onCity($event)">` with `<option value="nyc">New York
   </option>` declarations, the switcher's option element. The
   field shows the chosen label or the `placeholder`; a tap opens a
   bottom sheet of options with a check on the current one. Like
@@ -1558,7 +1558,7 @@ Exit code is 1 only when an error-severity finding (or a compile
 error) exists; warnings alone exit 0. One suppression exists: a CSS
 comment containing `doctor: allow-hex` in a style text disables
 `DOC_HEX_COLOR` for that file's styles, for deliberate brand colours
-that are not Material roles (see the dinacharya-row recipe card).
+that are not Material roles (see the day-plan-row recipe card).
 
 **Style snapshot goldens.** Each example carries a
 `styles.snapshot.json`: the preview's resolved key styles per element

@@ -97,7 +97,7 @@ Same discipline as golden-file tests, one level up:
 > implemented (it needs rendered colour pairs, not source text), and
 > the image dimension rule waits for an image tag to exist in the tag
 > contract; there is none in v1.
-- **The acceptance test stays the same one:** the Awaken Me Dinacharya row, rewritten in Rangular, screenshotted side-by-side with the real one at true phone size. Polish is proven when you can't tell which is which at a glance.
+- **The acceptance test stays the same one:** the day-plan row, rewritten in Rangular, screenshotted side-by-side with the real one at true phone size. Polish is proven when you can't tell which is which at a glance.
 
 ## What this adds to the 77 things
 

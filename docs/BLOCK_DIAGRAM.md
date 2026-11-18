@@ -51,7 +51,7 @@ flowchart TB
     L4 --> L5
 
     W["DEV LOOP<br/>save → watch recompiles changed file only → Metro reloads phone"]
-    T["PROOF<br/>golden-file tests · AST unit tests · Expo smoke test<br/>Dogfood: one Awaken Me component (Dinacharya row) = M7"]
+    T["PROOF<br/>golden-file tests · AST unit tests · Expo smoke test<br/>Dogfood: one day-plan component (Day plan row) = M7"]
     L2 -.-> W
     L2 -.-> T
 ```
@@ -76,4 +76,4 @@ flowchart TB
 
 ## Build order (milestones)
 
-M0 AST printer → M1 static component renders on phone → M2 interpolation + property binding → M3 counter (events + state) → M4 `*ngIf` / `*ngFor` → M5 child components, inputs/outputs → M6 injected service + lifecycle → M7 CLI, source maps, real error messages + Awaken Me dogfood demo.
+M0 AST printer → M1 static component renders on phone → M2 interpolation + property binding → M3 counter (events + state) → M4 `*ngIf` / `*ngFor` → M5 child components, inputs/outputs → M6 injected service + lifecycle → M7 CLI, source maps, real error messages + day-plan dogfood demo.

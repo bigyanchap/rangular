@@ -86,6 +86,6 @@ Golden-file tests: source in, expected output out, compared exactly, the same un
 - **M4**, `*ngIf` and `*ngFor`.
 - **M5**, Child components with inputs and outputs.
 - **M6**, An injected service and lifecycle hooks.
-- **M7**, CLI, source maps, real error messages, and one demo: rewrite one small Awaken Me component (a Dinacharya row, say) in the new language and run it.
+- **M7**, CLI, source maps, real error messages, and one demo: rewrite one small day-planner component (a day-plan row, say) in the new language and run it.
 
 Rough estimate, labelled as an estimate: a working v1 (M0-M7) is a 6-10 week part-time project for you, precisely because the two ends are already yours and only the middle is new. Of the three example goals, this one has the smallest true gap and almost no research frontier, the design choices (how much of Angular to clone, how much to simplify) are the only real invention, maybe 5% of the work.

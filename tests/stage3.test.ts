@@ -267,12 +267,12 @@ test('the expression-bodied subscribe assignment degrades to METHOD_UNSUPPORTED,
 test('HttpClient emits parsed JSON from an injected stub fetch (no network)', async () => {
   const http = new HttpClient(async (url: string) => {
     assert.equal(url, 'https://example.com/mails');
-    return { json: async () => [{ id: 1, from: 'Sarju' }] };
+    return { json: async () => [{ id: 1, from: 'Emma' }] };
   });
   const data = await new Promise<unknown>((resolve, reject) => {
     http.get('https://example.com/mails').subscribe(resolve, reject);
   });
-  assert.deepEqual(data, [{ id: 1, from: 'Sarju' }]);
+  assert.deepEqual(data, [{ id: 1, from: 'Emma' }]);
 });
 
 test('HttpClient routes fetch failures to the error callback', async () => {
@@ -345,7 +345,7 @@ test('shared-inbox preview server-renders rows + unread dots from the service; b
     services: result.services,
   });
   const initial = html.split('<script>')[0];
-  for (const name of ['Sarju', 'Google', 'Medium', 'Awaken Me']) {
+  for (const name of ['Emma', 'Google', 'Medium', 'App Builds']) {
     assert.ok(initial.includes(name), name);
   }
   assert.equal((initial.match(/●/g) ?? []).length, 2);
@@ -436,7 +436,7 @@ test('preview behaviour: shared-inbox, ngOnInit shows the badge; Mark all read u
   // Both consumers of the same singleton reflect the mutation.
   assert.match(app.textContent, /0 unread/);
   assert.equal((app.textContent.match(/●/g) ?? []).length, 0);
-  for (const name of ['Sarju', 'Google', 'Medium', 'Awaken Me']) {
+  for (const name of ['Emma', 'Google', 'Medium', 'App Builds']) {
     assert.ok(app.textContent.includes(name), name);
   }
 });
