@@ -37,7 +37,7 @@ export class SignupFormComponent {
   <appbar title="Create account"></appbar>
   <card>
     <form (submit)="save()">
-      <input label="Full name" placeholder="e.g. Bigyan Chapagain" [(ngModel)]="name" #name="ngModel" required minlength="3">
+      <input label="Full name" placeholder="e.g. Alex Carter" [(ngModel)]="name" #name="ngModel" required minlength="3">
       <p *ngIf="name.invalid && name.touched">Name is required and needs at least 3 characters.</p>
       <input label="Email" placeholder="you@example.com" type="email" [(ngModel)]="email" #email="ngModel" required email>
       <p *ngIf="email.invalid && email.touched">Enter a valid email address.</p>
@@ -61,7 +61,7 @@ const [nameTouched, setNameTouched] = useState(false);
 const nameErrors = validateValue(name, [Validators.required, Validators.minLength(3)]);
 const nameModel = { value: name, errors: nameErrors, valid: nameErrors === null, invalid: nameErrors !== null, touched: nameTouched };
 
-<RgInput label="Full name" placeholder="e.g. Bigyan Chapagain" value={name} onChangeText={($event) => setName($event)} onBlur={() => setNameTouched(true)} />
+<RgInput label="Full name" placeholder="e.g. Alex Carter" value={name} onChangeText={($event) => setName($event)} onBlur={() => setNameTouched(true)} />
 {(nameModel.invalid && nameModel.touched) && (
   <RgText variant="bodyLarge">Name is required and needs at least 3 characters.</RgText>
 )}

@@ -2,7 +2,7 @@
   <appbar title="Create account"></appbar>
   <card>
     <form (submit)="save()">
-      <input label="Full name" placeholder="e.g. Bigyan Chapagain" [(ngModel)]="name" #name="ngModel" required minlength="3">
+      <input label="Full name" placeholder="e.g. Alex Carter" [(ngModel)]="name" #name="ngModel" required minlength="3">
       <p *ngIf="name.invalid && name.touched">Name is required and needs at least 3 characters.</p>
       <input label="Email" placeholder="you@example.com" type="email" [(ngModel)]="email" #email="ngModel" required email>
       <p *ngIf="email.invalid && email.touched">Enter a valid email address.</p>

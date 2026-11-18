@@ -29,7 +29,7 @@ export default function SignupForm() {
       <RgAppbar title="Create account" />
       <RgCard>
         <RgSection>
-          <RgInput label="Full name" placeholder="e.g. Bigyan Chapagain" value={name} onChangeText={($event) => setName($event)} onBlur={() => setNameTouched(true)} />
+          <RgInput label="Full name" placeholder="e.g. Alex Carter" value={name} onChangeText={($event) => setName($event)} onBlur={() => setNameTouched(true)} />
           {(nameModel.invalid && nameModel.touched) && (
             <RgText variant="bodyLarge">Name is required and needs at least 3 characters.</RgText>
           )}
