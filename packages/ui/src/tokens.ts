@@ -83,6 +83,16 @@ export interface ColourRoles {
   gradientFrom: string;
   gradientVia: string;
   gradientTo: string;
+  // The soft wash (seamless round, 2026-11-18): a near-flat
+  // vertical gradient for the tint app bar, three stops that
+  // start a breath deeper than the page and land on it, so the
+  // bar melts into the page instead of ending at a seam. And
+  // primaryDeep, the filled button's lower stop: the same hue
+  // one step deeper, so a button reads as lit from above.
+  washFrom: string;
+  washVia: string;
+  washTo: string;
+  primaryDeep: string;
 }
 
 export const colours: Record<'light' | 'dark', ColourRoles> = {
@@ -118,6 +128,10 @@ export const colours: Record<'light' | 'dark', ColourRoles> = {
     gradientFrom: '#3b0764',
     gradientVia: '#7c3aed',
     gradientTo: '#db2777',
+    washFrom: '#dde7f5',
+    washVia: '#e9eff8',
+    washTo: '#fbfcfe',
+    primaryDeep: '#0849ad',
   },
   dark: {
     primary: '#a8c7fa',
@@ -151,6 +165,10 @@ export const colours: Record<'light' | 'dark', ColourRoles> = {
     gradientFrom: '#3b0764',
     gradientVia: '#7c3aed',
     gradientTo: '#db2777',
+    washFrom: '#262c38',
+    washVia: '#1e242e',
+    washTo: '#14161a',
+    primaryDeep: '#8fb4f5',
   },
 };
 

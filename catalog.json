@@ -1,6 +1,6 @@
 {
   "name": "rangular",
-  "version": "0.1.6",
+  "version": "0.1.8",
   "tags": [
     {
       "tag": "div",
@@ -532,6 +532,10 @@
         },
         {
           "name": "fade",
+          "type": "any"
+        },
+        {
+          "name": "scrollKey",
           "type": "any"
         }
       ]
@@ -1065,6 +1069,10 @@
         },
         {
           "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "lastInList",
           "type": "any"
         }
       ]
@@ -1689,6 +1697,10 @@
         {
           "name": "style",
           "type": "any"
+        },
+        {
+          "name": "haptic",
+          "type": "any"
         }
       ]
     },
@@ -2234,7 +2246,11 @@
         "toastAction": "#a8c7fa",
         "gradientFrom": "#3b0764",
         "gradientVia": "#7c3aed",
-        "gradientTo": "#db2777"
+        "gradientTo": "#db2777",
+        "washFrom": "#dde7f5",
+        "washVia": "#e9eff8",
+        "washTo": "#fbfcfe",
+        "primaryDeep": "#0849ad"
       },
       "dark": {
         "primary": "#a8c7fa",
@@ -2267,7 +2283,11 @@
         "toastAction": "#a8c7fa",
         "gradientFrom": "#3b0764",
         "gradientVia": "#7c3aed",
-        "gradientTo": "#db2777"
+        "gradientTo": "#db2777",
+        "washFrom": "#262c38",
+        "washVia": "#1e242e",
+        "washTo": "#14161a",
+        "primaryDeep": "#8fb4f5"
       }
     },
     "elevation": {
@@ -2389,7 +2409,11 @@
           "toastAction": "#a8c7fa",
           "gradientFrom": "#3b0764",
           "gradientVia": "#7c3aed",
-          "gradientTo": "#db2777"
+          "gradientTo": "#db2777",
+          "washFrom": "#dde7f5",
+          "washVia": "#e9eff8",
+          "washTo": "#fbfcfe",
+          "primaryDeep": "#0849ad"
         },
         "elevation": {
           "level0": {
@@ -2510,7 +2534,11 @@
           "toastAction": "#a8c7fa",
           "gradientFrom": "#3b0764",
           "gradientVia": "#7c3aed",
-          "gradientTo": "#db2777"
+          "gradientTo": "#db2777",
+          "washFrom": "#262c38",
+          "washVia": "#1e242e",
+          "washTo": "#14161a",
+          "primaryDeep": "#8fb4f5"
         },
         "elevation": {
           "level0": {

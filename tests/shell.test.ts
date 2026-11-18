@@ -81,7 +81,7 @@ test('gradient pinned app bar compiles tone, pin and the projected search input'
 
 test('RgAppbar registers a pinned bar into the screen header slot', () => {
   assert.match(primitivesSrc, /RgHeaderSlotContext/);
-  assert.match(primitivesSrc, /slot\.register\(pinKey, bar, chrome\)/);
+  assert.match(primitivesSrc, /slot\.register\(pinKey, bar, chrome, tint\)/);
   assert.match(primitivesSrc, /headerNode/);
 });
 
@@ -258,11 +258,13 @@ test('the keyboard contract lives in the shipped screen and fields', () => {
   assert.ok(primitivesSrc.includes('useLayoutEffect'), 'the pinned bar registers before paint, no jitter');
 });
 
-test('a routed app keys its entry screen by the concrete path', () => {
+test('a routed app gives its entry screen the concrete path as a scroll key', () => {
   const result = compileExample('mini-mail');
   assert.equal(hasErrors(result.diagnostics), false, JSON.stringify(result.diagnostics));
-  assert.ok(result.code!.includes('<RgScreen key={__route.path}>'),
-    'the entry screen remounts per route, so each screen opens at the top');
+  assert.ok(result.code!.includes('<RgScreen scrollKey={__route.path}>'),
+    'the entry screen persists across routes and resets its scroll by key');
+  assert.ok(!result.code!.includes('<RgScreen key={__route.path}>'),
+    'the entry screen itself is never remounted by navigation');
 });
 
 // --- The spacing rule round (2026-11-17) --------------------------------
@@ -340,8 +342,8 @@ test('appbar tint, second action and progress compile and paint (Option A round)
 });
 
 test('the chrome blend, fade veil and pill touch box are in the shipped primitives (Option A round)', () => {
-  assert.ok(primitivesSrc.includes('chrome ? { backgroundColor: chrome } : null'), 'the safe area takes the bar colour');
-  assert.ok(primitivesSrc.includes("const chrome = tint ? c.surfaceVariant : plain ? c.background : undefined"), 'flat bands lend their colour');
+  assert.ok(primitivesSrc.includes('chrome && !headerWash ? { backgroundColor: chrome } : null'), 'the safe area takes the bar colour');
+  assert.ok(primitivesSrc.includes("const chrome = tint ? c.washFrom : plain ? c.background : undefined"), 'flat bands lend their colour');
   assert.ok(primitivesSrc.includes('rgveil'), 'the fade veil is the SVG gradient (0.1.5: the strips banded on a phone)');
   assert.ok(primitivesSrc.includes('onEndReached || fade ? handleScroll : undefined'), 'the screen tracks scroll when fading');
   assert.ok(primitivesSrc.includes('inputPillLeading'), 'the pill leading button has a full touch box');

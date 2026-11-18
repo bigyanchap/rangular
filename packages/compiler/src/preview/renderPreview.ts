@@ -1378,7 +1378,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
      not identical, and this note is the record. */
   .appbar.gradient { background: linear-gradient(115deg, ${t.colors.gradientFrom}, ${t.colors.gradientVia} 52%, ${t.colors.gradientTo}); border-radius: 0; color: var(--on-primary); }
   .appbar.plain { background: var(--surface); border-radius: 0; box-shadow: 0 1px 4px rgba(0,0,0,.14); }
-  .appbar.tint { background: var(--surface-variant); border-radius: 0; box-shadow: none; }
+  .appbar.tint { background: linear-gradient(180deg, var(--role-wash-from), var(--role-wash-via) 55%, var(--role-wash-to)); border-radius: 0; box-shadow: none; }
   .appbar-progress { height: 3px; background: ${t.colors.border}; }
   .appbar-progress div { height: 3px; background: var(--primary); }
   .appbar-actions { display: inline-flex; align-items: center; gap: 12px; }
@@ -1415,7 +1415,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .label { display: block; font-size: ${t.typography.label.fontSize}px; line-height: ${t.typography.label.lineHeight}px; font-weight: 600; letter-spacing: .4px; margin: 0; }
   .badge { display: inline-block; background: var(--primary-container); color: var(--on-primary-container); border-radius: ${t.radius.full}px; padding: 4px 12px; font-size: ${t.typography.caption.fontSize}px; font-weight: 700; }
   .card { background: var(--surface-variant); border: 1px solid var(--border); border-radius: ${t.radius.lg}px; padding: ${t.spacing.lg}px; margin: 0; display: flex; flex-direction: column; gap: ${t.spacing.md}px; }
-  .btn { display: block; margin: 0; background: var(--primary); color: var(--on-primary); border: none; border-radius: ${t.radius.full}px; padding: 0 ${t.spacing.xxl}px; min-height: 48px; font-size: ${t.typography.label.fontSize}px; font-weight: 600; cursor: pointer; }
+  .btn { display: block; margin: 0; background: linear-gradient(180deg, var(--primary), var(--role-primary-deep)); color: var(--on-primary); border: none; border-radius: ${t.radius.full}px; padding: 0 ${t.spacing.xxl}px; min-height: 48px; font-size: ${t.typography.label.fontSize}px; font-weight: 600; cursor: pointer; }
   .btn[disabled] { opacity: .38; cursor: default; }
   .stack { display: flex; flex-direction: column; gap: ${t.spacing.md}px; }
   .btn-text { background: transparent; color: var(--primary); text-align: left; padding: 0 ${t.spacing.sm}px; }
@@ -1447,6 +1447,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .radio-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--primary); }
   .list { border-top: 1px solid var(--border); }
   .row { display: flex; gap: ${t.spacing.md}px; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid var(--border); }
+  .list > .row:last-child { border-bottom: none; }
   .row-main { flex: 1; display: flex; flex-direction: column; }
   .row-title { font-weight: 600; font-size: 14px; }
   .row-sub { font-size: 13px; }
@@ -4020,6 +4021,7 @@ function __buildBottomNav(el, scope, path, form) {
     __attachEvents(b, item, scope);
     __attachNav(b, item, scope);
     b.addEventListener('click', function () {
+      if (i !== active && el.booleanAttrs.indexOf('haptic') >= 0 && navigator.vibrate) navigator.vibrate(8);
       __navStates[path] = i;
       __runChange(el, scope, i);
     });

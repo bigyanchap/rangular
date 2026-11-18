@@ -203,7 +203,11 @@ function buildStyles(t: Theme) {
     // clock and battery sit on the header's own surface and no
     // seam shows between the status area and the bar.
     appbarTint: {
-      borderRadius: 0, backgroundColor: c.surfaceVariant,
+      // The flat fallback is the wash's own top stop (seamless
+      // round, 2026-11-18): in a shell the screen draws the wash
+      // and the pinned bar turns transparent over it; standing
+      // alone, the bar paints the wash's first step flat.
+      borderRadius: 0, backgroundColor: c.washFrom,
       paddingVertical: 12,
     },
     // The app bar icon button touch box (Option A round,
@@ -718,11 +722,14 @@ function buildStyles(t: Theme) {
     bottomNav: {
       flexDirection: 'row', backgroundColor: c.surface,
       borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border,
-      paddingVertical: t.spacing.xs, ...t.elevation.level2,
-      // A bottom bar shadows upward only (phone round,
-      // 2026-11-18): the level2 downward offset drew a grey
-      // seam on the safe area strip under the bar.
-      shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.12, shadowRadius: 8,
+      paddingVertical: t.spacing.xs,
+      // No shadow at all (seamless round, 2026-11-18): a shadow
+      // blurs past the bar's own edges in every direction, and
+      // the part that spilled below the bar printed a soft grey
+      // seam on the safe area strip under it, however the offset
+      // pointed. The bar's top hairline is its separation; the
+      // screen paints under it in the same surface colour, so
+      // bar and phone edge read as one piece.
     },
     navItem: {
       flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center',
@@ -903,6 +910,64 @@ function GradientFill() {
 }
 
 /**
+ * The soft wash as an absolute fill layer (seamless round,
+ * 2026-11-18): a vertical gradient through the theme's three
+ * wash stops, drawn by the screen as one layer behind the
+ * status area and a tint bar, so the gradient is continuous
+ * from the top of the phone down. It lands on the page colour
+ * at 70 percent of the layer and fades to nothing by the
+ * bottom, so content scrolling under the melt is never hidden
+ * behind a hard edge. The host clips it.
+ */
+function SoftFill() {
+  const t = useRgTheme();
+  const c = t.colors;
+  const rawId = React.useId();
+  const id = 'rgwash' + rawId.replace(/[^a-zA-Z0-9]/g, '');
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+      <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <Defs>
+          <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={c.washFrom} />
+            <Stop offset="0.45" stopColor={c.washVia} />
+            <Stop offset="0.7" stopColor={c.washTo} />
+            <Stop offset="1" stopColor={c.washTo} stopOpacity={0} />
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100" height="100" fill={`url(#${id})`} />
+      </Svg>
+    </View>
+  );
+}
+
+/**
+ * The filled button's gradient as an absolute fill layer
+ * (seamless round, 2026-11-18): primary at the top, primaryDeep
+ * at the bottom, so the button reads as lit from above. The
+ * host clips it with the pill radius and overflow.
+ */
+function ButtonFill() {
+  const t = useRgTheme();
+  const c = t.colors;
+  const rawId = React.useId();
+  const id = 'rgbtn' + rawId.replace(/[^a-zA-Z0-9]/g, '');
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: t.radius.full, overflow: 'hidden' }}>
+      <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <Defs>
+          <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={c.primary} />
+            <Stop offset="1" stopColor={c.primaryDeep} />
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100" height="100" fill={`url(#${id})`} />
+      </Svg>
+    </View>
+  );
+}
+
+/**
  * A gradient surface: a rounded container the brand gradient
  * fills, with its children stacked inside in the rhythm gap.
  * Children read as on-primary content: the surface provides a
@@ -958,7 +1023,7 @@ export const ActivatedRouteContext = createContext<any>(null);
  * it, or without `pin`, renders in place exactly as before.
  */
 const RgHeaderSlotContext = createContext<{
-  register: (key: string, node: React.ReactNode, chrome?: string) => void;
+  register: (key: string, node: React.ReactNode, chrome?: string, wash?: boolean) => void;
   clear: (key: string) => void;
 } | null>(null);
 
@@ -1073,9 +1138,11 @@ function useRgBottom(tree: React.ReactNode): boolean {
 // react-native-svg is already a dependency (the icon set), so
 // the smooth form costs nothing.
 
-export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, onEndReached, fade }: any) {
+export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, onEndReached, fade, scrollKey }: any) {
   const veilRawId = React.useId();
   const veilId = 'rgveil' + veilRawId.replace(/[^a-zA-Z0-9]/g, '');
+  const meltRawId = React.useId();
+  const meltId = 'rgmelt' + meltRawId.replace(/[^a-zA-Z0-9]/g, '');
   const inherited = useRgTheme();
   const active = mode === 'dark' || mode === 'light' ? makeTheme(mode) : inherited;
   const styles = stylesFor(active);
@@ -1091,12 +1158,18 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
   // paints its safe area strip with it, so the status area and
   // the bar read as one surface with no seam.
   const [chrome, setChrome] = useState<string | undefined>(undefined);
+  // The wash flag (seamless round, 2026-11-18): a tint bar asks
+  // the screen to draw the soft wash as one layer behind the
+  // status area and the bar, so the gradient is continuous
+  // from the top of the phone to the bar's melt into the page.
+  const [headerWash, setHeaderWash] = useState(false);
   const headerSlot = useRef({
-    register: (key: string, node: React.ReactNode, chromeColor?: string) => {
+    register: (key: string, node: React.ReactNode, chromeColor?: string, wash?: boolean) => {
       if (headerKeyRef.current !== key) {
         headerKeyRef.current = key;
         setHeaderNode(node);
         setChrome(chromeColor);
+        setHeaderWash(!!wash);
       }
     },
     clear: (key: string) => {
@@ -1104,6 +1177,7 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
         headerKeyRef.current = null;
         setHeaderNode(null);
         setChrome(undefined);
+        setHeaderWash(false);
       }
     },
   }).current;
@@ -1128,6 +1202,23 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
   // the screen tracks the scroll offset and draws the veil under
   // the pinned bar, deepening as the content scrolls under it.
   const [scrollY, setScrollY] = useState(0);
+  // Scroll reset on route change (seamless round follow-up,
+  // 2026-11-18): the entry screen persists across routes now
+  // (the remount per navigation was the tab switch jitter), so
+  // the generated root passes the concrete path as scrollKey
+  // and the screen scrolls itself to the top, in a layout
+  // effect so the new page paints already at the top, whenever
+  // the key changes. The fade veil's offset resets with it.
+  const scrollRef = useRef<any>(null);
+  const lastScrollKey = useRef(scrollKey);
+  useLayoutEffect(() => {
+    if (scrollKey === undefined || scrollKey === null) return;
+    if (lastScrollKey.current !== scrollKey) {
+      lastScrollKey.current = scrollKey;
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+      setScrollY(0);
+    }
+  });
   const handleScroll = (e: any) => {
     if (onEndReached) onScroll(e);
     if (fade) setScrollY(e?.nativeEvent?.contentOffset?.y ?? 0);
@@ -1173,10 +1264,15 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
   );
   return (
     <RgThemeContext.Provider value={active}>
-      <SafeAreaView style={[styles.screen, chrome ? { backgroundColor: chrome } : null, style]}>
+      <SafeAreaView style={[styles.screen, chrome && !headerWash ? { backgroundColor: chrome } : null, style]}>
         <RgOverlaySlotContext.Provider value={overlaySlot}>
         <RgBottomSlotContext.Provider value={bottomSlot}>
         <RgHeaderSlotContext.Provider value={headerSlot}>
+          {headerWash ? (
+            <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 170 }}>
+              <SoftFill />
+            </View>
+          ) : null}
           {headerNode}
           <View style={{ flex: 1, position: 'relative' }}>
           <KeyboardAvoidingView
@@ -1184,6 +1280,7 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           >
           <ScrollView
+            ref={scrollRef}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
             contentContainerStyle={styles.screenContent}
@@ -1206,6 +1303,27 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
                   </LinearGradient>
                 </Defs>
                 <Rect x="0" y="0" width="100%" height={24} fill={`url(#${veilId})`} />
+              </Svg>
+            </View>
+          ) : null}
+          {/* The bottom melt (seamless round follow-up,
+              2026-11-18): when a bottom bar is pinned, content
+              reaching the bottom of the scroll box dissolves
+              into the bar's surface colour through the mirror
+              gradient, instead of being sliced by the bar's top
+              edge. The scroll box's bottom padding is exactly
+              the melt's height, so at rest the last block sits
+              above the melt and is never washed. */}
+          {(navs.length > 0 || bottomNode) ? (
+            <View pointerEvents="none" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 24 }}>
+              <Svg width="100%" height={24}>
+                <Defs>
+                  <LinearGradient id={meltId} x1="0" y1="0" x2="0" y2="1">
+                    <Stop offset="0" stopColor={styles.bottomNav.backgroundColor} stopOpacity={0} />
+                    <Stop offset="1" stopColor={styles.bottomNav.backgroundColor} stopOpacity={0.96} />
+                  </LinearGradient>
+                </Defs>
+                <Rect x="0" y="0" width="100%" height={24} fill={`url(#${meltId})`} />
               </Svg>
             </View>
           ) : null}
@@ -1313,7 +1431,7 @@ export function RgAppbar({ title, search, menu, avatar, onMenu, titleAlign, tone
   const hasRow = !!(title || search || leftNode || rightNode);
   const bar = (
     <>
-    <View style={[styles.appbar, { flexDirection: 'column', alignItems: 'stretch' }, gradient ? styles.appbarGradient : null, plain ? styles.appbarPlain : null, tint ? styles.appbarTint : null]}>
+    <View style={[styles.appbar, { flexDirection: 'column', alignItems: 'stretch' }, gradient ? styles.appbarGradient : null, plain ? styles.appbarPlain : null, tint ? styles.appbarTint : null, tint && pin ? { backgroundColor: 'transparent' } : null]}>
       {gradient ? <GradientFill /> : null}
       {hasRow ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md }}>
@@ -1354,7 +1472,10 @@ export function RgAppbar({ title, search, menu, avatar, onMenu, titleAlign, tone
   // 2026-11-17): the flat bands (tint, plain) lend their
   // background, so the safe area strip above the bar paints the
   // same colour and no seam shows. Other tones lend nothing.
-  const chrome = tint ? c.surfaceVariant : plain ? c.background : undefined;
+  // A tint bar lends the wash's top stop (seamless round,
+  // 2026-11-18), so the status area continues the bar's own
+  // gradient from its first step.
+  const chrome = tint ? c.washFrom : plain ? c.background : undefined;
   // Registration uses a layout effect (Gmail light round,
   // 2026-11-17): the pinned bar must be in the screen's header
   // slot before the frame paints, or the content paints one frame
@@ -1362,7 +1483,7 @@ export function RgAppbar({ title, search, menu, avatar, onMenu, titleAlign, tone
   // seen on back navigation. A passive effect runs after paint.
   useLayoutEffect(() => {
     if (!pin || !slot) return;
-    slot.register(pinKey, bar, chrome);
+    slot.register(pinKey, bar, chrome, tint);
     return () => slot.clear(pinKey);
   }, [pinKey]);
   if (pin && slot) return null;
@@ -1496,6 +1617,7 @@ export function RgButton({ children, disabled, onPress, badge, style, variant, t
           style,
         ]}
       >
+        {text ? null : <ButtonFill />}
         <Text style={text ? styles.buttonTextLabel : styles.buttonLabel}>{children}</Text>
         <BadgeDot value={badge} styles={styles} offset={{ top: -6, right: -6 }} />
       </Pressable>
@@ -1657,13 +1779,15 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
   );
 }
 
-// Switch haptic (Gmail light round, 2026-11-17): a switch with
-// the `haptic` attribute answers a toggle with a light selection
-// haptic, the native feel. The module is required lazily inside
-// the press, the file picker pattern, which makes expo-haptics a
-// required dependency of apps on @rangular/ui (the scaffold
-// writes it); an app that somehow lacks it simply stays silent.
-function fireSwitchHaptic(): void {
+// Selection haptic (Gmail light round, 2026-11-17; shared with
+// the bottom nav, 2026-11-18): a control with the `haptic`
+// attribute answers a selection with a light selection haptic,
+// the native feel: a switch on toggle, a bottom nav on a tab
+// change. The module is required lazily inside the press, the
+// file picker pattern, which makes expo-haptics a required
+// dependency of apps on @rangular/ui (the scaffold writes it);
+// an app that somehow lacks it simply stays silent.
+function fireSelectionHaptic(): void {
   try {
     const Haptics = require('expo-haptics');
     if (Haptics && typeof Haptics.selectionAsync === 'function') {
@@ -1708,7 +1832,7 @@ export function RgSwitch({ checked, disabled, haptic, onChange, children, style 
       accessibilityRole="switch"
       accessibilityState={{ checked: isOn, disabled: !!disabled }}
       disabled={disabled}
-      onPress={() => { if (haptic) fireSwitchHaptic(); onChange?.(!isOn); }}
+      onPress={() => { if (haptic) fireSelectionHaptic(); onChange?.(!isOn); }}
       style={[styles.controlRow, disabled && styles.controlDisabled, style]}
     >
       <Animated.View
@@ -1834,6 +1958,18 @@ export function RgList({ data, renderItem, keyExtractor, children, refreshing, o
   // scroller (RefreshControl plus the shared end-reached handler);
   // a plain list stays a plain View inside the screen's scroll.
   if (children) {
+    // Hairlines live between rows, never under the last one
+    // (seamless round, 2026-11-18): a closing hairline under a
+    // list's final row floats over whatever follows (a section
+    // gap, a card edge) and reads as a seam, so the list marks
+    // its last row child and the row drops its bottom border.
+    const kids = React.Children.toArray(children);
+    const lastIdx = kids.length - 1;
+    const marked = kids.map((k, i) => (
+      i === lastIdx && React.isValidElement(k) && (k as React.ReactElement<any>).type === RgRow
+        ? React.cloneElement(k as React.ReactElement<any>, { lastInList: true })
+        : k
+    ));
     if (onRefresh || onEndReached) {
       return (
         <ScrollView
@@ -1843,11 +1979,11 @@ export function RgList({ data, renderItem, keyExtractor, children, refreshing, o
           onScroll={onEndReached ? onScroll : undefined}
           scrollEventThrottle={64}
         >
-          {children}
+          {marked}
         </ScrollView>
       );
     }
-    return <View>{children}</View>;
+    return <View>{marked}</View>;
   }
   return (
     <FlatList
@@ -1955,7 +2091,7 @@ function SwipeRow({ actions, children }: any) {
   );
 }
 
-export function RgRow({ title, subtitle, detail, time, avatar, avatarText, avatarTone, icon, actionIcon, onAction, onPress, badge, tooltip, selected, children }: any) {
+export function RgRow({ title, subtitle, detail, time, avatar, avatarText, avatarTone, icon, actionIcon, onAction, onPress, badge, tooltip, selected, children, lastInList }: any) {
   const t = useRgTheme();
   const c = t.colors;
   const styles = stylesFor(t);
@@ -2008,14 +2144,14 @@ export function RgRow({ title, subtitle, detail, time, avatar, avatarText, avata
   if (onPress || tip.show) {
     inner = (
       <View style={styles.tooltipWrap}>
-        <Pressable onPress={onPress} onLongPress={tip.show} style={({ pressed }: any) => [styles.row, selected && styles.rowSelected, pressed && { opacity: 0.7 }]}>
+        <Pressable onPress={onPress} onLongPress={tip.show} style={({ pressed }: any) => [styles.row, selected && styles.rowSelected, lastInList && { borderBottomWidth: 0 }, pressed && { opacity: 0.7 }]}>
           {content}
         </Pressable>
         {tip.bubble}
       </View>
     );
   } else {
-    inner = <View style={[styles.row, selected && styles.rowSelected]}>{content}</View>;
+    inner = <View style={[styles.row, selected && styles.rowSelected, lastInList && { borderBottomWidth: 0 }]}>{content}</View>;
   }
   // Swipe actions (Stage 15): <row-action> declarations among the
   // row's children turn the row into a SwipeRow; the declarations
@@ -3049,7 +3185,7 @@ export function RgNavItem({ icon, label, badge, children }: any) {
  * RgScreen lifts the bar out of the scrolling content and pins it
  * under the screen. An item may carry a badge count.
  */
-export function RgBottomNav({ index, onChange, children, style }: any) {
+export function RgBottomNav({ index, onChange, children, style, haptic }: any) {
   const styles = stylesFor(useRgTheme());
   const items = React.Children.toArray(children)
     .filter((child) => React.isValidElement(child))
@@ -3064,6 +3200,11 @@ export function RgBottomNav({ index, onChange, children, style }: any) {
     ? Math.min(Math.max(index, 0), Math.max(items.length - 1, 0))
     : Math.min(internal, Math.max(items.length - 1, 0));
   const select = (i: number): void => {
+    // Tab haptic (2026-11-18): with the `haptic` attribute, a
+    // switch to a different tab answers with the selection
+    // haptic, the native tab feel; re-tapping the current tab
+    // stays silent.
+    if (haptic && i !== active) fireSelectionHaptic();
     if (!controlled) setInternal(i);
     items[i]?.onPress?.();
     onChange?.(i);

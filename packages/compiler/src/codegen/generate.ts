@@ -2874,15 +2874,22 @@ class Generator {
       else if (style) props.push(`style={${style}}`);
       if (el.ref) props.push(`ref={${el.ref}Ref}`);
 
-      // Route key on the entry screen (Gmail light round,
-      // 2026-11-17): in a routed app the root screen wraps the
+      // Scroll key on the entry screen (Gmail light round,
+      // 2026-11-17; persistence, seamless round follow-up,
+      // 2026-11-18): in a routed app the root screen wraps the
       // outlet, so every route shares one ScrollView and it keeps
       // the last screen's scroll offset: a lesson opened from a
-      // scrolled list landed mid-page. Keying the entry screen by
-      // the concrete path remounts it per navigation, so each
-      // route starts at the top with a fresh header slot.
+      // scrolled list landed mid-page. The first fix keyed the
+      // screen by the concrete path, remounting the whole shell
+      // per navigation: correct scroll, but on a phone the
+      // remount rebuilt the safe area, the scroll view and both
+      // slots on every tab switch, which read as jitter. The
+      // screen now persists and takes the path as a scrollKey
+      // instead: RgScreen scrolls to the top when the key
+      // changes, and the pages inside the outlet still remount
+      // by their own keys.
       if (el.tag.toLowerCase() === 'screen' && opts.entry && this.routingActive) {
-        props.unshift('key={__route.path}');
+        props.unshift('scrollKey={__route.path}');
       }
       const open = `${indent}<${componentName}${props.length ? ' ' + props.join(' ') : ''}`;
       const childLines: string[] = [];

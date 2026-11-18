@@ -36,10 +36,55 @@ test('the search pill is one tap target that focuses its field', () => {
     'a tap anywhere on the pill focuses the field');
 });
 
-test('the bottom bar shadows upward and the screen paints under it', () => {
+test('the wash tokens exist in both themes and the tint bar wears the wash', () => {
+  const tokensSrc = fs.readFileSync(
+    path.join(ROOT, 'packages', 'ui', 'src', 'tokens.ts'), 'utf8');
+  assert.ok((tokensSrc.match(/washFrom/g) ?? []).length >= 3, 'washFrom in the roles and both themes');
+  assert.ok((tokensSrc.match(/primaryDeep/g) ?? []).length >= 3, 'primaryDeep in the roles and both themes');
+  assert.ok(primitivesSrc.includes('rgwash'), 'the SoftFill gradient is defined');
+  assert.ok(primitivesSrc.includes('slot.register(pinKey, bar, chrome, tint)'), 'the tint bar asks its screen for the wash');
+  assert.ok(primitivesSrc.includes('headerWash'), 'the screen draws the wash as one layer');
+  assert.ok(primitivesSrc.includes('c.washFrom : plain'), 'the tint bar lends the wash top as its chrome');
+});
+
+test('the entry screen persists across routes and resets scroll by key', () => {
+  assert.ok(primitivesSrc.includes('scrollKey'), 'the screen takes a scroll key');
   assert.ok(
-    primitivesSrc.includes('shadowOffset: { width: 0, height: -2 }'),
-    'the bottom bar shadow points up');
+    primitivesSrc.includes('scrollTo({ y: 0, animated: false })'),
+    'a key change scrolls the screen to the top without animation');
+  assert.ok(primitivesSrc.includes('ref={scrollRef}'), 'the scroll view carries the ref');
+});
+
+test('content melts into a pinned bottom bar instead of being sliced by it', () => {
+  assert.ok(primitivesSrc.includes('rgmelt'), 'the bottom melt gradient is defined');
+  assert.ok(
+    primitivesSrc.includes('(navs.length > 0 || bottomNode) ? (\n            <View pointerEvents="none" style={{ position: \'absolute\', bottom: 0, left: 0, right: 0, height: 24 }}'),
+    'the melt rides the bottom of the scroll box when a bar is pinned');
+});
+
+test('the bottom nav answers a tab change with a haptic when asked', () => {
+  assert.ok(primitivesSrc.includes('function fireSelectionHaptic()'), 'one shared selection haptic');
+  assert.ok(
+    primitivesSrc.includes('if (haptic && i !== active) fireSelectionHaptic();'),
+    'the nav fires it on a real tab change only');
+});
+
+test('the filled button wears the primary gradient', () => {
+  assert.ok(primitivesSrc.includes('function ButtonFill()'), 'the button fill is defined');
+  assert.ok(primitivesSrc.includes('stopColor={c.primaryDeep}'), 'the fill lands on primaryDeep');
+});
+
+test('a list drops the hairline under its last row', () => {
+  assert.ok(primitivesSrc.includes('lastInList'), 'rows know the last-in-list mark');
+  assert.ok(primitivesSrc.includes('React.cloneElement'), 'the list marks its last row');
+});
+
+test('the bottom bar carries no shadow and the screen paints under it', () => {
+  const navBlock = primitivesSrc.slice(
+    primitivesSrc.indexOf('bottomNav: {'),
+    primitivesSrc.indexOf('navItem: {'));
+  assert.ok(!navBlock.includes('shadowOffset') && !navBlock.includes('shadowOpacity') && !navBlock.includes('shadowRadius'), 'the bottom bar style is shadow free');
+  assert.ok(!navBlock.includes('elevation.level'), 'the bottom bar style is elevation free');
   assert.ok(
     primitivesSrc.includes('styles.bottomNav.backgroundColor'),
     'the screen paints the safe area strip in the bar colour');
