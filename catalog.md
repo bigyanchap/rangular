@@ -651,7 +651,7 @@ Props are parsed from `packages/ui/src/primitives.tsx`; the primitives are shipp
 
 ## Icons
 
-Icons live in `packages/ui/src/icons.ts` as SVG path data (24 by 24 viewBox). `<icon name="...">` draws one of these 31 names; any other name is a GEN_ICON_UNKNOWN error whose JSON form carries this same list in `validIcons`.
+Icons live in `packages/ui/src/icons.ts` as SVG path data (24 by 24 viewBox). `<icon name="...">` draws one of these 32 names; any other name is a GEN_ICON_UNKNOWN error whose JSON form carries this same list in `validIcons`.
 
 - `alarm`
 - `arrow-left`
@@ -671,6 +671,7 @@ Icons live in `packages/ui/src/icons.ts` as SVG path data (24 by 24 viewBox). `<
 - `heart`
 - `home`
 - `info`
+- `logo`
 - `mail`
 - `menu`
 - `minus`

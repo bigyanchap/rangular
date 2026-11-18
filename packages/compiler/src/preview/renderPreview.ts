@@ -1,5 +1,5 @@
 import { colours, theme } from '../../../ui/src/tokens';
-import { ICON_PATHS, ICON_SIZES, DEFAULT_ICON_SIZE } from '../../../ui/src/icons';
+import { ICON_PATHS, BRAND_MARKS, BRAND_MARK_VIEWBOX, ICON_SIZES, DEFAULT_ICON_SIZE } from '../../../ui/src/icons';
 import { formatDateTimeValue, parseDateTimeValue, daysInMonth, MONTH_SHORT } from '../../../ui/src/datetime';
 import type { PickerMode } from '../../../ui/src/datetime';
 import { applyMask } from '../../../ui/src/mask';
@@ -208,6 +208,10 @@ export function kebabRole(role: string): string {
  * recolours icons exactly like every other role.
  */
 export function iconSvg(name: string, size: number, colorRole?: string): string {
+  const brand = BRAND_MARKS[name];
+  if (brand) {
+    return `<span class="icon"><svg width="${size}" height="${size}" viewBox="${BRAND_MARK_VIEWBOX}" aria-hidden="true">${brand}</svg></span>`;
+  }
   const paths = ICON_PATHS[name];
   if (!paths || !paths.length) return '';
   const body = paths.map((d) => `<path d="${d}"/>`).join('');
@@ -1787,6 +1791,7 @@ export function previewScript(
 // State and methods are live: (click) handlers mutate state and re-render.
 const TEMPLATE = ${jsonForScript(ast)};
 const ICONS = ${jsonForScript(ICON_PATHS)};
+const BRAND_ICONS = ${jsonForScript(BRAND_MARKS)};
 const AVATAR_TONES = ${jsonForScript(AVATAR_TONES)};
 const AVATAR_TONE_NAMES = ${jsonForScript(AVATAR_TONE_NAMES)};
 const state = ${jsonForScript(serialState)};
@@ -2400,6 +2405,12 @@ function __iconSize(el, scope) {
   return best;
 }
 function __icon(name, size, colorRole) {
+  if (BRAND_ICONS[name]) {
+    var bspan = document.createElement('span');
+    bspan.className = 'icon';
+    bspan.innerHTML = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 100 100" aria-hidden="true">' + BRAND_ICONS[name] + '</svg>';
+    return bspan;
+  }
   var paths = ICONS[name] || [];
   var span = document.createElement('span');
   span.className = 'icon';

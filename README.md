@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="The Rangular framework logo: a shield split in two, Angular red with an R on top, the React atom in cyan on dark below" width="140">
+</p>
+
 # Rangular framework
 
 **Write Angular code, compile React Native code.**

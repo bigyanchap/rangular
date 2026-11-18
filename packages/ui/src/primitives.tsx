@@ -36,10 +36,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Svg, Path, Rect, Circle, Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
+import { Svg, Path, Rect, Circle, Defs, LinearGradient, Stop, Text as SvgText, SvgXml } from 'react-native-svg';
 import { theme as makeTheme } from './tokens';
 import type { Theme } from './tokens';
-import { ICON_PATHS } from './icons';
+import { ICON_PATHS, BRAND_MARKS, BRAND_MARK_VIEWBOX } from './icons';
 import { applyMask } from './mask';
 import { chartModel } from './chart';
 import type { ChartShape } from './chart';
@@ -86,6 +86,26 @@ export function RgThemeProvider({ mode = 'light', children }: any) {
 export function RgIcon({ name, size = 24, color, badge, style }: any) {
   const t = useRgTheme();
   const styles = stylesFor(t);
+  // Brand marks (icons.ts) carry their own colours and ignore the
+  // colour role; they render from the same markup the preview uses.
+  const brand = BRAND_MARKS[name as string];
+  if (brand) {
+    const mark = (
+      <SvgXml
+        xml={`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${BRAND_MARK_VIEWBOX}">${brand}</svg>`}
+        width={size}
+        height={size}
+        style={badge === undefined ? style : undefined}
+      />
+    );
+    if (badgeTextOf(badge) === null) return mark;
+    return (
+      <View style={[{ width: size, height: size }, style]}>
+        {mark}
+        <BadgeDot value={badge} styles={styles} offset={{ top: -4, right: -4 }} />
+      </View>
+    );
+  }
   const paths = ICON_PATHS[name as string] ?? [];
   const fill = color
     ? ((t.colors as unknown as Record<string, string>)[color as string] ?? color)

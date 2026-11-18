@@ -11,7 +11,7 @@ import { doctorStyleTexts, runDoctor } from '../packages/compiler/src/doctor';
 import { buildCatalog, renderCatalogMarkdown } from '../packages/compiler/src/catalog';
 import { renderPreview } from '../packages/compiler/src/preview/renderPreview';
 import { buildStyleSnapshot } from '../packages/compiler/src/preview/styleSnapshot';
-import { ICON_NAMES, ICON_PATHS, ICON_SIZES, DEFAULT_ICON_SIZE } from '../packages/ui/src/icons';
+import { ICON_NAMES, ICON_PATHS, BRAND_MARKS, ICON_SIZES, DEFAULT_ICON_SIZE } from '../packages/ui/src/icons';
 import { colours } from '../packages/ui/src/tokens';
 
 const ROOT = path.join(__dirname, '..', '..');
@@ -79,12 +79,18 @@ test('Stage 7: the icon set is exactly the curated list, every name has path dat
   const expected = ['menu', 'search', 'close', 'check', 'chevron-left', 'chevron-right',
     'arrow-left', 'arrow-right', 'plus', 'minus', 'bell', 'heart', 'star', 'settings',
     'home', 'person', 'calendar', 'alarm', 'play', 'pause', 'edit', 'delete', 'share',
-    'info', 'warning', 'mail', 'sun', 'code', 'chart', 'bookmark', 'bookmark-outline'];
+    'info', 'warning', 'mail', 'sun', 'code', 'chart', 'bookmark', 'bookmark-outline', 'logo'];
   assert.deepEqual(ICON_NAMES, [...expected].sort());
-  assert.equal(ICON_NAMES.length, 31);
-  for (const name of ICON_NAMES) {
+  assert.equal(ICON_NAMES.length, 32);
+  for (const name of Object.keys(ICON_PATHS)) {
     assert.ok(Array.isArray(ICON_PATHS[name]) && ICON_PATHS[name].length >= 1, `${name} has no path data`);
     for (const d of ICON_PATHS[name]) assert.ok(d.startsWith('M'), `${name} path does not start with M`);
+  }
+  // Brand marks carry markup instead of path data, and every brand
+  // name is a valid icon name.
+  for (const name of Object.keys(BRAND_MARKS)) {
+    assert.ok(ICON_NAMES.includes(name), `${name} is not a valid name`);
+    assert.ok(BRAND_MARKS[name].length > 0, `${name} has no markup`);
   }
   assert.deepEqual(ICON_SIZES, [20, 24, 28]);
   assert.equal(DEFAULT_ICON_SIZE, 24);
@@ -252,12 +258,17 @@ test('icons preview: server paint draws every icon with its label, coloured by r
     children: result.children,
     services: result.services,
   });
-  // 31 set icons + 4 usage icons + 3 icon buttons, in the server paint
-  // (everything before the page script). The appbar draws no menu: it
-  // has no menu handler, and a dead control is not drawn.
-  assert.equal((html.split('<script>')[0].match(/<svg /g) ?? []).length, 38);
+  // 32 set icons (31 glyphs + the logo brand mark) + 4 usage icons +
+  // 3 icon buttons, in the server paint (everything before the page
+  // script). The appbar draws no menu: it has no menu handler, and a
+  // dead control is not drawn.
+  assert.equal((html.split('<script>')[0].match(/<svg /g) ?? []).length, 39);
   for (const name of ICON_NAMES) {
-    assert.ok(html.includes(`<path d="${ICON_PATHS[name][0]}"`), `preview missing path for ${name}`);
+    if (ICON_PATHS[name]) {
+      assert.ok(html.includes(`<path d="${ICON_PATHS[name][0]}"`), `preview missing path for ${name}`);
+    } else {
+      assert.ok(html.includes(BRAND_MARKS[name].slice(0, 80)), `preview missing brand markup for ${name}`);
+    }
     assert.ok(html.includes(`>${name}<`), `preview missing label for ${name}`);
   }
   // Colour roles exist as variables in both themes with different values.
@@ -332,12 +343,16 @@ test('icons preview behaviour: the page runtime draws the same paths as the serv
   });
   const app = loadPreview(html);
   const iconEls = findAll(app, (e) => e.className === 'icon');
-  // 29 in the *ngFor set + 4 usage icons + 3 icon buttons, at runtime.
-  assert.equal(iconEls.length, 38);
+  // The *ngFor set + 4 usage icons + 3 icon buttons, at runtime.
+  assert.equal(iconEls.length, 39);
   const runtimeMarkup = iconEls.map((e) => e.markup).join('\n');
   for (const name of ICON_NAMES) {
     // Parity: the identical path data the server painted and RgIcon ships.
-    assert.ok(runtimeMarkup.includes(`<path d="${ICON_PATHS[name][0]}"/>`), `runtime missing path for ${name}`);
+    if (ICON_PATHS[name]) {
+      assert.ok(runtimeMarkup.includes(`<path d="${ICON_PATHS[name][0]}"/>`), `runtime missing path for ${name}`);
+    } else {
+      assert.ok(runtimeMarkup.includes(BRAND_MARKS[name].slice(0, 80)), `runtime missing brand markup for ${name}`);
+    }
     assert.ok(app.textContent.includes(name), `runtime missing label for ${name}`);
   }
   // Sizes survive: the heart usage icon is drawn at 28, the search at 20.
@@ -347,4 +362,41 @@ test('icons preview behaviour: the page runtime draws the same paths as the serv
   const bell = iconEls.find((e) => e.markup.includes(ICON_PATHS['bell'][0])
     && (e.getAttribute('style') ?? '').includes('--role-primary'));
   assert.ok(bell, 'bell icon lost its primary role colour');
+});
+
+test('brand mark: the logo name validates and compiles to RgIcon', () => {
+  assert.ok(ICON_NAMES.includes('logo'), 'logo is a valid icon name');
+  assert.ok(BRAND_MARKS['logo'].includes('#C81E1E'), 'the mark carries the shield red');
+  assert.ok(BRAND_MARKS['logo'].includes('#61DAFB'), 'the mark carries the atom cyan');
+  const result = projectWith(`<screen><icon name="logo" size="40"></icon></screen>`);
+  assert.deepEqual(result.diagnostics, [], JSON.stringify(result.diagnostics));
+  assert.ok(result.code.includes('<RgIcon name="logo"'), result.code);
+});
+
+test('brand mark: the preview draws the shield in both layers', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rg-brand-'));
+  const entry = path.join(dir, 'brand.component.ts');
+  fs.writeFileSync(entry, `import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-brand',
+  templateUrl: './brand.component.html',
+})
+export class BrandComponent {}
+`);
+  fs.writeFileSync(path.join(dir, 'brand.component.html'), `<screen><icon name="logo" size="40"></icon></screen>`);
+  const result = compileComponent({
+    tsSource: fs.readFileSync(entry, 'utf8'),
+    fileName: entry,
+    resolveFile: (rel) => {
+      const p = path.join(dir, rel);
+      return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : undefined;
+    },
+    resolveImport: () => undefined,
+    rootDir: dir,
+  });
+  assert.deepEqual(result.diagnostics, [], JSON.stringify(result.diagnostics));
+  const page = renderPreview(result.component!, result.ast!);
+  assert.ok(page.includes('#C81E1E'), 'the static paint draws the shield');
+  assert.ok(page.includes('BRAND_ICONS'), 'the interactive runtime carries the brand data');
 });

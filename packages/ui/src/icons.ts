@@ -120,8 +120,34 @@ export const ICON_PATHS: Record<string, string[]> = {
   ],
 };
 
-/** Every valid icon name, sorted. The compiler validates against this. */
-export const ICON_NAMES: string[] = Object.keys(ICON_PATHS).sort();
+/**
+ * Brand marks: multi-colour drawings that are not icons. An icon is
+ * one colour and takes the colour it is given; a brand mark carries
+ * its own colours and is drawn exactly as designed, so the `color`
+ * attribute does not recolour it. Each value is the inner markup of
+ * an SVG with the viewBox in BRAND_MARK_VIEWBOX, and every renderer
+ * (RgIcon in the app, both preview layers) draws from this one
+ * source, the same rule the icon paths follow.
+ *
+ * `logo` is the Rangular framework's own mark, the Split Shield
+ * (picked 2026-11-18): the top half is the Angular shield in red
+ * with a white R, the bottom half is dark with the React atom in
+ * cyan. The master artwork lives at assets/logo.svg in the repo.
+ */
+export const BRAND_MARK_VIEWBOX = '0 0 100 100';
+export const BRAND_MARKS: Record<string, string> = {
+  logo: '<path d="M50 3 L87 13 V47 C87 71 71 85 50 97 C29 85 13 71 13 47 V13 Z" fill="#0F172A"/>'
+    + '<path d="M50 3 L87 13 V50 H13 V13 Z" fill="#C81E1E"/>'
+    + '<path d="M50 3 L87 13 V50 H50 Z" fill="#A41212" opacity=".55"/>'
+    + '<path d="M34 42 V18 H52 C59 18 63.5 22 63.5 28 C63.5 32.2 61 35.4 56.5 36.6 L64 42 H53 L47 33.5 H42 V42 Z M42 30.5 H50.5 C53 30.5 54.5 29.2 54.5 27.2 C54.5 25.2 53 24 50.5 24 H42 Z" fill="white"/>'
+    + '<circle cx="50" cy="68" r="2.6" fill="#61DAFB"/>'
+    + '<ellipse cx="50" cy="68" rx="17" ry="6.5" fill="none" stroke="#61DAFB" stroke-width="1.8"/>'
+    + '<ellipse cx="50" cy="68" rx="17" ry="6.5" fill="none" stroke="#61DAFB" stroke-width="1.8" transform="rotate(60 50 68)"/>'
+    + '<ellipse cx="50" cy="68" rx="17" ry="6.5" fill="none" stroke="#61DAFB" stroke-width="1.8" transform="rotate(120 50 68)"/>',
+};
+
+/** Every valid icon name, sorted, brand marks included. The compiler validates against this. */
+export const ICON_NAMES: string[] = [...Object.keys(ICON_PATHS), ...Object.keys(BRAND_MARKS)].sort();
 
 /** The fixed icon size scale, in px. Template sizes snap to this. */
 export const ICON_SIZES: number[] = [20, 24, 28];

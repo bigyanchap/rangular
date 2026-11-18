@@ -1,4 +1,4 @@
-import { ICON_NAMES, ICON_PATHS, ICON_SIZES, DEFAULT_ICON_SIZE } from '../../../ui/src/icons';
+import { ICON_NAMES, ICON_PATHS, BRAND_MARKS, ICON_SIZES, DEFAULT_ICON_SIZE } from '../../../ui/src/icons';
 import { PICKER_MODES } from '../../../ui/src/datetime';
 import { CHART_TYPES } from '../../../ui/src/chart';
 import { CarriedImportBinding, ComponentInfo, DirectiveInfo, PipeInfo, ServiceInfo } from '../class/parseComponent';
@@ -1356,7 +1356,7 @@ class Generator {
       for (const node of nodes) {
         if (node.type !== 'element') continue;
         if (node.tag.toLowerCase() === 'chip' && node.attrs['icon'] !== undefined
-          && !(node.attrs['icon'] in ICON_PATHS)) {
+          && !(node.attrs['icon'] in ICON_PATHS) && !(node.attrs['icon'] in BRAND_MARKS)) {
           diagnostics.push({
             severity: 'error',
             code: 'GEN_ICON_UNKNOWN',
@@ -1368,7 +1368,7 @@ class Generator {
           });
         }
         if (node.tag.toLowerCase() === 'icon-button' && node.attrs['name'] !== undefined
-          && !(node.attrs['name'] in ICON_PATHS)) {
+          && !(node.attrs['name'] in ICON_PATHS) && !(node.attrs['name'] in BRAND_MARKS)) {
           diagnostics.push({
             severity: 'error',
             code: 'GEN_ICON_UNKNOWN',
@@ -1895,7 +1895,7 @@ class Generator {
       const staticName = el.attrs['name'];
 
       if (staticName !== undefined) {
-        if (staticName in ICON_PATHS) {
+        if (staticName in ICON_PATHS || staticName in BRAND_MARKS) {
           props.push(`name="${escapeJsxAttrValue(staticName)}"`);
         } else {
           diagnostics.push({
@@ -1920,6 +1920,9 @@ class Generator {
         ));
       }
 
+      // Brand marks are pictures, not glyphs: any size passes
+      // through unsnapped and unwarned. The scale governs icons.
+      const isBrand = staticName !== undefined && staticName in BRAND_MARKS;
       const snapIconSize = (raw: number): number => {
         const snapped = nearestOnScale(ICON_SIZES, raw);
         if (snapped !== raw) {
@@ -1935,7 +1938,7 @@ class Generator {
       if (el.attrs['size'] !== undefined) {
         const raw = Number(el.attrs['size']);
         if (Number.isFinite(raw)) {
-          props.push(`size={${snapIconSize(raw)}}`);
+          props.push(`size={${isBrand ? raw : snapIconSize(raw)}}`);
         } else {
           diagnostics.push(warning(
             'GEN_ICON_SIZE',
@@ -1950,7 +1953,7 @@ class Generator {
           ? Number(sizeBinding.expression.trim())
           : undefined;
         props.push(literal !== undefined
-          ? `size={${snapIconSize(literal)}}`
+          ? `size={${isBrand ? literal : snapIconSize(literal)}}`
           : `size={${codeExpr(sizeBinding.expression)}}`);
       }
 
