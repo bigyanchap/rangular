@@ -209,6 +209,9 @@ flowchart TB
   libraries that are not built in (maps, video, WebView, camera,
   rich text editors): template tags, wrapper components, services,
   and the limits of each path.
+- [docs/FAQs.md](docs/FAQs.md), the public questions and answers:
+  what the framework is, the subset and its limits, blessed
+  patterns, the borderline, and the honest comparisons.
 - [docs/ROADMAP.md](docs/ROADMAP.md), the approved plan for Stages 6
   to 12, each stage grounded in the Angular feature it mirrors.
 - [SECURITY.md](SECURITY.md), the security audit: what was tested,
