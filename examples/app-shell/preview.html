@@ -1830,6 +1830,18 @@ function __buildInput(el, scope, form, path) {
     }
     input.className = '';
     pill.appendChild(input);
+    if (input.value !== '' && !input.disabled) {
+      var clearBtn = document.createElement('span');
+      clearBtn.className = 'pill-lead';
+      clearBtn.title = 'Clear search';
+      clearBtn.appendChild(__icon('close', 18, 'textMuted'));
+      clearBtn.addEventListener('click', function () {
+        input.value = '';
+        input.dispatchEvent(new Event('input'));
+        input.focus();
+      });
+      pill.appendChild(clearBtn);
+    }
     var pillAv = __attr(el, 'avatarText', scope);
     if (pillAv) {
       var pav = document.createElement('span');
@@ -3187,7 +3199,11 @@ function __buildCore(el, scope, path, form) {
       if (el.attrs['class']) sp[0].className = el.attrs['class'];
       return sp;
     }
-    case 'card': return wrap('section', 'card');
+    case 'card': {
+      var cardEl = wrap('section', 'card');
+      __attachEvents(cardEl[0], el, scope);
+      return cardEl;
+    }
     case 'sheet': return __overlayShell(el, scope, path, form, kids, 'sheet');
     case 'dialog': return __overlayShell(el, scope, path, form, kids, 'dialog');
     case 'drawer': return __overlayShell(el, scope, path, form, kids, 'drawer');
