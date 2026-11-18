@@ -575,7 +575,7 @@ test('scaffold: init --app at an explicit path writes a real Expo app around gen
   assert.equal(pkg.dependencies['expo-image-picker'], '~58.0.10');
   assert.equal(pkg.dependencies['expo-document-picker'], '~58.0.5');
   assert.equal(pkg.devDependencies['babel-preset-expo'], '~58.0.0');
-  for (const dep of ['@rangular/ui', '@rangular/runtime']) {
+  for (const dep of ['@rangular-framework/ui', '@rangular-framework/runtime']) {
     const spec = pkg.dependencies[dep] as string;
     assert.ok(spec.startsWith('file:'), `${dep} is a file: dependency`);
     const target = path.resolve(appDir, spec.slice('file:'.length));
@@ -629,8 +629,8 @@ test('scaffold: a bare name lands under the repo apps folder with short relative
     assert.equal(run.status, 0, run.stderr);
     assert.ok(fs.existsSync(path.join(appDir, 'package.json')), 'the app was created under apps/');
     const pkg = JSON.parse(fs.readFileSync(path.join(appDir, 'package.json'), 'utf8'));
-    assert.equal(pkg.dependencies['@rangular/ui'], 'file:../../packages/ui');
-    assert.equal(pkg.dependencies['@rangular/runtime'], 'file:../../packages/runtime');
+    assert.equal(pkg.dependencies['@rangular-framework/ui'], 'file:../../packages/ui');
+    assert.equal(pkg.dependencies['@rangular-framework/runtime'], 'file:../../packages/runtime');
   } finally {
     fs.rmSync(appDir, { recursive: true, force: true });
   }

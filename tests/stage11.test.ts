@@ -84,7 +84,7 @@ test('Stage 11: tags, events, diagnostics, primitives and catalog register data 
   };
   for (const [tag, component] of Object.entries(expected)) {
     assert.equal(TAG_MAP[tag].component, component, `${tag} maps to ${component}`);
-    assert.equal(TAG_MAP[tag].fromUi, true, `${tag} comes from @rangular/ui`);
+    assert.equal(TAG_MAP[tag].fromUi, true, `${tag} comes from @rangular-framework/ui`);
   }
   assert.equal(EVENT_PROPS['focus'], 'onFocus');
   assert.equal(EVENT_PROPS['toggle'], 'onToggle');
@@ -344,9 +344,9 @@ test('mailbox-pro codegen: all seven pieces are present in the generated file', 
 test('mailbox-pro parity: generated code uses only known primitives and no web APIs', () => {
   const { result } = compileExample('mailbox-pro');
   const known = new Set(Object.values(TAG_MAP).map((m) => m.component));
-  const importLine = result.code.split('\n').find((l) => l.includes("from '@rangular/ui'")) ?? '';
+  const importLine = result.code.split('\n').find((l) => l.includes("from '@rangular-framework/ui'")) ?? '';
   const names = importLine.replace(/.*\{/, '').replace(/\}.*/, '').split(',').map((s) => s.trim()).filter(Boolean);
-  assert.ok(names.length > 0, 'the example imports primitives from @rangular/ui');
+  assert.ok(names.length > 0, 'the example imports primitives from @rangular-framework/ui');
   for (const name of names) assert.ok(known.has(name), `${name} is a known primitive`);
   for (const banned of ['document.', 'window.', 'localStorage', '<div', '<span', 'dangerouslySetInnerHTML']) {
     assert.ok(!result.code.includes(banned), `generated code must not contain ${banned}`);

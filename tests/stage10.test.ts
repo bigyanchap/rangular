@@ -94,7 +94,7 @@ test('Stage 10: tags, events, diagnostics and primitives register the overlay su
   assert.equal(TAG_MAP['actions'].component, 'RgActions');
   assert.equal(TAG_MAP['datetime-picker'].component, 'RgDateTimePicker');
   for (const tag of ['sheet', 'dialog', 'actions', 'datetime-picker']) {
-    assert.equal(TAG_MAP[tag].fromUi, true, `${tag} comes from @rangular/ui`);
+    assert.equal(TAG_MAP[tag].fromUi, true, `${tag} comes from @rangular-framework/ui`);
   }
   assert.equal(EVENT_PROPS['close'], 'onClose');
   for (const code of ['GEN_PICKER_MODE', 'GEN_PICKER_INTERVAL', 'GEN_OVERLAY_OPEN', 'GEN_EVENT_ASSIGNMENT']) {

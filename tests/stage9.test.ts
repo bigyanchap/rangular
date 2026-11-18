@@ -262,7 +262,7 @@ test('mini-mail codegen: navigator, outlet conditionals, route context and link 
   const code = normalize(result.code);
   assert.ok(code.includes('const __navigator = new RgNavigator([{"path":"","redirectTo":"inbox"},{"path":"inbox"},{"path":"mail/:id"},{"path":"**"}]);'));
   assert.ok(code.includes('const __router = new Router(__navigator);'));
-  assert.ok(code.includes('import { ActivatedRoute, Container, ReactiveService, RgNavigator, Router } from \'@rangular/runtime\';'));
+  assert.ok(code.includes('import { ActivatedRoute, Container, ReactiveService, RgNavigator, Router } from \'@rangular-framework/runtime\';'));
   // Outlet: one conditional per component route, keyed by concrete path.
   assert.ok(code.includes('{__route.routePath === "inbox" && ( <ActivatedRouteContext.Provider value={new ActivatedRoute(__route.params, __navigator)}> <Inbox key={__route.path} /> </ActivatedRouteContext.Provider> )}'));
   assert.ok(code.includes('{__route.routePath === "mail/:id" && ( <ActivatedRouteContext.Provider value={new ActivatedRoute(__route.params, __navigator)}> <MailDetail key={__route.path} /> </ActivatedRouteContext.Provider> )}'));

@@ -439,7 +439,7 @@ test('parity guard: generated goldens contain no web-only APIs, tags or style pr
   const webApis = [/\bdocument\./, /\bwindow\./, /\blocalStorage\b/, /\bsessionStorage\b/, /react-dom/];
   const webTags = ['div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'img', 'ul', 'li', 'button', 'input', 'form', 'section', 'header'];
   const webTagRe = new RegExp(`</?(?:${webTags.join('|')})[\\s/>]`);
-  // Every generated JSX element must be a React Native or @rangular/ui
+  // Every generated JSX element must be a React Native or @rangular-framework/ui
   // component from TAG_MAP, or a component function generated in the same
   // file (child components). Type generics like get<MailService> are not
   // JSX: the pattern only matches a tag that follows whitespace, '(' or

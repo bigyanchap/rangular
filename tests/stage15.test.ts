@@ -595,7 +595,7 @@ test('preview behaviour: masonry carries its class, and the server paint covers 
 // could skip. That is false on React Native: Metro resolves every
 // literal require when the app bundles, and the tutorial app
 // failed to bundle on a real device for exactly that reason. Both packages
-// are required dependencies of any app using @rangular/ui, so the
+// are required dependencies of any app using @rangular-framework/ui, so the
 // scaffold must write both into the generated package.json; this
 // pin fails if either one is ever dropped again.
 
@@ -629,10 +629,10 @@ test('tutorial round: the code tag maps to RgCode and the catalog carries it', (
 });
 
 test('tutorial round: code compiles to RgCode with projected and interpolated text', () => {
-  const literal = compileInline('<screen><code>npm install -g @rangular/cli</code></screen>');
+  const literal = compileInline('<screen><code>npm install -g @rangular-framework/cli</code></screen>');
   assert.deepEqual(literal.diagnostics, [], JSON.stringify(literal.diagnostics));
-  assert.match(literal.code, /<RgCode>npm install -g @rangular\/cli<\/RgCode>/);
-  const bound = compileInline('<screen><code>{{ snippet }}</code></screen>', `snippet = 'rangular new my-app';`);
+  assert.match(literal.code, /<RgCode>npm install -g @rangular-framework\/cli<\/RgCode>/);
+  const bound = compileInline('<screen><code>{{ snippet }}</code></screen>', `snippet = 'rg new my-app';`);
   assert.deepEqual(bound.diagnostics, [], JSON.stringify(bound.diagnostics));
   assert.match(bound.code, /<RgCode>\{snippet\}<\/RgCode>/);
   const primitives = fs.readFileSync(path.join(ROOT, 'packages', 'ui', 'src', 'primitives.tsx'), 'utf8');
@@ -674,7 +674,7 @@ test('code-block snapshot: the code role is a dark editor surface in both themes
 
 test('tutorial round preview runtime: centered appbar zones and the code block render live', () => {
   const result = compileInline(
-    '<screen><appbar title="Rangular Tutorial" titleAlign="center" menu></appbar><code>npm install -g @rangular/cli</code></screen>',
+    '<screen><appbar title="Rangular Tutorial" titleAlign="center" menu></appbar><code>npm install -g @rangular-framework/cli</code></screen>',
   );
   assert.deepEqual(result.diagnostics, [], JSON.stringify(result.diagnostics));
   const html = renderPreview(result.component!, result.ast!, {
@@ -693,8 +693,8 @@ test('tutorial round preview runtime: centered appbar zones and the code block r
   assert.equal(zones[2].className, 'appbar-side end');
   const code = findAll(app, (e) => e.tagName === 'PRE' && e.className === 'code')[0];
   assert.ok(code, 'the runtime renders the code block');
-  assert.equal(code.textContent, 'npm install -g @rangular/cli');
+  assert.equal(code.textContent, 'npm install -g @rangular-framework/cli');
   const paint = html.split('<script>')[0];
-  assert.match(paint, /<pre class="code">npm install -g @rangular\/cli<\/pre>/);
+  assert.match(paint, /<pre class="code">npm install -g @rangular-framework\/cli<\/pre>/);
   assert.match(paint, /\.code \{ background: var\(--role-code-surface\)/);
 });

@@ -230,7 +230,7 @@ test('profile-form codegen: ref-held group, control wiring, version bump and the
   const { result } = compileExample('profile-form');
   const code = result.code;
   assert.ok(code.includes('const profileFormRef = useRef(new FormGroup({'), code);
-  assert.ok(code.includes("import { FormControl, FormGroup, Validators } from '@rangular/runtime';"), code);
+  assert.ok(code.includes("import { FormControl, FormGroup, Validators } from '@rangular-framework/runtime';"), code);
   assert.ok(code.includes('control.valueChanges.subscribe(() => setFormVersion((v) => v + 1))'), code);
   assert.ok(code.includes("value={profileFormRef.current.get('email').value}"), code);
   assert.ok(code.includes("onChangeText={($event) => profileFormRef.current.get('email').setValue($event)}"), code);

@@ -119,7 +119,7 @@ test('Stage 7 codegen: static name, size and color become RgIcon props', () => {
   assert.ok(result.code.includes('<RgIcon name="search" />'), result.code);
   assert.ok(result.code.includes('<RgIcon name="heart" size={28} color="error" />'), result.code);
   assert.ok(result.code.includes('<RgIcon name="sun" size={20} />'), result.code);
-  assert.ok(result.code.includes("import { RgIcon, RgScreen } from '@rangular/ui';"), result.code);
+  assert.ok(result.code.includes("import { RgIcon, RgScreen } from '@rangular-framework/ui';"), result.code);
 });
 
 test('Stage 7 codegen: [name] binding passes through unvalidated; icons work inside *ngFor', () => {

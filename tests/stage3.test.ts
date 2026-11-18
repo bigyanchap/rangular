@@ -237,7 +237,7 @@ test('HttpClient codegen: injected like a service, subscribe shape translates to
     `,
   }, 'app.component.ts');
   assert.equal(hasErrors(result.diagnostics), false, JSON.stringify(result.diagnostics));
-  assert.match(result.code, /import \{ Container, HttpClient \} from '@rangular\/runtime';/);
+  assert.match(result.code, /import \{ Container, HttpClient \} from '@rangular-framework\/runtime';/);
   assert.match(result.code, /__container\.register\(HttpClient, new HttpClient\(\)\);/);
   assert.match(result.code, /const http = __container\.get<HttpClient>\(HttpClient\);/);
   assert.match(result.code, /http\.get\('https:\/\/example\.com\/mails'\)\.subscribe\(\(data\) => \{/);

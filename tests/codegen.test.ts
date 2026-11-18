@@ -43,7 +43,7 @@ test('interpolation becomes a JSX expression', () => {
 test('[disabled] binding becomes disabled={...}', () => {
   const code = compileSnippet('<button [disabled]="isOff">Go</button>', 'isOff = true;');
   assert.match(code, /<RgButton disabled=\{isOff\}>Go<\/RgButton>/);
-  assert.match(code, /from '@rangular\/ui'/);
+  assert.match(code, /from '@rangular-framework\/ui'/);
 });
 
 test('event bindings generate onPress handlers (Stage 2, M3)', () => {

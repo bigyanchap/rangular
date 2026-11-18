@@ -1,5 +1,5 @@
 /**
- * @rangular/ui primitives, SHIPPED SOURCE for generated apps.
+ * @rangular-framework/ui primitives, SHIPPED SOURCE for generated apps.
  *
  * These components are copied/bundled into generated React Native apps; they
  * are NOT typechecked by this repo's root build (react-native types are not a
@@ -1805,7 +1805,7 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
 // the native feel: a switch on toggle, a bottom nav on a tab
 // change. The module is required lazily inside the press, the
 // file picker pattern, which makes expo-haptics a required
-// dependency of apps on @rangular/ui (the scaffold writes it);
+// dependency of apps on @rangular-framework/ui (the scaffold writes it);
 // an app that somehow lacks it simply stays silent.
 function fireSelectionHaptic(): void {
   try {
@@ -3462,14 +3462,14 @@ export interface RgPickedFile {
  * once. Cancelling emits nothing.
  *
  * App side requirement, stated plainly: both picker modules are
- * required dependencies of any app that uses @rangular/ui,
+ * required dependencies of any app that uses @rangular-framework/ui,
  * expo-image-picker and expo-document-picker alike. The requires
  * below sit inside the tap handler, so the native call happens at
  * tap time, but Metro resolves every literal require when the app
  * bundles: an app without either package does not bundle at all,
  * and the warning below covers only runtimes where a require can
  * fail after bundling. The scaffold writes both into the app's
- * package.json; an app that vendors @rangular/ui by hand must add
+ * package.json; an app that vendors @rangular-framework/ui by hand must add
  * both itself. Expo Go carries both for SDK 58, so Expo Go runs
  * work with no setup.
  */
@@ -3505,7 +3505,7 @@ export function RgFilePicker({ label, kind = 'image', multiple, placeholder, dis
     } catch {
       console.warn(
         'RgFilePicker: a picker module is not available in this app. '
-        + 'Both expo-image-picker and expo-document-picker are required dependencies of @rangular/ui; add both to the app.',
+        + 'Both expo-image-picker and expo-document-picker are required dependencies of @rangular-framework/ui; add both to the app.',
       );
     }
   };

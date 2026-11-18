@@ -13,7 +13,7 @@ import { compileComponent, CompileResult, hasErrors } from '../packages/compiler
  * per specifier, unless its name is already taken there, in which
  * case it is dropped with a GEN_IMPORT_COLLISION warning. The
  * import = require(...) form cannot be carried and warns
- * CMP_IMPORT_FORM. The @angular/* and @rangular/* specifiers are
+ * CMP_IMPORT_FORM. The @angular/* and @rangular-framework/* specifiers are
  * consumed semantically and never carried; relative imports are
  * followed and their classes inlined. react and react-native
  * imports carry like any other bare specifier (2026-11-17 fix:
@@ -360,7 +360,7 @@ export class StoreService {
   const d = result.diagnostics.find((x) => x.code === 'GEN_IMPORT_COLLISION');
   assert.ok(d, JSON.stringify(result.diagnostics));
   assert.ok(!importLines(result.code).some((l) => l.includes(`'some-lib'`)), result.code);
-  assert.ok(importLines(result.code).some((l) => l.includes(`'${'@rangular/runtime'}'`) && l.includes('Container')), result.code);
+  assert.ok(importLines(result.code).some((l) => l.includes(`'${'@rangular-framework/runtime'}'`) && l.includes('Container')), result.code);
 });
 
 test('an import = require declaration warns CMP_IMPORT_FORM and is not emitted', () => {
@@ -397,7 +397,7 @@ export class MailService { total = 3; }
   assert.ok(lines.length > 0, result.code);
   for (const l of lines) {
     assert.ok(
-      /from '(react|react-native|@rangular\/ui|@rangular\/runtime)'/.test(l),
+      /from '(react|react-native|@rangular-framework\/ui|@rangular-framework\/runtime)'/.test(l),
       `unexpected import line survived: ${l}`,
     );
   }
