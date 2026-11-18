@@ -205,6 +205,10 @@ flowchart TB
   visual proof.
 - [docs/VIBE_CODING.md](docs/VIBE_CODING.md), the AI-facing layer plus
   the full delta tables (Rangular vs Angular, Rangular vs React).
+- [docs/THIRD_PARTY.md](docs/THIRD_PARTY.md), how to use third-party
+  libraries that are not built in (maps, video, WebView, camera,
+  rich text editors): template tags, wrapper components, services,
+  and the limits of each path.
 - [docs/ROADMAP.md](docs/ROADMAP.md), the approved plan for Stages 6
   to 12, each stage grounded in the Angular feature it mirrors.
 - [SECURITY.md](SECURITY.md), the security audit: what was tested,
