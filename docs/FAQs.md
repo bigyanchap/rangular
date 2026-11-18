@@ -309,3 +309,19 @@ for the shape, the catalog for what you may use, THIRD_PARTY.md for
 libraries and the borderline, and BY_DESIGN.md for the limits. The
 tutorial app teaches the framework in 95 short lessons, each with a
 live demo, and it is itself the best evidence the framework works.
+
+## The road ahead
+
+**41. How are bugs found, and how does the framework improve from
+version to version?**
+Two ways, both deliberate. The first is real client work: the plan
+is to build company projects in Rangular, because nothing finds a
+framework's faults like a production app with real users, real data
+and real deadlines. Every fault a project surfaces is fixed in the
+framework itself, guarded by tests, and released in the next
+version, so every user inherits what one project paid to learn. The
+second is open use: the framework is Apache 2.0, and developers are
+encouraged to use it, fork it, make it their own, and send
+improvements back as pull requests. A fault reported from outside
+gets the same treatment as one found by the tutorial gate: fixed at
+the root, never patched around.
