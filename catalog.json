@@ -1,21 +1,21 @@
 {
-  "name": "rangular",
-  "version": "0.1.9",
+  "name": "rangular-framework",
+  "version": "0.2.0",
   "tags": [
     {
       "tag": "div",
       "component": "RgSection",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "section",
       "component": "RgSection",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "header",
       "component": "RgSection",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "span",
@@ -25,367 +25,367 @@
     {
       "tag": "p",
       "component": "RgText",
-      "from": "@rangular/ui",
+      "from": "@rangular-framework/ui",
       "variant": "bodyLarge"
     },
     {
       "tag": "label",
       "component": "RgText",
-      "from": "@rangular/ui",
+      "from": "@rangular-framework/ui",
       "variant": "label"
     },
     {
       "tag": "h1",
       "component": "RgText",
-      "from": "@rangular/ui",
+      "from": "@rangular-framework/ui",
       "variant": "display"
     },
     {
       "tag": "h2",
       "component": "RgText",
-      "from": "@rangular/ui",
+      "from": "@rangular-framework/ui",
       "variant": "heading"
     },
     {
       "tag": "h3",
       "component": "RgText",
-      "from": "@rangular/ui",
+      "from": "@rangular-framework/ui",
       "variant": "title"
     },
     {
       "tag": "button",
       "component": "RgButton",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "screen",
       "component": "RgScreen",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "appbar",
       "component": "RgAppbar",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "gradient",
       "component": "RgGradient",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "card",
       "component": "RgCard",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "list",
       "component": "RgList",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "row",
       "component": "RgRow",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "fab",
       "component": "RgFab",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "icon",
       "component": "RgIcon",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "icon-button",
       "component": "RgIconButton",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "switch",
       "component": "RgSwitch",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "switcher",
       "component": "RgSwitcher",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "option",
       "component": "RgOption",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "checkbox",
       "component": "RgCheckbox",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "radio-group",
       "component": "RgRadioGroup",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "radio",
       "component": "RgRadio",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "input",
       "component": "RgInput",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "form",
       "component": "RgSection",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "router-outlet",
       "component": "RgOutlet",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "sheet",
       "component": "RgSheet",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "dialog",
       "component": "RgDialog",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "actions",
       "component": "RgActions",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "datetime-picker",
       "component": "RgDateTimePicker",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "tabs",
       "component": "RgTabs",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "tab",
       "component": "RgTab",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "accordion",
       "component": "RgAccordion",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "panel",
       "component": "RgPanel",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "table",
       "component": "RgTable",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "column",
       "component": "RgColumn",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "slider",
       "component": "RgSlider",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "progress-bar",
       "component": "RgProgressBar",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "spinner",
       "component": "RgSpinner",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "chips",
       "component": "RgChips",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "chip",
       "component": "RgChip",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "menu",
       "component": "RgMenu",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "menu-item",
       "component": "RgMenuItem",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "drawer",
       "component": "RgDrawer",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "select",
       "component": "RgSelect",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "stepper",
       "component": "RgStepper",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "step",
       "component": "RgStep",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "grid-list",
       "component": "RgGridList",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "grid-tile",
       "component": "RgGridTile",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "tree",
       "component": "RgTree",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "tree-node",
       "component": "RgTreeNode",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "divider",
       "component": "RgDivider",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "bottom-nav",
       "component": "RgBottomNav",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "nav-item",
       "component": "RgNavItem",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "skeleton",
       "component": "RgSkeleton",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "row-action",
       "component": "RgRowAction",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "rating",
       "component": "RgRating",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "otp",
       "component": "RgOtp",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "file-picker",
       "component": "RgFilePicker",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "color-picker",
       "component": "RgColorPicker",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "editor",
       "component": "RgEditor",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "carousel",
       "component": "RgCarousel",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "timeline",
       "component": "RgTimeline",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "timeline-item",
       "component": "RgTimelineItem",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "calendar",
       "component": "RgCalendar",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "avatar",
       "component": "RgAvatar",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "avatar-group",
       "component": "RgAvatarGroup",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "empty-state",
       "component": "RgEmptyState",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "chart",
       "component": "RgChart",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "image",
       "component": "RgImage",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "lightbox",
       "component": "RgLightbox",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "breadcrumbs",
       "component": "RgBreadcrumbs",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "crumb",
       "component": "RgCrumb",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     },
     {
       "tag": "code",
       "component": "RgCode",
-      "from": "@rangular/ui"
+      "from": "@rangular-framework/ui"
     }
   ],
   "events": [
@@ -2830,7 +2830,7 @@
     },
     {
       "code": "CLI_INIT_NOT_EMPTY",
-      "meaning": "The rangular init command was pointed at a directory that is not empty."
+      "meaning": "The rg init command was pointed at a directory that is not empty."
     },
     {
       "code": "PIPE_UNKNOWN",
@@ -2850,7 +2850,7 @@
     },
     {
       "code": "CLI_INIT_UNSAFE",
-      "meaning": "The rangular init target name is not a safe directory name (letters, digits, dot, underscore and hyphen only, and not . or ..); nothing was written."
+      "meaning": "The rg init target name is not a safe directory name (letters, digits, dot, underscore and hyphen only, and not . or ..); nothing was written."
     }
   ]
 }

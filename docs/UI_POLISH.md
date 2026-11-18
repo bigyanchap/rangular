@@ -15,7 +15,7 @@ Remove any one and polish leaks away.
 ## 1. Design tokens: the compiler only speaks in tokens
 
 > **Status: delivered in Stage 4.** The token set is complete in
-> `@rangular/ui` tokens (every colour role in light and dark, the
+> `@rangular-framework/ui` tokens (every colour role in light and dark, the
 > spacing/radius/type scales, three elevation presets), the primitives
 > read only tokens (a test fails if a hex value appears in
 > `primitives.tsx`), and the style translator snaps spacing, radius
@@ -41,7 +41,7 @@ The generated code contains token references, never magic numbers.
 ## 2. A polished primitive kit: translate intent, not tags
 
 Developers don't get raw `View`/`Text` for common jobs. Rangular ships
-`@rangular/ui` primitives, each pre-polished once, used everywhere:
+`@rangular-framework/ui` primitives, each pre-polished once, used everywhere:
 
 | Angular-style tag | Generated RN | Polish baked in |
 |---|---|---|
@@ -105,7 +105,7 @@ Nothing new to *learn*: it reuses items 58-63 (styling translation) and 72-75
 (testing/dogfooding). It does add three build items inside those groups:
 
 1. The token resolver + snapping diagnostics in the style translator.
-2. The `@rangular/ui` primitive kit (a third small package beside compiler + runtime).
+2. The `@rangular-framework/ui` primitive kit (a third small package beside compiler + runtime).
 3. The screenshot-golden harness + `rangular doctor` linter.
 
 ## Addendum (Bigyan's clarification, 2026-11-12): even the simple blocks must be polished by default

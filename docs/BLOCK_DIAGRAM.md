@@ -15,7 +15,7 @@ flowchart TB
         A3["Services & styles<br/>.service.ts + providers<br/>@Injectable · constructor DI<br/>HttpClient.get(...) · .css subset"]
     end
 
-    subgraph L2["2 · YOU BUILD: @rangular/compiler + CLI (standalone, NOT an Angular fork)"]
+    subgraph L2["2 · YOU BUILD: @rangular-framework/compiler + CLI (standalone, NOT an Angular fork)"]
         B1["1 · CLI & Loader<br/>rangular build / watch / init<br/>ts.Program · tsconfig · module resolution<br/>incremental cache"]
         B2["2 · Two parsers<br/>Class parser: TS AST → decorator metadata<br/>Template parser: Lexer → Parser → Template AST<br/>Pratt parser for {{ expressions }}"]
         B3["3 · Analyzer<br/>symbol table & scope · two-pass<br/>type-checker basics · diagnostics<br/>with source file / line / column"]
@@ -24,7 +24,7 @@ flowchart TB
         B1 --> B2 --> B3 --> B4 --> B5
     end
 
-    subgraph L3["3 · YOU BUILD: @rangular/runtime (small, pure JS)"]
+    subgraph L3["3 · YOU BUILD: @rangular-framework/runtime (small, pure JS)"]
         C1["Signal → State bridge<br/>useSyncExternalStore"]
         C2["DI container<br/>providers → React Context"]
         C3["HttpClient backend<br/>RN fetch → Observable<br/>subscribe / async pipe unchanged"]

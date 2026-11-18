@@ -225,7 +225,7 @@ node dist/packages/cli/src/cli.js doctor examples/showcase/showcase.component.ts
   requires expo-image-picker and expo-document-picker inside its
   tap handler, so the native call happens at tap time, but Metro
   resolves every literal require at bundle time: both packages are
-  required dependencies of any app using `@rangular/ui`, and the
+  required dependencies of any app using `@rangular-framework/ui`, and the
   scaffold writes both into the app's `package.json`. The recipe
   card states the app-side requirement.
 - **`DOC_IMG_SIZE` is live.** Stage 15 added the `<image>` tag,

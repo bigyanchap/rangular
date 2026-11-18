@@ -208,7 +208,7 @@ measured; treat framework benchmarks quoted without a reproducible
 harness as marketing, whoever quotes them.
 
 **27. How is the framework itself tested?**
-A unit suite (448 tests at version 0.1.9) plus one rule held hard:
+A unit suite (448 tests at version 0.2.0) plus one rule held hard:
 the tutorial app is the integration test. Every release must
 compile the 95-lesson app with zero diagnostics, pass the doctor,
 produce Android and web bundles, and pass a phone-mode browser gate
@@ -248,17 +248,24 @@ card. Neither React Native nor NativeScript was designed for AI
 authorship; both predate the need.
 
 **32. Why is the CLI not on npm yet?**
-Honestly: the name. Unrelated projects already publish rangular
-packages on npm, and an actively developed Rust project uses the
-name too, so a clean npm identity is blocked until the naming
-decision is made. Today you install the CLI from this repo.
+It was the name, and that is now fixed. The bare name rangular
+was already taken on npm by an abandoned 2014 AngularJS module,
+and the rangular-* package family belongs to someone else. At
+version 0.2.0 the project renamed itself to rangular-framework
+everywhere: the repo, the @rangular-framework package scope,
+and the CLI, which installs two commands, rangular-framework
+and the short rg. Publishing to npm is the next step; today you
+install the CLI from this repo.
 
-**33. The name collides with other projects. Is that a problem?**
-It is a known, open decision, and it is not dodged here. In prose
-the product is "the Rangular framework", which separates it in
-writing. Package publishing waits on the decision. What the
-collision does not affect is the code, the license or the apps
-built with it.
+**33. Why the name rangular-framework?**
+Because the collision was real and renaming early was cheap.
+When the rename happened the framework had exactly one user,
+its author, and one app built with it, this repo's tutorial.
+Renaming after other people build on it would break their
+imports; renaming then broke nothing outside these repos.
+Generated code imports the @rangular-framework scope, so the
+rename took a breaking-change version, 0.2.0, rather than
+pretending otherwise.
 
 ## Adoption and trust
 
@@ -275,7 +282,7 @@ lists what the framework does not do, and docs written for agents
 as well as people, so maintenance knowledge lives in the repo.
 
 **36. Is it production ready?**
-It is at 0.1.9, pre-1.0, and labelled that way. It is ready for new
+It is at 0.2.0, pre-1.0, and labelled that way. It is ready for new
 small and medium apps whose needs fit the catalog, and the tutorial
 app is the standing proof. Known gaps are tracked openly; the
 current first gap is StatusBar control, and the planned work after

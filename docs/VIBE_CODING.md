@@ -25,15 +25,15 @@ lookup table. This layer removes each failure mode.
 3. **Recipe cards:** a `README.md` beside every example with a fixed shape,
    *Intent* · *Source* · *What it compiles to* · *Rules used* ·
    *Common mistakes*.
-4. **Generated catalog (`rangular catalog`):** emits `catalog.json` +
+4. **Generated catalog (`rg catalog`):** emits `catalog.json` +
    `catalog.md` **from the actual code**, the tag mapping from codegen's
    exported `TAG_MAP`, primitive props parsed from
    `packages/ui/src/primitives.tsx` with the TypeScript compiler API
    (the primitives are shipped source typed `any`, so their destructured
    parameter patterns are the reliable source of prop names), token scales
-   imported from `@rangular/ui` tokens, and the `DIAGNOSTIC_CODES` list.
+   imported from `@rangular-framework/ui` tokens, and the `DIAGNOSTIC_CODES` list.
    A test regenerates the catalog and fails if the committed files are stale.
-5. **JSON diagnostics:** `rangular build --json` (and `preview --json`)
+5. **JSON diagnostics:** `rg build --json` (and `preview --json`)
    prints a single JSON object, `{ ok, file, outFile?, diagnostics:
    [{ severity, code, message, line, column, file?, fix }] }`, to stdout and
    nothing else, so an AI loop can read an error and fix its own source.
@@ -351,7 +351,7 @@ Angular.
 
 - **One discovery rule.** The routes file is `app.routes.ts` next to
   the root component, or the file named by the CLI flag
-  `rangular build --routes <file>` (also on preview, watch and
+  `rg build --routes <file>` (also on preview, watch and
   doctor). It is read whenever it exists. The supported shape is one
   exported variable whose name ends in `routes` (or whose type
   mentions `Routes`) initialised with an array literal of plain
@@ -770,7 +770,7 @@ See `examples/mailbox-pro/` and its recipe card.
   `titlecase`, `json`, `date`, `number`, `percent`, `currency`,
   `slice`, `keyvalue`, `async`. All three evaluators agree exactly:
   the compiler's evaluator (server paint and tests), the generated
-  code's runtime `pipe()` from `@rangular/runtime`, and the preview
+  code's runtime `pipe()` from `@rangular-framework/runtime`, and the preview
   page. A parity test runs one table through all three.
 - **date**: the value may be a `Date`, an ISO string or epoch
   milliseconds; anything else passes through unchanged. Named formats:
@@ -885,8 +885,8 @@ See `examples/mailbox-pro/` and its recipe card.
 
 ## The Expo app scaffold (Stage 12)
 
-- **`rangular init <dir>` is unchanged** (a loose starter component).
-  **`rangular init <name> --app`** scaffolds a real Expo app. A bare
+- **`rg init <dir>` is unchanged** (a loose starter component).
+  **`rg init <name> --app`** scaffolds a real Expo app. A bare
   name (no path separators) creates the app at
   `<repoRoot>/apps/<name>` inside the Rangular checkout the CLI
   belongs to; an explicit path is used as given. Bare names may only
@@ -904,7 +904,7 @@ See `examples/mailbox-pro/` and its recipe card.
   `expo-image-picker ~58.0.10`, `expo-document-picker ~58.0.5`,
   `babel-preset-expo ~58.0.0` (dev). The two picker packages are in
   the set because they are required dependencies of any app built
-  on `@rangular/ui`: `RgFilePicker` names both in literal requires
+  on `@rangular-framework/ui`: `RgFilePicker` names both in literal requires
   and Metro resolves those at bundle time. They were chosen for mutual
   compatibility from the SDK's published set, not installed or
   device-verified from the build environment. The set moved from
@@ -914,7 +914,7 @@ See `examples/mailbox-pro/` and its recipe card.
   and its template are the usual starter source, and `src/AppRoot.tsx`
   is the real compiler output for it, generated during `init`, not a
   stored sample. `App.tsx` renders `AppRoot`. After editing the
-  component, recompile it with `rangular build` (or `watch`) from the
+  component, recompile it with `rg build` (or `watch`) from the
   repo root, pointed at the app's `src/AppRoot.tsx`, as the app
   README spells out.
 - **Run it**: `cd apps/<name>`, `npm install`, `npx expo start`, scan
@@ -1015,7 +1015,7 @@ built, in three tour examples: `examples/feed/` (Tier 1),
   emits an array of `{ name, uri, size, type }`; cancelling emits
   nothing. App side requirement: both Expo picker modules
   (expo-image-picker, expo-document-picker) are required
-  dependencies of any app using `@rangular/ui`, because Metro
+  dependencies of any app using `@rangular-framework/ui`, because Metro
   resolves the picker's literal requires when the app bundles, so
   an app without either package does not bundle at all. The
   scaffold writes both into the app's `package.json`; a hand
@@ -1226,7 +1226,7 @@ shell beside it and the behaviour fixes under both.
   expo-haptics, required lazily inside the press, the file
   picker pattern; without it the switch is silent, exactly as
   before. expo-haptics (~58.0.8) is therefore a required
-  dependency of apps on @rangular/ui and the scaffold writes
+  dependency of apps on @rangular-framework/ui and the scaffold writes
   it. The preview answers with navigator.vibrate where the
   browser offers it.
 - The icon set is 30: `code` joins, the angle brackets mark of
@@ -1284,11 +1284,15 @@ The tutorial redesign round, picked from mockups after a phone critique of the G
 
 ## The react-native import fix (2026-11-17, version 0.1.4)
 
-Found by the tutorial app acting as the integration test: its progress service needed `Platform` from `react-native` to choose SQLite on device and AsyncStorage on web, and the compiler silently dropped the import while emitting its uses, which would have thrown a ReferenceError at runtime. Imports of `react` and `react-native` in a contributing file (entry component, child component, root service, custom pipe) now carry into the generated module like any other bare specifier. A carried name the module already defines, including one of codegen's own react or react-native imports, drops with a `GEN_IMPORT_COLLISION` warning and a TODO note, so a binding is never duplicated. The `@angular/*` and `@rangular/*` specifiers stay consumed and are never carried. Regression tests live in `tests/imports.test.ts`.
+Found by the tutorial app acting as the integration test: its progress service needed `Platform` from `react-native` to choose SQLite on device and AsyncStorage on web, and the compiler silently dropped the import while emitting its uses, which would have thrown a ReferenceError at runtime. Imports of `react` and `react-native` in a contributing file (entry component, child component, root service, custom pipe) now carry into the generated module like any other bare specifier. A carried name the module already defines, including one of codegen's own react or react-native imports, drops with a `GEN_IMPORT_COLLISION` warning and a TODO note, so a binding is never duplicated. The `@angular/*` and `@rangular-framework/*` specifiers stay consumed and are never carried. Regression tests live in `tests/imports.test.ts`.
 
 ## The phone polish round (2026-11-18, version 0.1.5)
 
 The tutorial app's first SQLite build ran on a real phone and found three native faults no web gate could see. The app bar's two actions travel into the bar's right zone as one array, and both now carry keys from birth (`key="action"`, `key="action2"`); React's unique key warning named the array on device. The scroll fade veil, six hard strips of the bar's colour, banded visibly over saturated content; it is now one SVG linear gradient of the same colour (react-native-svg was already a dependency), with the scroll-driven opacity unchanged. And the bottom bar sat above the safe area strip in the page background with its level2 shadow pointing down onto it, a visible seam: the bar's shadow now points up, and when a bottom bar is pinned the screen paints the strip behind it in the bar's surface colour. Guards live in `tests/native-polish.test.ts`. The same phone run hardened the tutorial's own save pattern (saves serialize, inserts are OR REPLACE, every promise carries a rejection handler); that part is the app's, not the framework's, and lives in the tutorial repo.
+
+## The rename round (2026-11-18, version 0.2.0)
+
+The project is renamed to rangular-framework, everywhere, because the bare name `rangular` was already taken on npm (an abandoned 2014 AngularJS module) and the rangular-* family is owned by someone else. The packages are now `@rangular-framework/cli`, `@rangular-framework/compiler`, `@rangular-framework/runtime` and `@rangular-framework/ui`; generated code imports the new scope, so this is a breaking change and takes the 0.2.0 bump. The CLI package installs two commands: `rangular-framework` (canonical) and `rg` (the short everyday form, so `rg new` works the way `ng new` does; the scaffold subcommand is still `init`, as in `rg init <name> --app`). The GitHub repos move to bigyanchap/rangular-framework and bigyanchap/rangular-framework-tutorial. Prose keeps the standing form: "the Rangular framework". Nothing else about the language, the catalog or the generated shape changes.
 
 ## The wash and buttons round (2026-11-18, version 0.1.9)
 
@@ -1397,7 +1401,7 @@ One framework fix from the tutorial's phone retest: the search variant of `<inpu
   module is an ES module; the declaration is dropped with a
   `CMP_IMPORT_FORM` warning. Write an ES module import instead.
 - **Framework and relative imports.** `@angular/*` and
-  `@rangular/*` names are consumed semantically and never
+  `@rangular-framework/*` names are consumed semantically and never
   emitted. `react` and `react-native` imports in a contributing
   file carry like any other bare specifier (fix, 2026-11-17,
   version 0.1.4: a `Platform` import in a service used to drop
@@ -1431,7 +1435,7 @@ One framework fix from the tutorial's phone retest: the search variant of `<inpu
 
 ## Theming, tokens and snapping (Stage 4)
 
-- **One token file, both modes.** `@rangular/ui` tokens are the only
+- **One token file, both modes.** `@rangular-framework/ui` tokens are the only
   source of visual values: spacing 4/8/12/16/20/24/32, radius
   8/12/16/20/full, a type scale (caption 12, body 14, bodyLarge 16,
   label 14 w600, title 20, heading 24, display 32, each with a fixed
@@ -1523,14 +1527,14 @@ The CLI is complete in v1. One line per command:
 
 | Command | What it does |
 |---|---|
-| `rangular build <component.ts> --out <file.tsx> [--json] [--source-map]` | Compile one component to React Native TSX |
-| `rangular ast <template.html>` | Print a template AST |
-| `rangular preview <component.ts> --out <file.html> [--json]` | Render the interactive dev preview |
-| `rangular catalog [--out <dir>]` | Regenerate catalog.json and catalog.md from the code |
-| `rangular watch <component.ts> --out <file.tsx>` | Compile now, then recompile on every change to the component, its template or its imports; the watch set re-resolves after each compile; Ctrl+C stops cleanly |
-| `rangular init <dir>` | Scaffold a starter project (welcome screen, README, .gitignore); refuses a non-empty directory |
-| `rangular init <name> --app` | Scaffold a real Expo app (Stage 12): a bare name lands in the checkout's `apps/` folder, an explicit path is used as given; the starter component is compiled into `src/AppRoot.tsx` at scaffold time. See the Expo app scaffold section above |
-| `rangular doctor <component.ts> [--json]` | The polish linter below |
+| `rg build <component.ts> --out <file.tsx> [--json] [--source-map]` | Compile one component to React Native TSX |
+| `rg ast <template.html>` | Print a template AST |
+| `rg preview <component.ts> --out <file.html> [--json]` | Render the interactive dev preview |
+| `rg catalog [--out <dir>]` | Regenerate catalog.json and catalog.md from the code |
+| `rg watch <component.ts> --out <file.tsx>` | Compile now, then recompile on every change to the component, its template or its imports; the watch set re-resolves after each compile; Ctrl+C stops cleanly |
+| `rg init <dir>` | Scaffold a starter project (welcome screen, README, .gitignore); refuses a non-empty directory |
+| `rg init <name> --app` | Scaffold a real Expo app (Stage 12): a bare name lands in the checkout's `apps/` folder, an explicit path is used as given; the starter component is compiled into `src/AppRoot.tsx` at scaffold time. See the Expo app scaffold section above |
+| `rg doctor <component.ts> [--json]` | The polish linter below |
 
 **Per-file diagnostics.** Every diagnostic may carry a `file`: template
 diagnostics name the `.html` file, class diagnostics the `.ts` file,

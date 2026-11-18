@@ -15,7 +15,7 @@ phone from its app store.
 ### 1. Install the CLI
 
 ```sh
-npm install -g @rangular/cli
+npm install -g @rangular-framework/cli
 ```
 
 This puts one command on your machine, `rangular`, available in every
@@ -98,7 +98,7 @@ yet, so until the first publish, work from a clone of this repo; the
 steps map one to one:
 
 ```sh
-git clone https://github.com/bigyanchap/rangular.git
+git clone https://github.com/bigyanchap/rangular-framework.git
 cd rangular
 npm install
 npm test
@@ -118,16 +118,16 @@ command spelled out in the created app's own README.
 
 The create command writes the app's whole dependency set into its
 `package.json`; there is nothing else to install by hand.
-Dependencies: `@rangular/ui` and `@rangular/runtime` (from this
+Dependencies: `@rangular-framework/ui` and `@rangular-framework/runtime` (from this
 repo), `expo ~58.0.0`, `react 19.3.0`, `react-native 0.88.1`,
 `react-native-svg 15.16.0`, `expo-image-picker ~58.0.10` and
 `expo-document-picker ~58.0.5`. Dev dependencies: `@babel/core`,
 `babel-preset-expo ~58.0.0` and `typescript ~5.9.2`. Both picker
 packages are required, not extras: the file picker in
-`@rangular/ui` names them in `require` calls, and Metro resolves
+`@rangular-framework/ui` names them in `require` calls, and Metro resolves
 every such call when an app bundles, so an app missing either one
 does not bundle at all. An app assembled by hand around a copied
-`@rangular/ui` must add `react-native-svg` and both pickers
+`@rangular-framework/ui` must add `react-native-svg` and both pickers
 itself, for the same reason.
 
 ## Temporary step: apps scaffolded before the SDK 58 move

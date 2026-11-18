@@ -33,7 +33,7 @@ Go on your phone plays the browser's role.
 
 ```sh
 # 1. Install the CLI, once (Angular: npm install -g @angular/cli)
-npm install -g @rangular/cli
+npm install -g @rangular-framework/cli
 
 # 2. Create the app (Angular: ng new my-app). The name is the
 #    argument; the command creates the folder and installs the
@@ -61,7 +61,7 @@ Prerequisites: **Node.js 20+ and npm** (the compiler itself has exactly
 two dependencies: `typescript` and `@types/node`).
 
 ```sh
-git clone https://github.com/bigyanchap/rangular.git
+git clone https://github.com/bigyanchap/rangular-framework.git
 cd rangular
 npm install
 npm test          # builds with tsc, then runs the whole test suite
@@ -102,21 +102,21 @@ npx expo start
 
 Scan the QR code with Expo Go. A bare name creates the app in the
 checkout's `apps/` folder; an explicit path (`init ../my-app --app`)
-is used as given. The app depends on `@rangular/ui` and
-`@rangular/runtime` through `file:` specifiers pointing at this
+is used as given. The app depends on `@rangular-framework/ui` and
+`@rangular-framework/runtime` through `file:` specifiers pointing at this
 checkout, carries the Expo SDK 58 pin set, and its starter component
 (`src/app.component.ts`) is already compiled into `src/AppRoot.tsx`
 by the real compiler. Edit the component, recompile it with
 `rangular build` as the app README spells out, and Expo reloads.
 
 What the scaffold installs for you, in full: the created app's
-`package.json` carries `@rangular/ui` and `@rangular/runtime`
+`package.json` carries `@rangular-framework/ui` and `@rangular-framework/runtime`
 (through `file:` specifiers to this checkout), `expo ~58.0.0`,
 `react 19.3.0`, `react-native 0.88.1`, `react-native-svg 15.16.0`,
 `expo-image-picker ~58.0.10` and `expo-document-picker ~58.0.5`,
 with `@babel/core`, `babel-preset-expo ~58.0.0` and
 `typescript ~5.9.2` as dev dependencies. You install nothing else
-by hand. If you ever copy `@rangular/ui` into an existing app
+by hand. If you ever copy `@rangular-framework/ui` into an existing app
 yourself instead of scaffolding, add `react-native-svg` and both
 picker packages to that app yourself: the UI primitives name them
 in `require` calls, and Metro resolves every such call when the
@@ -140,10 +140,10 @@ flowchart TB
         A2["Templates<br/>.component.html<br/>{{ }} · [prop] · (event)<br/>*ngIf · *ngFor · pipes · #ref"]
         A3["Services & styles<br/>@Injectable · DI · HttpClient · .css subset"]
     end
-    subgraph L2["2 · YOU BUILD: @rangular/compiler + CLI (standalone, NOT an Angular fork)"]
+    subgraph L2["2 · YOU BUILD: @rangular-framework/compiler + CLI (standalone, NOT an Angular fork)"]
         B1["1 · CLI & Loader"] --> B2["2 · Two parsers<br/>TS AST + Template AST"] --> B3["3 · Analyzer<br/>diagnostics with source line"] --> B4["4 · IR + Transformer"] --> B5["5 · Code Generator<br/>+ source maps"]
     end
-    subgraph L3["3 · YOU BUILD: @rangular/runtime"]
+    subgraph L3["3 · YOU BUILD: @rangular-framework/runtime"]
         C1["Signal → State bridge"] --- C2["DI container"] --- C3["HttpClient backend"] --- C4["Lifecycle & events shim"]
     end
     subgraph L4["4 · OUTPUT: generated React Native / Expo project"]
@@ -181,12 +181,12 @@ flowchart TB
 
 | Package | What it is |
 |---|---|
-| `@rangular/compiler` | Template parser + expression (Pratt) parser, `@Component` extractor (TypeScript compiler API), CSS-subset parser, RN code generator, HTML preview renderer |
-| `@rangular/runtime` | Pure-TypeScript helpers for generated apps: `EventEmitter`, `signal()`, DI `Container`, `ReactiveService` (service reactivity base), `HttpClient` (Observable-lite over fetch), `pipe()`, forms classes (`Validators`, `validateValue`, `FormControl`, `FormGroup`), routing classes (`RgNavigator`, `matchRoute`, `Router`, `ActivatedRoute`), snackbar service (`SnackBar`, `SnackBarRef`) |
-| `@rangular/ui` | Rangular Material: `tokens.ts` (pure TS), `icons.ts` (the curated icon set as SVG path data), `datetime.ts` (the picker's value model and wheel specifications, pure TS) + shipped-source RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`, `RgSwitch`, `RgCheckbox`, `RgSwitcher`, `RgOption`, `RgRadioGroup`, `RgRadio`, `RgIcon`, `RgInput`, `RgOutlet`, `RgSheet`, `RgDialog`, `RgActions`, `RgSnackbar`, `RgDateTimePicker`, `RgTabs`, `RgTab`, `RgAccordion`, `RgPanel`, `RgTable`, `RgColumn`, `RgSlider`, `RgProgressBar`, `RgSpinner`, `RgChips`, `RgChip`) |
-| `@rangular/cli` | `rangular build`, `rangular ast`, `rangular preview`, `rangular catalog`, `rangular watch`, `rangular init`, `rangular doctor` (build/preview/doctor accept `--json`; build accepts `--source-map`) |
+| `@rangular-framework/compiler` | Template parser + expression (Pratt) parser, `@Component` extractor (TypeScript compiler API), CSS-subset parser, RN code generator, HTML preview renderer |
+| `@rangular-framework/runtime` | Pure-TypeScript helpers for generated apps: `EventEmitter`, `signal()`, DI `Container`, `ReactiveService` (service reactivity base), `HttpClient` (Observable-lite over fetch), `pipe()`, forms classes (`Validators`, `validateValue`, `FormControl`, `FormGroup`), routing classes (`RgNavigator`, `matchRoute`, `Router`, `ActivatedRoute`), snackbar service (`SnackBar`, `SnackBarRef`) |
+| `@rangular-framework/ui` | Rangular Material: `tokens.ts` (pure TS), `icons.ts` (the curated icon set as SVG path data), `datetime.ts` (the picker's value model and wheel specifications, pure TS) + shipped-source RN primitives (`RgScreen`, `RgAppbar`, `RgCard`, `RgButton`, `RgText`, `RgList`, `RgRow`, `RgFab`, `RgSwitch`, `RgCheckbox`, `RgSwitcher`, `RgOption`, `RgRadioGroup`, `RgRadio`, `RgIcon`, `RgInput`, `RgOutlet`, `RgSheet`, `RgDialog`, `RgActions`, `RgSnackbar`, `RgDateTimePicker`, `RgTabs`, `RgTab`, `RgAccordion`, `RgPanel`, `RgTable`, `RgColumn`, `RgSlider`, `RgProgressBar`, `RgSpinner`, `RgChips`, `RgChip`) |
+| `@rangular-framework/cli` | `rangular build`, `rangular ast`, `rangular preview`, `rangular catalog`, `rangular watch`, `rangular init`, `rangular doctor` (build/preview/doctor accept `--json`; build accepts `--source-map`) |
 
-> Note: `@rangular/ui` primitives and other shipped-source files for generated
+> Note: `@rangular-framework/ui` primitives and other shipped-source files for generated
 > apps are **source shipped into generated projects**; they are not typechecked
 > by this repo's build, because react-native types are not a dependency here.
 > The compiler, CLI, runtime helpers, UI tokens and all tests *are* built and
@@ -389,7 +389,7 @@ them. The original role names keep working as aliases: `text` is
 **Theming.** Primitives take every colour from the active theme, and
 not one hex value is hard-coded in `primitives.tsx` (a test greps for
 hex and fails the build). The theme travels through a React context
-(`RgThemeProvider` / `useRgTheme` in `@rangular/ui`, default light).
+(`RgThemeProvider` / `useRgTheme` in `@rangular-framework/ui`, default light).
 Writing `<screen theme="dark">` compiles to `<RgScreen theme="dark">`
 and themes that whole subtree. In previews, colours resolve through
 CSS variables, the declared theme is the starting palette, and the
@@ -648,7 +648,7 @@ the composed ISO string through `(change)`, Cancel discards.
 `minuteInterval` is 1 or 5 and anything else warns and snaps
 (`GEN_PICKER_INTERVAL`); an unknown mode is a `GEN_PICKER_MODE`
 error. The value model (ISO parsing, leap correct months, wheel
-specifications) lives in `@rangular/ui` `datetime.ts`, shared by
+specifications) lives in `@rangular-framework/ui` `datetime.ts`, shared by
 the primitive and parity-tested against the preview mirrors.
 
 Angular Material opens its overlays from services; Rangular v1
@@ -844,7 +844,7 @@ revealed by a gesture in the app and a handle in the preview.
 Tier 2, controls on the Stage 6 contract. The **file and image
 picker** emits `{ name, uri, size, type }` arrays through
 `(change)`; both expo-image-picker and expo-document-picker are
-required dependencies of any app using `@rangular/ui`, because
+required dependencies of any app using `@rangular-framework/ui`, because
 Metro resolves the picker's literal requires when the app bundles
 (the scaffold writes both into the app's `package.json`, and Expo
 Go carries both), stated plainly in its recipe card. The **input

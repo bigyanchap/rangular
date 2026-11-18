@@ -18,9 +18,9 @@ text. The surface is dark in both themes, the way editors look.
   <h2>Code looks like code</h2>
   <p>A code block shows a line the way an editor does: a dark surface and a monospace face, in both themes, so a command or a snippet never reads as body text.</p>
   <label>Install the CLI</label>
-  <code>npm install -g @rangular/cli</code>
+  <code>npm install -g @rangular-framework/cli</code>
   <label>Run one lesson from the tutorial</label>
-  <code>git clone https://github.com/bigyanchap/rangular-tutorial</code>
+  <code>git clone https://github.com/bigyanchap/rangular-framework-tutorial</code>
   <p>Long lines scroll sideways instead of wrapping, the way an editor treats a line as one line.</p>
   <code>node dist/packages/cli/src/cli.js build examples/code-block/code-block.component.ts --out examples/code-block/code-block.component.tsx</code>
 </screen>
@@ -28,7 +28,7 @@ text. The surface is dark in both themes, the way editors look.
 
 **What it compiles to**
 
-Each `<code>` block becomes one `RgCode` (from `@rangular/ui`):
+Each `<code>` block becomes one `RgCode` (from `@rangular-framework/ui`):
 a view on the `codeSurface` token carrying a horizontal
 `ScrollView` whose text uses the platform monospace face (Menlo
 on iOS, the system monospace on Android) in the `codeText`

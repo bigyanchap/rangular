@@ -23,7 +23,7 @@ React Native or Expo package and integrate through one of the
 three paths below: maps, video, camera, WebView, rich text
 editors, databases, and anything that needs native setup,
 permissions, API keys or per-app choices. Two installs are
-required for any app that uses `@rangular/ui`, expo-image-picker
+required for any app that uses `@rangular-framework/ui`, expo-image-picker
 and expo-document-picker, because Metro resolves them at bundle
 time. Blessed patterns name their own installs on top, expo-sqlite
 for database work being the standing example.
