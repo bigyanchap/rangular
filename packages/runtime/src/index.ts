@@ -1,5 +1,5 @@
 /**
- * @rangular/runtime, small pure-TypeScript helpers for generated apps.
+ * @rangular-framework/runtime, small pure-TypeScript helpers for generated apps.
  * EventEmitter (for @Output), a tiny signal implementation, a DI Container,
  * the ReactiveService base class generated services extend (Stage 3),
  * HttpClient, an Observable-lite wrapper over fetch (Stage 3), and the

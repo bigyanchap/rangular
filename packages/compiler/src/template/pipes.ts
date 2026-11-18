@@ -3,7 +3,7 @@
  *
  * One semantics, three homes: this module is what the compiler's own
  * expression evaluator uses (template/evaluate.ts); the runtime
- * `pipe()` in @rangular/runtime carries the same code for generated
+ * `pipe()` in @rangular-framework/runtime carries the same code for generated
  * apps; and the preview page runtime carries a plain-JS mirror. A
  * parity test in tests/stage12.test.ts runs one case table through
  * all three and fails if they drift.

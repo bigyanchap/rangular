@@ -1,4 +1,4 @@
-# @rangular/ui
+# @rangular-framework/ui
 
 Rangular Material for generated apps.
 

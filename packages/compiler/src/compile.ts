@@ -83,7 +83,7 @@ export interface CompileResult {
   routes: ResolvedRoute[];
   /**
    * Every source file this compilation read (Stage 5): the entry .ts, the
-   * templates, and every resolved relative import. `rangular watch` watches
+   * templates, and every resolved relative import. `rg watch` watches
    * exactly this set and re-resolves it after each compile.
    */
   files: string[];
@@ -486,7 +486,7 @@ export function compileComponent(options: CompileOptions): CompileResult {
           injectsRouter ? 'a Router/ActivatedRoute injection' : '',
         ].filter(Boolean).join(', ')}) but no routes file was found at '${routesSpecifier}'`,
         undefined, undefined,
-        "Create app.routes.ts next to the root component: export const routes: Routes = [{ path: 'home', component: HomeComponent }]; or pass the routes file explicitly (rangular build --routes <file>)",
+        "Create app.routes.ts next to the root component: export const routes: Routes = [{ path: 'home', component: HomeComponent }]; or pass the routes file explicitly (rg build --routes <file>)",
       ),
       file: entryKey,
     });
@@ -574,7 +574,7 @@ export function compileComponent(options: CompileOptions): CompileResult {
   // module in one of those files must be carried into the generated
   // module, merged across files, or the generated code references a
   // name nothing binds (a runtime ReferenceError, found in the wild
-  // with AsyncStorage in a service). The @angular/* and @rangular/*
+  // with AsyncStorage in a service). The @angular/* and @rangular-framework/*
   // specifiers are consumed semantically and never carried. react
   // and react-native are NOT consumed: an import of them in a
   // contributing file carries like any other bare specifier (fix,
@@ -589,7 +589,7 @@ export function compileComponent(options: CompileOptions): CompileResult {
   // only inputs and locals, anything else is DIR_UNSUPPORTED), so they
   // are not contributing files here.
   const isFrameworkSpecifier = (spec: string): boolean => spec.startsWith('@angular/')
-    || spec.startsWith('@rangular/');
+    || spec.startsWith('@rangular-framework/');
   const contributingFiles: string[] = [];
   const addContributing = (f: string | undefined): void => {
     if (f && !contributingFiles.includes(f)) contributingFiles.push(f);

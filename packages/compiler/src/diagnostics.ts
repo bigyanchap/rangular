@@ -112,10 +112,10 @@ export const DIAGNOSTIC_CODES: Record<string, string> = {
   DOC_RAW_TEXT: 'Doctor: loose text sits directly inside a container element instead of a text element.',
   DOC_TAP_TARGET: 'Doctor: an element with a (click) binding is sized below the 44 by 44 minimum tap target.',
   DOC_IMG_SIZE: 'Doctor: an image element has no declared width and height.',
-  CLI_INIT_NOT_EMPTY: 'The rangular init command was pointed at a directory that is not empty.',
+  CLI_INIT_NOT_EMPTY: 'The rg init command was pointed at a directory that is not empty.',
   PIPE_UNKNOWN: 'A template uses a pipe that is neither a built-in pipe nor a @Pipe class resolved in this compilation; the JSON form lists the known pipes in the fix.',
   GEN_VALIDATOR_ARG: 'A static minlength or maxlength attribute value is not a plain number; the validator was dropped instead of emitting the text into generated code.',
   DIR_UNSUPPORTED: 'An attribute directive is outside the supported subset (a bracket selector, @Input fields, an ElementRef, and ngOnInit or setter bodies made only of this.el.nativeElement.style.<prop> assignments), or it is used on a host the subset cannot style; the directive applied no styles.',
   PROJECTION_SELECT_UNSUPPORTED: 'An <ng-content> carries a select attribute; multi-slot projection is not supported yet, so the element behaves as the default slot and receives all projected children.',
-  CLI_INIT_UNSAFE: 'The rangular init target name is not a safe directory name (letters, digits, dot, underscore and hyphen only, and not . or ..); nothing was written.',
+  CLI_INIT_UNSAFE: 'The rg init target name is not a safe directory name (letters, digits, dot, underscore and hyphen only, and not . or ..); nothing was written.',
 };

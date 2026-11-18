@@ -82,7 +82,7 @@ export interface GenerateContext {
 
 export interface TagMapping {
   component: string;
-  /** true when the mapping comes from @rangular/ui rather than react-native */
+  /** true when the mapping comes from @rangular-framework/ui rather than react-native */
   fromUi: boolean;
   /** Text variant for heading/paragraph mappings */
   variant?: string;
@@ -633,9 +633,9 @@ class Generator {
       const all = this.usedRn.has('StyleSheet') ? [...rn, 'StyleSheet'] : rn;
       if (all.length) importLines.push(`import { ${all.join(', ')} } from 'react-native';`);
     }
-    if (this.usedUi.size) importLines.push(`import { ${[...this.usedUi].sort().join(', ')} } from '@rangular/ui';`);
+    if (this.usedUi.size) importLines.push(`import { ${[...this.usedUi].sort().join(', ')} } from '@rangular-framework/ui';`);
     if (this.usedRuntime.size) {
-      importLines.push(`import { ${[...this.usedRuntime].sort().join(', ')} } from '@rangular/runtime';`);
+      importLines.push(`import { ${[...this.usedRuntime].sort().join(', ')} } from '@rangular-framework/runtime';`);
     }
 
     // Third-party imports carried from the contributing source files
@@ -1876,7 +1876,7 @@ class Generator {
 
     /**
      * Render an <icon> element (Stage 7). Icons are validated here, at
-     * compile time, against the curated set in @rangular/ui icons.ts:
+     * compile time, against the curated set in @rangular-framework/ui icons.ts:
      * an unknown static name is an error (the JSON diagnostic carries
      * the full valid list in validIcons), a missing name is an error,
      * and an off-scale size warns and snaps to the icon size scale,
@@ -2191,7 +2191,7 @@ class Generator {
      * and (change) out with the ISO string as $event, wired like the
      * Stage 6 controls. Children are meaningless on a picker and are
      * ignored. The wheels and formatting live in the primitive and
-     * the shared helpers in @rangular/ui datetime.ts.
+     * the shared helpers in @rangular-framework/ui datetime.ts.
      */
     const renderDateTimePicker = (el: ElementNode, depth: number, extraProps: string[]): string[] => {
       const indent = '  '.repeat(depth + 2);

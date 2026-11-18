@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
  * Rangular CLI:
- *   rangular build <component.ts> --out <file.tsx> [--json] [--source-map] [--routes <file>]
- *   rangular ast <template.html>
- *   rangular preview <component.ts> --out <file.html> [--json] [--routes <file>]
- *   rangular catalog [--out <dir>]
- *   rangular watch <component.ts> --out <file.tsx> [--routes <file>]
- *   rangular init <dir> [--app]
- *   rangular doctor <component.ts> [--json] [--routes <file>]
+ *   rg build <component.ts> --out <file.tsx> [--json] [--source-map] [--routes <file>]
+ *   rg ast <template.html>
+ *   rg preview <component.ts> --out <file.html> [--json] [--routes <file>]
+ *   rg catalog [--out <dir>]
+ *   rg watch <component.ts> --out <file.tsx> [--routes <file>]
+ *   rg init <dir> [--app]
+ *   rg doctor <component.ts> [--json] [--routes <file>]
  *
  * --routes names the routes file (Stage 9); without it the compiler
  * auto-discovers a sibling app.routes.ts next to the component.
@@ -38,7 +38,7 @@ import {
 } from '../../compiler/src/index';
 
 function fail(message: string): never {
-  console.error(`rangular: ${message}`);
+  console.error(`rg: ${message}`);
   process.exit(2);
 }
 
@@ -113,13 +113,13 @@ function printJson(payload: Record<string, unknown>): void {
 
 const USAGE = [
   'Usage:',
-  '  rangular build <component.ts> --out <file.tsx> [--json] [--source-map] [--routes <file>]',
-  '  rangular ast <template.html>',
-  '  rangular preview <component.ts> --out <file.html> [--json] [--routes <file>]',
-  '  rangular catalog [--out <dir>]',
-  '  rangular watch <component.ts> --out <file.tsx> [--routes <file>]',
-  '  rangular init <dir> [--app]',
-  '  rangular doctor <component.ts> [--json] [--routes <file>]',
+  '  rg build <component.ts> --out <file.tsx> [--json] [--source-map] [--routes <file>]',
+  '  rg ast <template.html>',
+  '  rg preview <component.ts> --out <file.html> [--json] [--routes <file>]',
+  '  rg catalog [--out <dir>]',
+  '  rg watch <component.ts> --out <file.tsx> [--routes <file>]',
+  '  rg init <dir> [--app]',
+  '  rg doctor <component.ts> [--json] [--routes <file>]',
 ].join('\n');
 
 /**
@@ -144,7 +144,7 @@ function routesSpecifierFor(entryAbs: string, routesArg: string | undefined): st
  * that point at the repo's packages, and to place a bare-named app
  * under <root>/apps.
  */
-function rangularRepoRoot(): string {
+function rgRepoRoot(): string {
   return path.resolve(__dirname, '..', '..', '..', '..');
 }
 
@@ -179,7 +179,7 @@ const STARTER_HTML = `<screen>
 /** A package.json name from a directory name: lowercase, npm-safe. */
 function packageNameOf(dirName: string): string {
   const cleaned = dirName.toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^[.-]+/, '');
-  return cleaned || 'rangular-app';
+  return cleaned || 'rg-app';
 }
 
 /** A path as a file: dependency specifier, relative and forward-slashed. */
@@ -189,12 +189,12 @@ function fileDepOf(fromDir: string, toDir: string): string {
 }
 
 /**
- * `rangular init <dir> --app`: scaffold a real Expo app (Stage 12).
+ * `rg init <dir> --app`: scaffold a real Expo app (Stage 12).
  *
  * A bare name (no path separators) creates the app at
  * <repoRoot>/apps/<name>; an explicit path (absolute, or containing a
  * separator) is used as given. Either way the generated package.json
- * depends on @rangular/ui and @rangular/runtime through file:
+ * depends on @rangular-framework/ui and @rangular-framework/runtime through file:
  * specifiers computed relative from the app directory to this repo's
  * packages, so the app always builds against the checkout it was
  * scaffolded from. Every file is written under the app directory;
@@ -208,7 +208,7 @@ function fileDepOf(fromDir: string, toDir: string): string {
  * also carries expo-image-picker ~58.0.10 and expo-document-picker
  * ~58.0.5: RgFilePicker names both in literal requires, and Metro
  * resolves every literal require when an app bundles, so both are
- * required dependencies of any app built on @rangular/ui, not an
+ * required dependencies of any app built on @rangular-framework/ui, not an
  * option an app picks per kind. The same holds for expo-haptics
  * ~58.0.8, which RgSwitch requires lazily for its haptic answer. The set moved from SDK 54 to
  * SDK 58 on 2026-11-12 because the store build of Expo Go supports
@@ -218,7 +218,7 @@ function fileDepOf(fromDir: string, toDir: string): string {
  * says so.
  */
 function initApp(dirArg: string): void {
-  const repoRoot = rangularRepoRoot();
+  const repoRoot = rgRepoRoot();
   const isBareName = !path.isAbsolute(dirArg) && !dirArg.includes('/') && !dirArg.includes('\\');
   let appDir: string;
   if (isBareName) {
@@ -227,7 +227,7 @@ function initApp(dirArg: string): void {
         severity: 'error',
         code: 'CLI_INIT_UNSAFE',
         message: `Cannot init an app named '${dirArg}': a bare app name may only use letters, digits, dot, underscore and hyphen, and may not be . or ..`,
-        fix: 'Use a simple name, e.g. rangular init my-app --app, or pass an explicit path',
+        fix: 'Use a simple name, e.g. rg init my-app --app, or pass an explicit path',
       }));
       process.exit(1);
     }
@@ -240,7 +240,7 @@ function initApp(dirArg: string): void {
       severity: 'error',
       code: 'CLI_INIT_NOT_EMPTY',
       message: `Cannot init an app into '${appDir}': the directory is not empty`,
-      fix: 'Pick a new directory name, or empty the directory first, e.g. rangular init my-app --app',
+      fix: 'Pick a new directory name, or empty the directory first, e.g. rg init my-app --app',
     }));
     process.exit(1);
   }
@@ -266,8 +266,8 @@ function initApp(dirArg: string): void {
       web: 'expo start --web',
     },
     dependencies: {
-      '@rangular/runtime': fileDepOf(appDir, path.join(repoRoot, 'packages', 'runtime')),
-      '@rangular/ui': fileDepOf(appDir, path.join(repoRoot, 'packages', 'ui')),
+      '@rangular-framework/runtime': fileDepOf(appDir, path.join(repoRoot, 'packages', 'runtime')),
+      '@rangular-framework/ui': fileDepOf(appDir, path.join(repoRoot, 'packages', 'ui')),
       expo: '~58.0.0',
       'expo-document-picker': '~58.0.5',
       'expo-haptics': '~58.0.8',
@@ -345,7 +345,7 @@ export default function App() {
   const result = compileComponent({ tsSource, fileName: entryAbs, resolveFile, resolveImport, rootDir });
   for (const d of result.diagnostics) console.error(formatDiagnostic(d, entryAbs));
   if (hasErrors(result.diagnostics) || !result.code) {
-    console.error('rangular: the starter component did not compile; the scaffold is incomplete');
+    console.error('rg: the starter component did not compile; the scaffold is incomplete');
     process.exit(1);
   }
   write(path.join('src', 'AppRoot.tsx'), result.code);
@@ -389,8 +389,8 @@ the generated app behaves.
 
 ## How the pieces fit
 
-- \`package.json\` depends on \`@rangular/ui\` and
-  \`@rangular/runtime\` through \`file:\` specifiers that point at the
+- \`package.json\` depends on \`@rangular-framework/ui\` and
+  \`@rangular-framework/runtime\` through \`file:\` specifiers that point at the
   Rangular checkout this app was scaffolded from, so the app always
   builds against that checkout. Move the app and those paths move
   with it only if the relative layout is kept; edit them if you
@@ -404,7 +404,7 @@ the generated app behaves.
   compatibility, not installed or device-verified when this
   scaffold was written.
 - \`expo-image-picker\` and \`expo-document-picker\` are required
-  dependencies, not extras: \`RgFilePicker\` in \`@rangular/ui\`
+  dependencies, not extras: \`RgFilePicker\` in \`@rangular-framework/ui\`
   names both in literal requires, and Metro resolves every literal
   require when the app bundles, so the bundle fails without either
   one. Keep both even if this app never shows a file picker.
@@ -442,7 +442,7 @@ not run in the environment that wrote this scaffold; your first
   console.log(`Run it: cd ${appDir} && npm install && npx expo start`);
 }
 
-/** `rangular init <dir>`: scaffold a starter project (Stage 5). */
+/** `rg init <dir>`: scaffold a starter project (Stage 5). */
 function initProject(dirArg: string): void {
   const dir = path.resolve(dirArg);
   if (fs.existsSync(dir) && fs.readdirSync(dir).length > 0) {
@@ -450,7 +450,7 @@ function initProject(dirArg: string): void {
       severity: 'error',
       code: 'CLI_INIT_NOT_EMPTY',
       message: `Cannot init into '${dirArg}': the directory is not empty`,
-      fix: 'Pick a new directory name, or empty the directory first, e.g. rangular init my-app',
+      fix: 'Pick a new directory name, or empty the directory first, e.g. rg init my-app',
     }));
     process.exit(1);
   }
@@ -520,7 +520,7 @@ loose text, small tap targets) with the fix for each.
   console.log(`Build it: node dist/packages/cli/src/cli.js build ${dirArg}/src/app.component.ts --out ${dirArg}/src/app.component.tsx`);
 }
 
-/** `rangular watch`: compile now, then recompile on every change (Stage 5). */
+/** `rg watch`: compile now, then recompile on every change (Stage 5). */
 function startWatch(target: string, out: string, routesSpecifier: string | undefined): void {
   let watchers: fs.FSWatcher[] = [];
   let timer: NodeJS.Timeout | undefined;
@@ -609,7 +609,7 @@ function main(): void {
 
   if (command === 'init') {
     const dir = args.slice(1).find((a) => !a.startsWith('--'));
-    if (!dir) fail('usage: rangular init <dir> [--app]');
+    if (!dir) fail('usage: rg init <dir> [--app]');
     if (args.includes('--app')) initApp(dir);
     else initProject(dir);
     return;

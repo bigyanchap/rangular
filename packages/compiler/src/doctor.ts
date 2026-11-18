@@ -5,7 +5,7 @@ import { snapForProp } from './style/css';
 import { ElementNode, TemplateNode } from './template/ast';
 
 /**
- * `rangular doctor` (Stage 5): the polish linter from docs/UI_POLISH.md
+ * `rg doctor` (Stage 5): the polish linter from docs/UI_POLISH.md
  * part 4. It reads the same compiled artefacts the compiler produced
  * (template ASTs, parsed styles) plus the raw style texts (for line
  * numbers and the suppression comment), and reports findings as ordinary
@@ -88,7 +88,7 @@ export function runDoctor(input: DoctorInput): Diagnostic[] {
             'DOC_HEX_COLOR',
             `Hex colour ${m[0]} in styles; raw hex values do not follow the theme`,
             lineAt(text, m.index ?? 0), undefined,
-            `Use a colour role instead (primary, surface, onSurface, error, and the other roles in @rangular/ui tokens), or, for a deliberate brand colour, add a CSS comment containing "${ALLOW_HEX_MARKER}" to this style text`,
+            `Use a colour role instead (primary, surface, onSurface, error, and the other roles in @rangular-framework/ui tokens), or, for a deliberate brand colour, add a CSS comment containing "${ALLOW_HEX_MARKER}" to this style text`,
           ),
           file,
         });
