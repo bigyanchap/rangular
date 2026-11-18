@@ -3,13 +3,13 @@ import { useState } from 'react';
 import { RgAppbar, RgButton, RgCard, RgList, RgRow, RgScreen, RgText } from '@rangular/ui';
 
 export default function Profile() {
-  const name = 'Bigyan Chapagain';
-  const bio = 'Engineer, inventor and seeker of ultimate truth.';
+  const name = 'Alex Carter';
+  const bio = 'Product designer and weekend photographer.';
   const [following, setFollowing] = useState(false);
   const posts = [
-    { id: 1, title: 'Building Awaken Me, one morning at a time', snippet: 'A conscious alarm that wakes you into meditation, not noise.', time: 'Today' },
-    { id: 2, title: 'Meditation is not an escape', snippet: 'Sitting still until the mind stops negotiating.', time: 'Yesterday' },
-    { id: 3, title: 'Notes on reverse aging, the yogic way', snippet: 'Growing younger is a discipline, not a product.', time: 'Tue' },
+    { id: 1, title: 'Building a photo app, one feature at a time', snippet: 'A simple gallery that keeps your photos organised.', time: 'Today' },
+    { id: 2, title: 'Why I switched to a paper notebook', snippet: 'Planning the week on paper, one page at a time.', time: 'Yesterday' },
+    { id: 3, title: 'A beginner guide to film photography', snippet: 'What I learned from my first three rolls of film.', time: 'Tue' },
   ];
   const toggleFollow = () => {
     setFollowing(!following);

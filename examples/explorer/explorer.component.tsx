@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { RgAppbar, RgButton, RgColumn, RgGridList, RgGridTile, RgOption, RgScreen, RgSelect, RgTable, RgText, RgTree, RgTreeNode } from '@rangular/ui';
 
 export default function Explorer() {
-  const [city, setCity] = useState('ktm');
+  const [city, setCity] = useState('nyc');
   const [saved, setSaved] = useState(false);
   const people = [
     { name: 'Mina', age: 31 },
@@ -23,9 +23,9 @@ export default function Explorer() {
     <RgScreen>
       <RgAppbar title="Explorer" />
       <RgSelect label="City" placeholder="Pick a city" value={city} onChange={($event) => onCity($event)}>
-        <RgOption value="ktm">Kathmandu</RgOption>
-        <RgOption value="pkr">Pokhara</RgOption>
-        <RgOption value="bkt">Bhaktapur</RgOption>
+        <RgOption value="nyc">New York</RgOption>
+        <RgOption value="ldn">London</RgOption>
+        <RgOption value="syd">Sydney</RgOption>
       </RgSelect>
       <RgText variant="bodyLarge">Selected city code: {city}</RgText>
       <RgText variant="label">Folders</RgText>

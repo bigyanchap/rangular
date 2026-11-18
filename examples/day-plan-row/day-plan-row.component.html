@@ -1,0 +1,19 @@
+<screen>
+  <appbar title="Day Plan"></appbar>
+  <label>Today</label>
+  <list>
+    <row (click)="toggleRun()" [title]="featured.title" [subtitle]="featured.time" [detail]="featured.pieces">
+      <div class="check-cell">
+        <div class="check-on" *ngIf="runDone"><span class="check-mark">✓</span></div>
+        <div class="check-off" *ngIf="!runDone"></div>
+      </div>
+    </row>
+    <row *ngFor="let b of blocks; let i = index" [title]="b.title" [subtitle]="b.time" [detail]="b.pieces">
+      <div class="check-cell">
+        <div class="check-on" *ngIf="b.done"><span class="check-mark">✓</span></div>
+        <div class="check-off" *ngIf="!b.done"></div>
+      </div>
+    </row>
+  </list>
+  <p *ngIf="runDone">Morning Run is done. The day is already won.</p>
+</screen>

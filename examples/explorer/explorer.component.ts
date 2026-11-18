@@ -5,7 +5,7 @@ import { Component } from '@angular/core';
   templateUrl: './explorer.component.html',
 })
 export class ExplorerComponent {
-  city = 'ktm';
+  city = 'nyc';
   saved = false;
   people = [
     { name: 'Mina', age: 31 },

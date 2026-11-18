@@ -36,7 +36,7 @@ export default function Settings() {
       </RgSwitcher>
       {(view === 'list') && (
         <RgSection>
-          <RgText variant="bodyLarge">List panel: Morning Yoga, Puja, Deep Work.</RgText>
+          <RgText variant="bodyLarge">List panel: Morning run, Team standup, Deep work.</RgText>
         </RgSection>
       )}
       {(view === 'stats') && (

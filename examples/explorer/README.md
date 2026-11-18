@@ -36,9 +36,9 @@ export class ExplorerComponent {
   <appbar title="Explorer"></appbar>
 
   <select label="City" [value]="city" (change)="onCity($event)" placeholder="Pick a city">
-    <option value="ktm">Kathmandu</option>
-    <option value="pkr">Pokhara</option>
-    <option value="bkt">Bhaktapur</option>
+    <option value="nyc">New York</option>
+    <option value="ldn">London</option>
+    <option value="syd">Sydney</option>
   </select>
   <p>Selected city code: {{ city }}</p>
 
@@ -90,8 +90,8 @@ Key lines of the generated `explorer.component.tsx`:
 
 ```tsx
 <RgSelect label="City" placeholder="Pick a city" value={city} onChange={($event) => onCity($event)}>
-  <RgOption value="ktm">Kathmandu</RgOption>
-  <RgOption value="pkr">Pokhara</RgOption>
+  <RgOption value="nyc">New York</RgOption>
+  <RgOption value="ldn">London</RgOption>
 </RgSelect>
 <RgTree>
   <RgTreeNode label="Inbox" expanded>

@@ -62,7 +62,7 @@ export class SettingsComponent {
     <option value="stats">Statistics</option>
   </switcher>
   <div *ngIf="view === 'list'">
-    <p>List panel: Morning Yoga, Puja, Deep Work.</p>
+    <p>List panel: Morning run, Team standup, Deep work.</p>
   </div>
   <div *ngIf="view === 'stats'">
     <p>Statistics panel: 3 blocks done this week.</p>
@@ -113,7 +113,7 @@ The generated `RgOption` and `RgRadio` elements are declarations, not screens. `
 - **Switch motion:** the knob only ever moves toward its target. The React Native primitive uses a plain linear timing move, never a spring, so it cannot overshoot or bounce back. The preview uses the same rule in CSS: a linear transition between the two end positions.
 - **The switcher is view state, not routing.** It changes the `view` field and the panels below use `*ngIf` on that field. It does not change screens, URLs or history. Routing arrives separately in Stage 9.
 - **Disabled state:** put `[disabled]` on `switch` or `checkbox` when the control must not respond. The value stays as it is and no change event fires.
-- **Text size proof:** the radio group changes `size`, the chosen value is printed, and exactly one sample line renders. Each sample line carries a class whose font size is on the type scale. In the generated app the StyleSheet class applies. In the preview, component class styles are not painted, the same known preview limit already documented for dinacharya-row, so the visible proof in the preview is the chosen value and which sample line is present.
+- **Text size proof:** the radio group changes `size`, the chosen value is printed, and exactly one sample line renders. Each sample line carries a class whose font size is on the type scale. In the generated app the StyleSheet class applies. In the preview, component class styles are not painted, the same known preview limit already documented for day-plan-row, so the visible proof in the preview is the chosen value and which sample line is present.
 
 **Common mistakes**
 
