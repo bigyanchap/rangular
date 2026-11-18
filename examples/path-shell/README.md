@@ -28,7 +28,7 @@ export class PathShellComponent {
 
 **What it compiles to**
 
-- `<screen fade>` compiles to `RgScreen` with the `fade` prop: the screen tracks the scroll offset and melts the content out under the pinned bar, in strips of the bar's own colour.
+- `<screen fade>` compiles to `RgScreen` with the `fade` prop: the screen tracks the scroll offset and melts the content out under the pinned bar, as a smooth gradient of the bar's own colour.
 - `tone="tint"` compiles to `RgAppbar` with the tint tone: a flat surfaceVariant band. A pinned tint or plain bar lends its background colour to the screen, which paints its safe area strip with it, so the status area and the bar read as one surface.
 - `actionIcon` and `actionIcon2` compile to the two right side icon buttons, wired to `(action)` and `(action2)`.
 - `[progress]` compiles to the 3px line at the bar's bottom edge, filled to the bound percent.

@@ -342,7 +342,7 @@ test('appbar tint, second action and progress compile and paint (Option A round)
 test('the chrome blend, fade veil and pill touch box are in the shipped primitives (Option A round)', () => {
   assert.ok(primitivesSrc.includes('chrome ? { backgroundColor: chrome } : null'), 'the safe area takes the bar colour');
   assert.ok(primitivesSrc.includes("const chrome = tint ? c.surfaceVariant : plain ? c.background : undefined"), 'flat bands lend their colour');
-  assert.ok(primitivesSrc.includes('VEIL_STEPS'), 'the fade veil strips exist');
+  assert.ok(primitivesSrc.includes('rgveil'), 'the fade veil is the SVG gradient (0.1.5: the strips banded on a phone)');
   assert.ok(primitivesSrc.includes('onEndReached || fade ? handleScroll : undefined'), 'the screen tracks scroll when fading');
   assert.ok(primitivesSrc.includes('inputPillLeading'), 'the pill leading button has a full touch box');
   const { code, diagnostics } = compileSnippet('<screen fade><p>Hi</p></screen>');

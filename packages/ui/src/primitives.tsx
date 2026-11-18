@@ -719,6 +719,10 @@ function buildStyles(t: Theme) {
       flexDirection: 'row', backgroundColor: c.surface,
       borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border,
       paddingVertical: t.spacing.xs, ...t.elevation.level2,
+      // A bottom bar shadows upward only (phone round,
+      // 2026-11-18): the level2 downward offset drew a grey
+      // seam on the safe area strip under the bar.
+      shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.12, shadowRadius: 8,
     },
     navItem: {
       flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center',
@@ -1060,13 +1064,18 @@ function useRgBottom(tree: React.ReactNode): boolean {
   return slot !== null;
 }
 
-// The scroll fade steps (Option A round, 2026-11-17): six 4px
-// strips of the header's colour at falling opacity, the poor
-// man's gradient, so content melts out under a pinned bar with
-// no gradient dependency.
-const VEIL_STEPS = [0.95, 0.8, 0.64, 0.48, 0.32, 0.16];
+// The scroll fade (Option A round, 2026-11-17; gradient form,
+// phone round, 2026-11-18): content melts out under a pinned bar
+// through one SVG linear gradient of the header's colour. The
+// first form was six 4px strips at falling opacity, and on a
+// phone, over saturated content, the steps read as hard stripes
+// (banding), where the browser's flat colours had hidden them.
+// react-native-svg is already a dependency (the icon set), so
+// the smooth form costs nothing.
 
 export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, onEndReached, fade }: any) {
+  const veilRawId = React.useId();
+  const veilId = 'rgveil' + veilRawId.replace(/[^a-zA-Z0-9]/g, '');
   const inherited = useRgTheme();
   const active = mode === 'dark' || mode === 'light' ? makeTheme(mode) : inherited;
   const styles = stylesFor(active);
@@ -1188,13 +1197,31 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
           </ScrollView>
           </KeyboardAvoidingView>
           {fade && veilFactor > 0 ? (
-            <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0 }}>
-              {VEIL_STEPS.map((a, i) => (
-                <View key={i} style={{ height: 4, backgroundColor: chrome ?? styles.screen.backgroundColor, opacity: a * veilFactor }} />
-              ))}
+            <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 24, opacity: veilFactor }}>
+              <Svg width="100%" height={24}>
+                <Defs>
+                  <LinearGradient id={veilId} x1="0" y1="0" x2="0" y2="1">
+                    <Stop offset="0" stopColor={chrome ?? styles.screen.backgroundColor} stopOpacity={0.96} />
+                    <Stop offset="1" stopColor={chrome ?? styles.screen.backgroundColor} stopOpacity={0} />
+                  </LinearGradient>
+                </Defs>
+                <Rect x="0" y="0" width="100%" height={24} fill={`url(#${veilId})`} />
+              </Svg>
             </View>
           ) : null}
           </View>
+          {/* The bottom paint (phone round, 2026-11-18): when a
+              bottom bar is pinned, the safe area strip under it
+              (the home indicator zone) otherwise shows the page
+              background through, a paler band with the bar's own
+              downward shadow on it, which read as a seam under
+              the bar. This strip paints the zone in the bar's
+              surface colour, behind the bar: 48 covers the
+              largest phone inset in use, and the overlap hides
+              behind the bar itself, same colour on same colour. */}
+          {(navs.length > 0 || bottomNode) ? (
+            <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 48, backgroundColor: styles.bottomNav.backgroundColor }} />
+          ) : null}
           {navs}
           {bottomNode}
           {overlayNodes}
@@ -1245,20 +1272,23 @@ export function RgAppbar({ title, search, menu, avatar, onMenu, titleAlign, tone
   // bookmark here, filled or outline by the icon name the app
   // binds, so the state reads at a glance.
   const actionNode = actionIcon ? (onAction ? (
-    <Pressable onPress={onAction} hitSlop={4} style={({ pressed }) => [styles.appbarButton, pressed && styles.buttonPressed]}>
+    <Pressable key="action" onPress={onAction} hitSlop={4} style={({ pressed }) => [styles.appbarButton, pressed && styles.buttonPressed]}>
       <RgIcon name={actionIcon} size={24} color={gradient ? 'onPrimary' : 'primary'} />
     </Pressable>
-  ) : <RgIcon name={actionIcon} size={24} color={gradient ? 'onPrimary' : 'primary'} />) : null;
+  ) : <RgIcon key="action" name={actionIcon} size={24} color={gradient ? 'onPrimary' : 'primary'} />) : null;
   // Second action (Option A round, 2026-11-17): `actionIcon2`
   // names a second icon button at the right, wired to (action2),
   // so a bar can carry search and a shortcut side by side. With
   // any action present the avatar steps aside, as before.
   const action2Node = actionIcon2 ? (onAction2 ? (
-    <Pressable onPress={onAction2} hitSlop={4} style={({ pressed }) => [styles.appbarButton, pressed && styles.buttonPressed]}>
+    <Pressable key="action2" onPress={onAction2} hitSlop={4} style={({ pressed }) => [styles.appbarButton, pressed && styles.buttonPressed]}>
       <RgIcon name={actionIcon2} size={24} color={gradient ? 'onPrimary' : 'primary'} />
     </Pressable>
-  ) : <RgIcon name={actionIcon2} size={24} color={gradient ? 'onPrimary' : 'primary'} />) : null;
+  ) : <RgIcon key="action2" name={actionIcon2} size={24} color={gradient ? 'onPrimary' : 'primary'} />) : null;
   const leftNode = back ? backNode : menuNode;
+  // The two actions travel as one array into the bar's right
+  // zone, so both carry keys from birth (phone round,
+  // 2026-11-18: React's unique key warning named this array).
   const rightBits = [actionNode, action2Node].filter(Boolean);
   const rightNode = rightBits.length ? (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md }}>{rightBits}</View>
