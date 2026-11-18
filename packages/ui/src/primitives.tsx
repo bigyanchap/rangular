@@ -1555,6 +1555,7 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
   // [(ngModel)] binding updates exactly as if it were typed, and
   // reports the choice through onOptionSelected.
   const [focused, setFocused] = useState(false);
+  const pillRef = useRef<any>(null);
   const doneId = useDoneAccessoryId();
   const text = value === undefined || value === null ? '' : String(value);
   const matches = focused && Array.isArray(options) && text !== ''
@@ -1576,7 +1577,17 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
     return (
       <View style={style}>
         {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
-        <View style={[styles.inputPill, pillTone === 'white' ? { backgroundColor: t.colors.surface } : null]}>
+        {/* The whole pill is the tap target (phone round,
+            2026-11-18): the pill used to be a plain row holding
+            the field, so taps on its padding and its icon zone
+            landed on dead views and the bar felt rarely
+            clickable. The row is a Pressable now and focuses the
+            field wherever it is tapped; the field keeps its own
+            taps, and a leading action keeps its own button. */}
+        <Pressable
+          onPress={() => { if (!disabled) pillRef.current?.focus(); }}
+          style={({ pressed }) => [styles.inputPill, pillTone === 'white' ? { backgroundColor: t.colors.surface } : null, pressed && styles.buttonPressed]}
+        >
           {leadingIcon ? (
             <Pressable onPress={onLeading} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} style={({ pressed }) => [styles.inputPillLeading, pressed && styles.buttonPressed]}>
               <RgIcon name={leadingIcon} size={20} color="textMuted" />
@@ -1585,6 +1596,7 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
             <RgIcon name="search" size={20} color="textMuted" />
           )}
           <TextInput
+            ref={pillRef}
             style={styles.inputPillField}
             value={value}
             onChangeText={onChangeText}
@@ -1602,7 +1614,7 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
               <Text style={{ color: t.colors.onPrimary, fontSize: 14, fontWeight: '700' }}>{String(avatarText).charAt(0)}</Text>
             </View>
           ) : null}
-        </View>
+        </Pressable>
         <RgDoneAccessory nativeID={doneId} styles={styles} />
         {error ? <Text style={styles.inputError}>{error}</Text> : null}
       </View>

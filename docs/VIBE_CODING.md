@@ -1290,6 +1290,10 @@ Found by the tutorial app acting as the integration test: its progress service n
 
 The tutorial app's first SQLite build ran on a real phone and found three native faults no web gate could see. The app bar's two actions travel into the bar's right zone as one array, and both now carry keys from birth (`key="action"`, `key="action2"`); React's unique key warning named the array on device. The scroll fade veil, six hard strips of the bar's colour, banded visibly over saturated content; it is now one SVG linear gradient of the same colour (react-native-svg was already a dependency), with the scroll-driven opacity unchanged. And the bottom bar sat above the safe area strip in the page background with its level2 shadow pointing down onto it, a visible seam: the bar's shadow now points up, and when a bottom bar is pinned the screen paints the strip behind it in the bar's surface colour. Guards live in `tests/native-polish.test.ts`. The same phone run hardened the tutorial's own save pattern (saves serialize, inserts are OR REPLACE, every promise carries a rejection handler); that part is the app's, not the framework's, and lives in the tutorial repo.
 
+## The search pill round (2026-11-18, version 0.1.6)
+
+One framework fix from the tutorial's phone retest: the search variant of `<input>` drew its pill as a plain row holding the field, so taps on the pill's padding and its icon zone landed on dead views and the bar felt rarely clickable on a phone. The pill row is a Pressable now and focuses the field wherever it is tapped; the field keeps its own taps, and a leading action keeps its own button. Guard in `tests/native-polish.test.ts`. The same retest slimmed the tutorial's Home bar to menu and title only: its search and saved actions duplicated the in-content search field and the Saved tab, and the duplicated search section went with them. That part is the app's, not the framework's.
+
 ## Child components (Stage 3, M5)
 
 - **Resolution is by import.** The compiler follows the entry component's

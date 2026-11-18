@@ -29,6 +29,13 @@ test('the scroll fade veil is one SVG gradient, never strips', () => {
   assert.ok(primitivesSrc.includes('stopOpacity={0.96}'), 'the veil fades from near solid');
 });
 
+test('the search pill is one tap target that focuses its field', () => {
+  assert.ok(primitivesSrc.includes('pillRef'), 'the pill keeps a field ref');
+  assert.ok(
+    primitivesSrc.includes('pillRef.current?.focus()'),
+    'a tap anywhere on the pill focuses the field');
+});
+
 test('the bottom bar shadows upward and the screen paints under it', () => {
   assert.ok(
     primitivesSrc.includes('shadowOffset: { width: 0, height: -2 }'),
