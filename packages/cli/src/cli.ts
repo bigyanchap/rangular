@@ -148,6 +148,41 @@ function rgRepoRoot(): string {
   return path.resolve(__dirname, '..', '..', '..', '..');
 }
 
+/**
+ * True when this CLI runs from inside the Rangular checkout: the
+ * root resolved above is a real checkout when its packages/ui is
+ * the framework's own UI package. A CLI installed from npm resolves
+ * its would-be root inside node_modules, where that check fails;
+ * that is published mode. The Expo scaffold behaves differently in
+ * the two modes on purpose: a checkout app binds to its checkout
+ * through file: specifiers, a published-mode app depends on the
+ * released packages by version range.
+ */
+function isCheckoutRoot(root: string): boolean {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'packages', 'ui', 'package.json'), 'utf8'));
+    return !!pkg && pkg.name === '@rangular-framework/ui';
+  } catch {
+    return false;
+  }
+}
+
+/** The CLI's own version, used as the published-mode dependency range. */
+function cliVersion(root: string, checkout: boolean): string {
+  const candidates = checkout
+    ? [path.join(root, 'packages', 'cli', 'package.json')]
+    : [path.resolve(__dirname, '..', '..', '..', 'package.json')];
+  for (const candidate of candidates) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(candidate, 'utf8'));
+      if (pkg && typeof pkg.version === 'string') return pkg.version;
+    } catch {
+      /* try the next candidate */
+    }
+  }
+  return '0.2.0';
+}
+
 const STARTER_TS = `import { Component } from '@angular/core';
 
 @Component({
@@ -219,6 +254,7 @@ function fileDepOf(fromDir: string, toDir: string): string {
  */
 function initApp(dirArg: string): void {
   const repoRoot = rgRepoRoot();
+  const checkout = isCheckoutRoot(repoRoot);
   const isBareName = !path.isAbsolute(dirArg) && !dirArg.includes('/') && !dirArg.includes('\\');
   let appDir: string;
   if (isBareName) {
@@ -231,7 +267,7 @@ function initApp(dirArg: string): void {
       }));
       process.exit(1);
     }
-    appDir = path.join(repoRoot, 'apps', dirArg);
+    appDir = checkout ? path.join(repoRoot, 'apps', dirArg) : path.resolve(dirArg);
   } else {
     appDir = path.resolve(dirArg);
   }
@@ -266,8 +302,12 @@ function initApp(dirArg: string): void {
       web: 'expo start --web',
     },
     dependencies: {
-      '@rangular-framework/runtime': fileDepOf(appDir, path.join(repoRoot, 'packages', 'runtime')),
-      '@rangular-framework/ui': fileDepOf(appDir, path.join(repoRoot, 'packages', 'ui')),
+      '@rangular-framework/runtime': checkout
+        ? fileDepOf(appDir, path.join(repoRoot, 'packages', 'runtime'))
+        : `^${cliVersion(repoRoot, checkout)}`,
+      '@rangular-framework/ui': checkout
+        ? fileDepOf(appDir, path.join(repoRoot, 'packages', 'ui'))
+        : `^${cliVersion(repoRoot, checkout)}`,
       expo: '~58.0.0',
       'expo-document-picker': '~58.0.5',
       'expo-haptics': '~58.0.8',
@@ -299,7 +339,7 @@ function initApp(dirArg: string): void {
   };
 };
 `);
-  write('metro.config.js', `const path = require('path');
+  write('metro.config.js', checkout ? `const path = require('path');
 const { getDefaultConfig } = require('expo/metro-config');
 
 // Monorepo layout: this app lives outside the Rangular repo's package
@@ -314,6 +354,13 @@ config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
   path.resolve(workspaceRoot, 'node_modules'),
 ];
+
+module.exports = config;
+` : `const { getDefaultConfig } = require('expo/metro-config');
+
+// Standard Expo config: the framework packages arrive through npm
+// like every other dependency, so Metro needs no special layout.
+const config = getDefaultConfig(__dirname);
 
 module.exports = config;
 `);
@@ -350,23 +397,7 @@ export default function App() {
   }
   write(path.join('src', 'AppRoot.tsx'), result.code);
 
-  write('README.md', `# ${appName}
-
-A real Expo app scaffolded by the Rangular framework (Stage 12). You write
-Angular-style components in \`src/\`; the Rangular compiler turns them
-into React Native code, and Expo runs the result.
-
-## Run it on a phone
-
-    npm install
-    npx expo start
-
-Then scan the QR code with Expo Go. Your component is
-\`src/app.component.ts\` (with its template
-\`src/app.component.html\`); the compiled output Expo loads is
-\`src/AppRoot.tsx\`, generated from it at scaffold time.
-
-## Recompile after editing the component
+  const recompileSection = checkout ? `## Recompile after editing the component
 
 Run this from the Rangular repo root (the folder you cloned; every
 path in the command is relative to that folder):
@@ -385,16 +416,62 @@ can click through. From the Rangular repo root:
 
 Then open \`preview.html\` in this app folder in a browser. The
 preview is interactive: handlers run and lists respond, exactly as
-the generated app behaves.
+the generated app behaves.` : `## Recompile after editing the component
 
-## How the pieces fit
+Run this from the app folder:
 
-- \`package.json\` depends on \`@rangular-framework/ui\` and
+    rg build src/app.component.ts --out src/AppRoot.tsx
+
+Or run the same command with \`watch\` instead of \`build\` and it
+recompiles on every save.
+
+## Preview in a browser, no phone needed
+
+The dev preview renders any app component as a phone-width page you
+can click through. From the app folder:
+
+    rg preview src/app.component.ts --out preview.html
+
+Then open \`preview.html\` in this app folder in a browser. The
+preview is interactive: handlers run and lists respond, exactly as
+the generated app behaves.`;
+  const fitBullet = checkout ? `- \`package.json\` depends on \`@rangular-framework/ui\` and
   \`@rangular-framework/runtime\` through \`file:\` specifiers that point at the
   Rangular checkout this app was scaffolded from, so the app always
   builds against that checkout. Move the app and those paths move
   with it only if the relative layout is kept; edit them if you
-  relocate the app on its own.
+  relocate the app on its own.` : `- \`package.json\` depends on \`@rangular-framework/ui\` and
+  \`@rangular-framework/runtime\` by version range from npm, so the app
+  builds against the released framework packages. The CLI that
+  scaffolded this app stamps its own version as the range, so the
+  two move together.`;
+  const metroBullet = checkout ? `- \`metro.config.js\` is the standard monorepo config: it watches the
+  Rangular repo root (so the file: packages resolve) and looks for
+  node_modules in both the app and the repo root.` : `- \`metro.config.js\` is the standard Expo config. The framework
+  packages arrive through npm like every other dependency, so Metro
+  needs no special layout.`;
+
+  write('README.md', `# ${appName}
+
+A real Expo app scaffolded by the Rangular framework (Stage 12). You write
+Angular-style components in \`src/\`; the Rangular compiler turns them
+into React Native code, and Expo runs the result.
+
+## Run it on a phone
+
+    npm install
+    npx expo start
+
+Then scan the QR code with Expo Go. Your component is
+\`src/app.component.ts\` (with its template
+\`src/app.component.html\`); the compiled output Expo loads is
+\`src/AppRoot.tsx\`, generated from it at scaffold time.
+
+${recompileSection}
+
+## How the pieces fit
+
+${fitBullet}
 - The Expo pins (expo ~58, react 19.3, react-native 0.88,
   react-native-svg 15.16, expo-image-picker ~58.0.10,
   expo-document-picker ~58.0.5, babel-preset-expo ~58) are the Expo
@@ -411,9 +488,7 @@ the generated app behaves.
 - \`expo-haptics\` is required the same way: \`RgSwitch\` requires
   it lazily to answer a toggle with a haptic when a switch carries
   the \`haptic\` attribute. Keep it even if no switch uses it.
-- \`metro.config.js\` is the standard monorepo config: it watches the
-  Rangular repo root (so the file: packages resolve) and looks for
-  node_modules in both the app and the repo root.
+${metroBullet}
 
 ## Back behaviour
 
@@ -436,7 +511,7 @@ not run in the environment that wrote this scaffold; your first
 \`npx expo start\` is the device proof.
 `);
   console.log(`Created an Expo app in ${appDir}`);
-  if (isBareName && !process.cwd().startsWith(repoRoot)) {
+  if (checkout && isBareName && !process.cwd().startsWith(repoRoot)) {
     console.log(`Note: a bare name places the app under the Rangular repo's apps folder (${appDir}), not the current directory.`);
   }
   console.log(`Run it: cd ${appDir} && npm install && npx expo start`);

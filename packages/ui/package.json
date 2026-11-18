@@ -1,1 +1,19 @@
-{"description":"Rangular Material: design tokens and pre-polished React Native primitives for generated apps.","license":"Apache-2.0","main":"src/primitives.tsx","name":"@rangular-framework/ui","types":"src/primitives.tsx","version":"0.2.0"}
+{
+  "description": "Rangular Material: design tokens and pre-polished React Native primitives for generated apps.",
+  "license": "Apache-2.0",
+  "main": "src/primitives.tsx",
+  "name": "@rangular-framework/ui",
+  "types": "src/primitives.tsx",
+  "version": "0.2.0",
+  "files": [
+    "src"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bigyanchap/rangular-framework.git",
+    "directory": "packages/ui"
+  }
+}

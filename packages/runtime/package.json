@@ -1,1 +1,23 @@
-{"description":"Small pure-TypeScript runtime helpers for generated Rangular apps (EventEmitter, signals, DI container).","license":"Apache-2.0","main":"src/index.ts","name":"@rangular-framework/runtime","types":"src/index.ts","version":"0.2.0"}
+{
+  "description": "Small pure-TypeScript runtime helpers for generated Rangular apps (EventEmitter, signals, DI container).",
+  "license": "Apache-2.0",
+  "main": "dist/index.js",
+  "name": "@rangular-framework/runtime",
+  "types": "dist/index.d.ts",
+  "version": "0.2.0",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.publish.json",
+    "prepack": "npm run build"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bigyanchap/rangular-framework.git",
+    "directory": "packages/runtime"
+  }
+}

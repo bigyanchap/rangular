@@ -1,0 +1,1 @@
+{"compilerOptions":{"declaration":true,"outDir":"dist","rootDir":"..","types":["node"]},"extends":"../../tsconfig.base.json","include":["src/**/*.ts","../ui/src/tokens.ts","../ui/src/icons.ts"]}

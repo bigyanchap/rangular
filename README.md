@@ -214,6 +214,9 @@ flowchart TB
   patterns, the borderline, and the honest comparisons.
 - [docs/ROADMAP.md](docs/ROADMAP.md), the approved plan for Stages 6
   to 12, each stage grounded in the Angular feature it mirrors.
+- [docs/PUBLISHING.md](docs/PUBLISHING.md), the npm release runbook:
+  prerequisites, the publish commands, and how a publish is
+  verified from a clean directory.
 - [SECURITY.md](SECURITY.md), the security audit: what was tested,
   what was found and fixed, and the project root boundary rule for
   files the compiler reads.

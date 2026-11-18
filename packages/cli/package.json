@@ -1,1 +1,29 @@
-{"bin":{"rangular-framework":"src/cli.ts","rg":"src/cli.ts"},"description":"Command line interface for the Rangular compiler.","license":"Apache-2.0","main":"src/cli.ts","name":"@rangular-framework/cli","version":"0.2.0"}
+{
+  "bin": {
+    "rangular-framework": "dist/cli/src/cli.js",
+    "rg": "dist/cli/src/cli.js"
+  },
+  "description": "Command line interface for the Rangular compiler.",
+  "license": "Apache-2.0",
+  "main": "dist/cli/src/cli.js",
+  "name": "@rangular-framework/cli",
+  "version": "0.2.0",
+  "dependencies": {
+    "typescript": "^5.9.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.publish.json",
+    "prepack": "npm run build"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bigyanchap/rangular-framework.git",
+    "directory": "packages/cli"
+  }
+}
