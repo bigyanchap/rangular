@@ -971,7 +971,7 @@ function __runEvent(el, scope, name, value) {
   if (ran) __render();
   return ran;
 }
-// Badge (Stage 11), a mirror of badgeTextOf in @rangular/ui: 0 or
+// Badge (Stage 11), a mirror of badgeTextOf in @rangular-framework/ui: 0 or
 // empty hides the badge, a number above 99 shows as 99+.
 function __badgeText(value) {
   if (value === undefined || value === null || value === '') return null;
@@ -991,9 +991,9 @@ function __badgeDot(el, scope) {
   return dot;
 }
 // The spinner arc (Stage 11): the same path RgSpinner draws in
-// @rangular/ui and the static paint draws; a test pins the copies.
+// @rangular-framework/ui and the static paint draws; a test pins the copies.
 var __SPINNER_ARC = 'M 12 3 A 9 9 0 1 1 3 12';
-// Date-time helpers (Stage 10). Plain-JS mirrors of @rangular/ui
+// Date-time helpers (Stage 10). Plain-JS mirrors of @rangular-framework/ui
 // datetime.ts: the same parsing, composition, wheel and formatting
 // rules, parity-tested against the TypeScript helpers.
 var __MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -1112,7 +1112,7 @@ function __applyWheel(parts, wheel, value) {
   return p;
 }
 var __pickerStates = {};
-// Input mask (Stage 15). A plain-JS mirror of @rangular/ui
+// Input mask (Stage 15). A plain-JS mirror of @rangular-framework/ui
 // mask.ts, parity-tested against it: 9 is a digit slot, A a letter
 // slot, star any character, everything else a literal that only
 // appears once the slot after it is filled.
@@ -1151,9 +1151,9 @@ function __applyMask(raw, pattern) {
   }
   return out;
 }
-// The data palette (Stage 15), a mirror of @rangular/ui palette.ts.
+// The data palette (Stage 15), a mirror of @rangular-framework/ui palette.ts.
 var __SWATCHES = ['#0b57d0', '#1e8e3e', '#f9ab00', '#d93025', '#9334e6', '#e37400', '#12a5af', '#c2185b', '#5f6368', '#80868b', '#202124', '#ffffff'];
-// Chart geometry (Stage 15). A plain-JS mirror of @rangular/ui
+// Chart geometry (Stage 15). A plain-JS mirror of @rangular-framework/ui
 // chart.ts, parity-tested against it: the same model of shapes,
 // serialized to the same SVG the static paint produces.
 function __r2(n) { return Math.round(n * 100) / 100; }
@@ -1459,7 +1459,7 @@ function __buildSnackbar(host) {
   }
   host.appendChild(bar);
 }
-// Forms runtime (Stage 8). Plain-JS mirrors of the @rangular/runtime
+// Forms runtime (Stage 8). Plain-JS mirrors of the @rangular-framework/runtime
 // forms core (Validators, FormControl, FormGroup semantics and error
 // shapes), plus the mini evaluator for form field initializers and the
 // ngModel ref builder. The preview never uses eval on author code: the
@@ -3819,7 +3819,7 @@ function __buildChild(el, scope, path) {
   }
   return nodes;
 }
-// Routing runtime (Stage 9). Plain-JS mirrors of the @rangular/runtime
+// Routing runtime (Stage 9). Plain-JS mirrors of the @rangular-framework/runtime
 // matcher and navigator: the same segment rules, the same redirect
 // handling, parity-tested against the runtime over a table of paths.
 // The stack lives outside component state, like the generated app has

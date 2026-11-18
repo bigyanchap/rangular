@@ -59,7 +59,7 @@ export class IconsComponent {
 Key lines of the generated `icons.component.tsx`:
 
 ```tsx
-import { RgAppbar, RgIcon, RgScreen } from '@rangular/ui';
+import { RgAppbar, RgIcon, RgScreen } from '@rangular-framework/ui';
 
 {names.map((name, index) => (
   <View key={name?.id ?? index} style={styles.iconCell}>

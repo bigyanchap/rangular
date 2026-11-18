@@ -32,5 +32,5 @@ export class GmailShellComponent {
 - The search pill's `leadingIcon` replaces the search glyph and its tap reports through `(leading)`; `avatarText` draws the round initial at the pill's right. On a gradient bar, `pillTone="white"` keeps the pill white.
 - A section with an `icon` opens with a round solid chip holding the icon; a section with `plain` opens with the bare title; with neither, the gradient bar of the gradient shell round remains the default.
 - A row's `avatarTone="varied"` gives its avatar tile a pastel pair chosen by its label, and a row's `icon` puts a leading icon where the avatar would go, the drawer row shape.
-- A switch with `haptic` answers a toggle with a light selection haptic (expo-haptics, a required dependency of apps on @rangular/ui); a switch without it stays silent. Both are the same switch: the attribute is the whole difference.
+- A switch with `haptic` answers a toggle with a light selection haptic (expo-haptics, a required dependency of apps on @rangular-framework/ui); a switch without it stays silent. Both are the same switch: the attribute is the whole difference.
 - Every text field also carries the keyboard contract this round added: the screen moves its content up for the keyboard, and each field offers a Done button that dismisses it.

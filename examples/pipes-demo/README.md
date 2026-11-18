@@ -68,7 +68,7 @@ export class PipesDemoComponent {
 Key lines of the generated `pipes-demo.component.tsx`:
 
 ```tsx
-import { pipe } from '@rangular/runtime';
+import { pipe } from '@rangular-framework/runtime';
 
 export class ExclaimPipe {
   transform(value: string, times?: number) {
