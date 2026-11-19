@@ -256,7 +256,10 @@ test('the keyboard contract lives in the shipped screen and fields', () => {
   assert.ok(primitivesSrc.includes('KeyboardAvoidingView'), 'the screen avoids the keyboard');
   assert.ok(primitivesSrc.includes('keyboardShouldPersistTaps'), 'taps persist while the keyboard is up');
   assert.ok(!primitivesSrc.includes('InputAccessoryView'), 'fields carry no keyboard accessory (removed at his word, 2026-11-19)');
-  assert.ok(primitivesSrc.includes('scrollResponderScrollNativeHandleToKeyboard'), 'a focused field lifts to rest above the keyboard');
+  assert.ok(primitivesSrc.includes('keyboardWillShow'), 'the screen learns the keyboard frame from the keyboard events');
+  assert.ok(primitivesSrc.includes('measureInWindow'), 'the lift measures the focused field in the window');
+  assert.ok(primitivesSrc.includes('requestLift'), 'a focused field hands its node to the screen for the calculated lift');
+  assert.ok(!primitivesSrc.includes('scrollResponderScrollNativeHandleToKeyboard'), 'the legacy scroll responder lift is gone (it measured before the keyboard frame settled and under-scrolled on a phone, 2026-11-19)');
   assert.ok(primitivesSrc.includes('Keyboard.dismiss'), 'submit dismisses the keyboard');
   assert.ok(primitivesSrc.includes('useLayoutEffect'), 'the pinned bar registers before paint, no jitter');
 });
@@ -348,7 +351,7 @@ test('the chrome blend, fade veil and pill touch box are in the shipped primitiv
   assert.ok(primitivesSrc.includes('chrome && !headerWash ? { backgroundColor: chrome } : null'), 'the safe area takes the bar colour');
   assert.ok(primitivesSrc.includes("const chrome = tint ? c.washFrom : plain ? c.background : undefined"), 'flat bands lend their colour');
   assert.ok(primitivesSrc.includes('rgveil'), 'the fade veil is the SVG gradient (0.1.5: the strips banded on a phone)');
-  assert.ok(primitivesSrc.includes('onEndReached || fade ? handleScroll : undefined'), 'the screen tracks scroll when fading');
+  assert.ok(primitivesSrc.includes('onScroll={handleScroll}'), 'the screen always tracks its scroll offset (the fade reads it, and the keyboard lift calculation needs it, 2026-11-19)');
   assert.ok(primitivesSrc.includes('inputPillLeading'), 'the pill leading button has a full touch box');
   const { code, diagnostics } = compileSnippet('<screen fade><p>Hi</p></screen>');
   assert.equal(hasErrors(diagnostics), false, JSON.stringify(diagnostics));

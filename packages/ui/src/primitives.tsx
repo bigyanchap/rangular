@@ -19,10 +19,10 @@
 import React, { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   Animated,
+  Dimensions,
   Easing,
   FlatList,
   Image,
-  findNodeHandle,
   Keyboard,
   KeyboardAvoidingView,
   PanResponder,
@@ -1032,9 +1032,10 @@ export const ActivatedRouteContext = createContext<any>(null);
  * with the same key cannot loop. An app bar with no screen above
  * it, or without `pin`, renders in place exactly as before.
  */
-// The screen's ScrollView ref, lent to the fields inside the
-// screen so a focused field can ask the scroller to lift it
-// above the keyboard (lessons QA round, 2026-11-19).
+// The screen's keyboard lift control, lent to the fields
+// inside the screen: a field reports its node on focus, and
+// the screen owns the keyboard frame, the scroll offset and
+// the lift calculation itself (lessons QA round 2, 2026-11-19).
 const RgScrollContext = createContext<any>(null);
 
 const RgHeaderSlotContext = createContext<{
@@ -1235,10 +1236,90 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
     }
   });
   const handleScroll = (e: any) => {
+    offsetRef.current = e?.nativeEvent?.contentOffset?.y ?? offsetRef.current;
     if (onEndReached) onScroll(e);
     if (fade) setScrollY(e?.nativeEvent?.contentOffset?.y ?? 0);
   };
   const veilFactor = fade ? Math.min(1, Math.max(0, scrollY / 24)) : 0;
+  // Keyboard lift (lessons QA round 2, 2026-11-19): the screen
+  // does the calculation itself, from measured facts, never
+  // from a guessed timer. The keyboard events hand over the
+  // keyboard's final height. The focused field is measured in
+  // the window. The overlap is the distance from the field's
+  // bottom to the line where it must rest, the window height
+  // minus the keyboard height minus a 20px gap (his measure).
+  // The screen then scrolls by its current offset plus exactly
+  // that overlap. While the keyboard is up the content carries
+  // a bottom inset equal to the keyboard height, so a field
+  // near the end of the page always has room to be scrolled
+  // to. The lift runs twice per keyboard frame, once as the
+  // layout lands and once after it settles, and the second
+  // pass measures again and corrects whatever the first pass
+  // could not yet reach. The first round's version asked the
+  // legacy scroll responder to do this after a fixed 120ms
+  // wait; on a real phone it measured before the keyboard
+  // frame was final and the field stayed hidden.
+  const offsetRef = useRef(0);
+  const focusedNodeRef = useRef<any>(null);
+  const keyboardHeightRef = useRef(0);
+  const liftTimers = useRef<any[]>([]);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const liftFocusedField = () => {
+    const node = focusedNodeRef.current;
+    const kb = keyboardHeightRef.current;
+    const sv = scrollRef.current;
+    if (!node || !sv || kb <= 0 || Platform.OS === 'web') return;
+    try {
+      node.measureInWindow?.((_x: number, y: number, _w: number, h: number) => {
+        const restLine = Dimensions.get('window').height - kb - 20;
+        const overlap = y + h - restLine;
+        if (overlap <= 0) return;
+        sv.scrollTo({ y: offsetRef.current + overlap, animated: true });
+      });
+    } catch { /* the field left the tree before the keyboard settled */ }
+  };
+  const scheduleLift = () => {
+    liftTimers.current.forEach((t) => clearTimeout(t));
+    liftTimers.current = [
+      setTimeout(liftFocusedField, 60),
+      setTimeout(liftFocusedField, 320),
+    ];
+  };
+  const scrollControl = useRef({
+    requestLift: (node: any) => {
+      focusedNodeRef.current = node;
+      if (keyboardHeightRef.current > 0) scheduleLift();
+    },
+    releaseLift: (node: any) => {
+      if (focusedNodeRef.current === node) focusedNodeRef.current = null;
+    },
+  }).current;
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const showName = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideName = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const frameName = Platform.OS === 'ios' ? 'keyboardWillChangeFrame' : 'keyboardDidShow';
+    const onFrame = (e: any) => {
+      const h = e?.endCoordinates?.height ?? 0;
+      if (h <= 0) return;
+      keyboardHeightRef.current = h;
+      setKeyboardHeight(h);
+      scheduleLift();
+    };
+    const onHide = () => {
+      keyboardHeightRef.current = 0;
+      setKeyboardHeight(0);
+    };
+    const subs = [
+      Keyboard.addListener(showName as any, onFrame),
+      Keyboard.addListener(frameName as any, onFrame),
+      Keyboard.addListener(hideName as any, onHide),
+    ];
+    return () => {
+      subs.forEach((s) => s.remove());
+      liftTimers.current.forEach((t) => clearTimeout(t));
+    };
+  }, []);
   // The overlay slot: overlays inside the scrollable content
   // register here while open, and the screen draws them above
   // everything, anchored to the screen box.
@@ -1298,14 +1379,16 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
             ref={scrollRef}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-            contentContainerStyle={styles.screenContent}
+            contentContainerStyle={[styles.screenContent, keyboardHeight > 0
+              ? { paddingBottom: active.spacing.xxl + keyboardHeight }
+              : null]}
             refreshControl={onRefresh
               ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} />
               : undefined}
-            onScroll={onEndReached || fade ? handleScroll : undefined}
-            scrollEventThrottle={fade ? 32 : 64}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
           >
-            <RgScrollContext.Provider value={scrollRef}>{body}</RgScrollContext.Provider>
+            <RgScrollContext.Provider value={scrollControl}>{body}</RgScrollContext.Provider>
           </ScrollView>
           </KeyboardAvoidingView>
           {fade && veilFactor > 0 ? (
@@ -1669,23 +1752,19 @@ export function RgButton({ children, disabled, onPress, badge, style, variant, t
 // the stock keyboard's own return key already dismisses. Every
 // field here uses returnKeyType="done" and dismisses on submit.
 
-// Keyboard lift (lessons QA round, 2026-11-19): when a field
-// that sits below the keyboard takes focus, the screen's
-// scroller rests the field's bottom 20px above the keyboard's
-// top, his measure. The keyboard frame lands a beat after the
-// focus event, so the request waits a moment first; on web
-// there is no keyboard and the call simply does nothing.
+// Keyboard lift (lessons QA round 2, 2026-11-19): a field
+// does not scroll itself. On focus it hands its node to the
+// screen through RgScrollContext, and the screen performs the
+// calculated lift: keyboard height from the keyboard events,
+// the field measured in the window, a scroll of exactly the
+// overlap. If the keyboard is already up, the screen lifts at
+// once; if it is still rising, its show event triggers the
+// lift. On web there is no keyboard and the call does nothing.
 function useKeyboardLift(): (node: any) => void {
-  const scrollRef = useContext(RgScrollContext);
+  const control = useContext(RgScrollContext);
   return (node: any): void => {
-    if (!node || !scrollRef?.current || Platform.OS === 'web') return;
-    setTimeout(() => {
-      try {
-        const handle = findNodeHandle(node);
-        if (handle == null) return;
-        scrollRef.current?.getScrollResponder?.()?.scrollResponderScrollNativeHandleToKeyboard(handle, 20, true);
-      } catch { /* no software keyboard on this platform */ }
-    }, 120);
+    if (!node || Platform.OS === 'web') return;
+    control?.requestLift?.(node);
   };
 }
 
