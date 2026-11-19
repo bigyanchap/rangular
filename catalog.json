@@ -744,6 +744,10 @@
         {
           "name": "tooltip",
           "type": "any"
+        },
+        {
+          "name": "color",
+          "type": "any"
         }
       ]
     },
@@ -1212,6 +1216,10 @@
         },
         {
           "name": "style",
+          "type": "any"
+        },
+        {
+          "name": "presentation",
           "type": "any"
         }
       ]
@@ -2732,6 +2740,14 @@
     {
       "code": "GEN_PICKER_MODE",
       "meaning": "A <datetime-picker> mode is not one of the three picker modes (date, time, datetime)."
+    },
+    {
+      "code": "GEN_PICKER_PRESENTATION",
+      "meaning": "A <datetime-picker> presentation is not one of the two containers (sheet, modal); the picker opens in a sheet."
+    },
+    {
+      "code": "GEN_BUTTON_COLOR",
+      "meaning": "A <button> color is not one of the three colour roles (primary, danger, neutral); the button keeps the primary colour."
     },
     {
       "code": "GEN_CHART_TYPE",

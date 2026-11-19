@@ -350,6 +350,15 @@ function buildStyles(t: Theme) {
       alignItems: 'flex-start', justifyContent: 'center',
     },
     buttonTextLabel: { color: c.primary, fontSize: t.typography.label.fontSize, fontWeight: '600' },
+    // The colour roles (color="danger" / color="neutral"): danger is
+    // the theme error role as a flat fill with the on-error label,
+    // neutral is the surface-variant fill with its own label role, so
+    // a destructive action reads red and a cancelling one reads grey
+    // while both keep the pill shape, height and label face.
+    buttonNeutral: { backgroundColor: c.surfaceVariant },
+    buttonLabelNeutral: { color: c.onSurfaceVariant, fontSize: t.typography.label.fontSize, fontWeight: '600' },
+    buttonTextDanger: { color: c.danger, fontSize: t.typography.label.fontSize, fontWeight: '600' },
+    buttonTextNeutral: { color: c.textMuted, fontSize: t.typography.label.fontSize, fontWeight: '600' },
     inputWrap: { marginBottom: t.spacing.md },
     inputLabel: {
       fontSize: t.typography.label.fontSize, fontWeight: '600',
@@ -957,9 +966,11 @@ function SoftFill() {
  * at the bottom, so the button reads as lit from above. The
  * host clips it with the pill radius and overflow.
  */
-function ButtonFill() {
+function ButtonFill({ top, bottom }: any) {
   const t = useRgTheme();
   const c = t.colors;
+  const stopTop = top ?? c.primary;
+  const stopBottom = bottom ?? c.primaryDeep;
   const rawId = React.useId();
   const id = 'rgbtn' + rawId.replace(/[^a-zA-Z0-9]/g, '');
   return (
@@ -967,8 +978,8 @@ function ButtonFill() {
       <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
         <Defs>
           <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={c.primary} />
-            <Stop offset="1" stopColor={c.primaryDeep} />
+            <Stop offset="0" stopColor={stopTop} />
+            <Stop offset="1" stopColor={stopBottom} />
           </LinearGradient>
         </Defs>
         <Rect x="0" y="0" width="100" height="100" fill={`url(#${id})`} />
@@ -1708,9 +1719,19 @@ function useTooltipBubble(tooltip: unknown, styles: any) {
   return { show, bubble };
 }
 
-export function RgButton({ children, disabled, onPress, badge, style, variant, tooltip }: any) {
-  const styles = stylesFor(useRgTheme());
+export function RgButton({ children, disabled, onPress, badge, style, variant, tooltip, color }: any) {
+  const theme = useRgTheme();
+  const styles = stylesFor(theme);
   const text = variant === 'text';
+  // color (the compiler validates it): 'danger' paints the error
+  // role, 'neutral' the quiet grey fill; anything else is the
+  // primary gradient. The text variant keeps no fill and colours
+  // only its label.
+  const danger = color === 'danger';
+  const neutral = color === 'neutral';
+  const labelStyle = text
+    ? (danger ? styles.buttonTextDanger : neutral ? styles.buttonTextNeutral : styles.buttonTextLabel)
+    : (neutral ? styles.buttonLabelNeutral : styles.buttonLabel);
   const tip = useTooltipBubble(tooltip, styles);
   return (
     <View style={styles.tooltipWrap}>
@@ -1720,13 +1741,14 @@ export function RgButton({ children, disabled, onPress, badge, style, variant, t
         onLongPress={tip.show}
         style={({ pressed }) => [
           text ? styles.buttonText : styles.button,
+          neutral && !text ? styles.buttonNeutral : null,
           pressed && styles.buttonPressed,
           disabled && styles.buttonDisabled,
           style,
         ]}
       >
-        {text ? null : <ButtonFill />}
-        <Text style={text ? styles.buttonTextLabel : styles.buttonLabel}>{children}</Text>
+        {text || neutral ? null : danger ? <ButtonFill top={theme.colors.danger} bottom={theme.colors.danger} /> : <ButtonFill />}
+        <Text style={labelStyle}>{children}</Text>
         <BadgeDot value={badge} styles={styles} offset={{ top: -6, right: -6 }} />
       </Pressable>
       {tip.bubble}
@@ -2509,8 +2531,12 @@ function RgWheel({ options, value, onSelect, wide }: any) {
  * an ISO string; Cancel discards it. `value` accepts an ISO string
  * or a Date; an unparseable value falls back to the current time.
  * minuteInterval is 1 or 5 (the compiler snaps anything else).
+ * presentation chooses the container the wheels open in: 'sheet'
+ * (the default) slides them up in a bottom sheet, 'modal' centres
+ * them in a dialog card. The wheels, the header and the commit
+ * rules are the same either way; only the container changes.
  */
-export function RgDateTimePicker({ value, mode = 'datetime', label, minuteInterval = 1, onChange, style }: any) {
+export function RgDateTimePicker({ value, mode = 'datetime', label, minuteInterval = 1, onChange, style, presentation }: any) {
   const t = useRgTheme();
   const styles = stylesFor(t);
   const pickerMode: PickerMode = mode === 'date' || mode === 'time' ? mode : 'datetime';
@@ -2534,6 +2560,30 @@ export function RgDateTimePicker({ value, mode = 'datetime', label, minuteInterv
   };
   const cancel = (): void => setOpen(false);
   const wheels: WheelSpec[] = dateTimeWheels(pending, pickerMode, interval);
+  const pickerBody = (
+    <>
+      <View style={styles.pickerHead}>
+        <Pressable onPress={cancel} accessibilityRole="button">
+          <Text style={styles.pickerHeadBtn}>Cancel</Text>
+        </Pressable>
+        <Text style={styles.pickerHeadTitle}>{label ?? 'Choose'}</Text>
+        <Pressable onPress={done} accessibilityRole="button">
+          <Text style={[styles.pickerHeadBtn, styles.pickerHeadDone]}>Done</Text>
+        </Pressable>
+      </View>
+      <View style={styles.wheelsRow}>
+        {wheels.map((wheel) => (
+          <RgWheel
+            key={wheel.name}
+            options={wheel.options}
+            value={wheel.value}
+            wide={wheel.name === 'date'}
+            onSelect={(v: string) => setPending((p: DateTimeParts) => applyWheelValue(p, wheel.name, v))}
+          />
+        ))}
+      </View>
+    </>
+  );
 
   return (
     <View style={[styles.inputWrap, style]}>
@@ -2542,28 +2592,11 @@ export function RgDateTimePicker({ value, mode = 'datetime', label, minuteInterv
         <Text style={styles.pickerValue}>{formatDateTimeValue(current, pickerMode)}</Text>
         <RgIcon name="calendar" size={20} color="textMuted" />
       </Pressable>
-      <RgSheet open={open} onClose={cancel}>
-        <View style={styles.pickerHead}>
-          <Pressable onPress={cancel} accessibilityRole="button">
-            <Text style={styles.pickerHeadBtn}>Cancel</Text>
-          </Pressable>
-          <Text style={styles.pickerHeadTitle}>{label ?? 'Choose'}</Text>
-          <Pressable onPress={done} accessibilityRole="button">
-            <Text style={[styles.pickerHeadBtn, styles.pickerHeadDone]}>Done</Text>
-          </Pressable>
-        </View>
-        <View style={styles.wheelsRow}>
-          {wheels.map((wheel) => (
-            <RgWheel
-              key={wheel.name}
-              options={wheel.options}
-              value={wheel.value}
-              wide={wheel.name === 'date'}
-              onSelect={(v: string) => setPending((p: DateTimeParts) => applyWheelValue(p, wheel.name, v))}
-            />
-          ))}
-        </View>
-      </RgSheet>
+      {presentation === 'modal' ? (
+        <RgDialog open={open} onClose={cancel}>{pickerBody}</RgDialog>
+      ) : (
+        <RgSheet open={open} onClose={cancel}>{pickerBody}</RgSheet>
+      )}
     </View>
   );
 }

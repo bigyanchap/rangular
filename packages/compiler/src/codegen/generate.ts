@@ -2265,8 +2265,11 @@ class Generator {
      * minuteInterval (1 or 5; anything else warns GEN_PICKER_INTERVAL
      * and snaps to the nearest, the icon size pattern), [value] in
      * and (change) out with the ISO string as $event, wired like the
-     * Stage 6 controls. Children are meaningless on a picker and are
-     * ignored. The wheels and formatting live in the primitive and
+     * Stage 6 controls. presentation (sheet or modal; a static value
+     * outside the two is a GEN_PICKER_PRESENTATION error, a
+     * [presentation] binding passes through unchecked) chooses the
+     * container the wheels open in. Children are meaningless on a
+     * picker and are ignored. The wheels and formatting live in the primitive and
      * the shared helpers in @rangular-framework/ui datetime.ts.
      */
     const renderDateTimePicker = (el: ElementNode, depth: number, extraProps: string[]): string[] => {
@@ -2329,13 +2332,29 @@ class Generator {
         }
       }
 
-      const consumedAttrs = new Set(['class', 'style', 'mode', 'minuteInterval']);
+      if (el.attrs['presentation'] !== undefined) {
+        const presentation = el.attrs['presentation'];
+        if (presentation !== 'sheet' && presentation !== 'modal') {
+          diagnostics.push(error(
+            'GEN_PICKER_PRESENTATION',
+            `<datetime-picker> presentation '${presentation}' is not a picker presentation; the picker opens in a sheet`,
+            el.pos.line, el.pos.column,
+            'Use presentation="sheet" (the default) or presentation="modal"',
+          ));
+        }
+        props.push(`presentation="${escapeJsxAttrValue(presentation)}"`);
+      } else {
+        const presentationBinding = el.propBindings.find((b) => b.name === 'presentation');
+        if (presentationBinding) props.push(`presentation={${codeExpr(presentationBinding.expression)}}`);
+      }
+
+      const consumedAttrs = new Set(['class', 'style', 'mode', 'minuteInterval', 'presentation']);
       for (const [name, value] of Object.entries(el.attrs)) {
         if (consumedAttrs.has(name)) continue;
         props.push(`${name}="${escapeJsxAttrValue(value)}"`);
       }
       for (const b of el.booleanAttrs) props.push(b);
-      const consumedProps = new Set(['mode', 'minuteInterval']);
+      const consumedProps = new Set(['mode', 'minuteInterval', 'presentation']);
       for (const p of el.propBindings) {
         if (consumedProps.has(p.name)) continue;
         if (isClassStyleBindingName(p.name)) continue;
@@ -2816,6 +2835,21 @@ class Generator {
       if (mapping?.variant) props.push(`variant="${mapping.variant}"`);
       const isFormEl = el.tag.toLowerCase() === 'form';
       const isButtonEl = el.tag.toLowerCase() === 'button';
+      // A button's color role (primary by default, danger for a
+      // destructive action, neutral for a cancelling one) is a small
+      // validated surface: a static value outside the three is a
+      // GEN_BUTTON_COLOR error, a [color] binding passes through.
+      if (isButtonEl && el.attrs['color'] !== undefined) {
+        const color = el.attrs['color'];
+        if (color !== 'primary' && color !== 'danger' && color !== 'neutral') {
+          diagnostics.push(error(
+            'GEN_BUTTON_COLOR',
+            `<button> color '${color}' is not a button colour role; the button keeps the primary colour`,
+            el.pos.line, el.pos.column,
+            'Use color="primary" (the default), color="danger" for a destructive action, or color="neutral" for a cancelling one',
+          ));
+        }
+      }
       for (const [name, value] of Object.entries(el.attrs)) {
         if (name === 'class') continue;
         // A static style attribute is diagnosed by the binding scan
