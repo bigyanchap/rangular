@@ -1451,7 +1451,18 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
           ) : null}
           {navs}
           {bottomNode}
-          {overlayNodes}
+          {/* Overlays end above the keyboard (his rule, 2026-11-19):
+              the slotted overlay layer's box stops at the keyboard's
+              top edge, so a dialog centres in the visible area and a
+              sheet rests on the keyboard, and a text field inside a
+              modal is never hidden under the keyboard, exactly as a
+              field in the scroll body is lifted. With no keyboard the
+              layer is the full screen box, as before. */}
+          {overlayNodes.length > 0 ? (
+            <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: keyboardHeight }}>
+              {overlayNodes}
+            </View>
+          ) : null}
         </RgHeaderSlotContext.Provider>
         </RgBottomSlotContext.Provider>
         </RgOverlaySlotContext.Provider>
@@ -2467,19 +2478,35 @@ const WHEEL_ITEM_HEIGHT = 32;
  * picker: a snapping scroll column, five rows tall, whose selected
  * value sits centred between two hairlines while the rows above and
  * below are muted. Scrolling to rest selects the centred value;
- * tapping a row selects it directly. The wheel's values and the
- * selection math come from ./datetime, shared with the preview.
+ * tapping a row selects it directly. Rolling ticks one selection
+ * haptic per row that passes the centre, and a tap that changes the
+ * value ticks once. The wheel's values and the selection math come
+ * from ./datetime, shared with the preview.
  */
 function RgWheel({ options, value, onSelect, wide }: any) {
   const styles = stylesFor(useRgTheme());
   const selectedIndex = Math.max(0, options.findIndex((o: WheelSpec['options'][number]) => o.value === value));
   const scrollRef = useRef<any>(null);
+  // The last row the roll ticked for (his rule, 2026-11-19: rolling
+  // through the picker ticks a selection haptic, one per row that
+  // passes the centre, the iOS wheel feel). Programmatic centring
+  // updates the mark without ticking.
+  const tickedIndexRef = useRef(selectedIndex);
 
   // Centre the selected value whenever the wheel opens or a sibling
   // wheel moves the selection (a day clamped by a month change).
   useEffect(() => {
+    tickedIndexRef.current = selectedIndex;
     scrollRef.current?.scrollTo({ y: selectedIndex * WHEEL_ITEM_HEIGHT, animated: false });
   }, [selectedIndex]);
+
+  const tickWhileRolling = (offsetY: number): void => {
+    const idx = Math.min(options.length - 1, Math.max(0, Math.round(offsetY / WHEEL_ITEM_HEIGHT)));
+    if (idx !== tickedIndexRef.current) {
+      tickedIndexRef.current = idx;
+      fireSelectionHaptic();
+    }
+  };
 
   const selectAtRest = (offsetY: number): void => {
     const idx = Math.min(options.length - 1, Math.max(0, Math.round(offsetY / WHEEL_ITEM_HEIGHT)));
@@ -2494,12 +2521,14 @@ function RgWheel({ options, value, onSelect, wide }: any) {
         showsVerticalScrollIndicator={false}
         snapToInterval={WHEEL_ITEM_HEIGHT}
         decelerationRate="fast"
+        onScroll={(e: any) => tickWhileRolling(e.nativeEvent.contentOffset.y)}
+        scrollEventThrottle={16}
         onScrollEndDrag={(e: any) => selectAtRest(e.nativeEvent.contentOffset.y)}
         onMomentumScrollEnd={(e: any) => selectAtRest(e.nativeEvent.contentOffset.y)}
         contentContainerStyle={{ paddingVertical: WHEEL_ITEM_HEIGHT * 2 }}
       >
         {options.map((o: WheelSpec['options'][number]) => (
-          <Pressable key={o.value} onPress={() => onSelect?.(o.value)} style={styles.wheelItem}>
+          <Pressable key={o.value} onPress={() => { if (o.value !== value) fireSelectionHaptic(); onSelect?.(o.value); }} style={styles.wheelItem}>
             <Text style={[styles.wheelText, o.value === value ? styles.wheelTextSelected : null]} numberOfLines={1}>
               {o.label}
             </Text>
@@ -2524,17 +2553,22 @@ function RgWheel({ options, value, onSelect, wide }: any) {
  * PRODUCT RULE (Bigyan's standing order): the picker looks and
  * behaves like the iOS wheel picker on every platform. Never a
  * calendar grid, never an Android style dialog. The field row shows
- * the formatted value; tapping it opens a bottom sheet of wheels
- * (date mode: month, day, year; time mode: hour 1 to 12, minute,
- * AM/PM; datetime mode: one combined date wheel plus hour, minute
- * and AM/PM). Done commits the pending value through onChange as
- * an ISO string; Cancel discards it. `value` accepts an ISO string
- * or a Date; an unparseable value falls back to the current time.
- * minuteInterval is 1 or 5 (the compiler snaps anything else).
- * presentation chooses the container the wheels open in: 'sheet'
- * (the default) slides them up in a bottom sheet, 'modal' centres
- * them in a dialog card. The wheels, the header and the commit
- * rules are the same either way; only the container changes.
+ * the formatted value; tapping it opens the wheels centred in a
+ * modal dialog (date mode: month, day, year; time mode: hour 1 to
+ * 12, minute, AM/PM; datetime mode: one combined date wheel plus
+ * hour, minute and AM/PM). Done commits the pending value through
+ * onChange as an ISO string; Cancel discards it. `value` accepts
+ * an ISO string or a Date; an unparseable value falls back to the
+ * current time. minuteInterval is 1 or 5 (the compiler snaps
+ * anything else). presentation chooses the container the wheels
+ * open in: 'modal' (the default) centres them in a dialog card,
+ * 'sheet' slides them up in a bottom sheet. The wheels, the header
+ * and the commit rules are the same either way; only the container
+ * changes. Datetime mode never mixes the two in one panel: it
+ * opens the date step first (the date wheel, with a Next button),
+ * then the time step (hour, minute and AM/PM wheels, with Back
+ * and Done), two separate modals in sequence in whichever
+ * container presentation chose.
  */
 export function RgDateTimePicker({ value, mode = 'datetime', label, minuteInterval = 1, onChange, style, presentation }: any) {
   const t = useRgTheme();
@@ -2544,14 +2578,19 @@ export function RgDateTimePicker({ value, mode = 'datetime', label, minuteInterv
   const current: DateTimeParts = parseDateTimeValue(value) ?? nowParts();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<DateTimeParts>(current);
+  // Datetime opens in two separate steps (his rule, 2026-11-19):
+  // the date modal first, then the time modal, never all the
+  // wheels in one panel. Date and time modes are a single step.
+  const [step, setStep] = useState<'date' | 'time'>('date');
 
   const start = (): void => {
     // The wheel cannot rest between steps: with a 5 minute interval
     // a value like 9:03 opens on the nearest step, and Done emits
     // that step even if the minute wheel itself is never touched.
-    const step = interval === 5 ? 5 : 1;
-    const minute = Math.min(60 - step, Math.round(current.minute / step) * step);
+    const snap = interval === 5 ? 5 : 1;
+    const minute = Math.min(60 - snap, Math.round(current.minute / snap) * snap);
     setPending({ ...current, minute });
+    setStep('date');
     setOpen(true);
   };
   const done = (): void => {
@@ -2560,19 +2599,35 @@ export function RgDateTimePicker({ value, mode = 'datetime', label, minuteInterv
   };
   const cancel = (): void => setOpen(false);
   const wheels: WheelSpec[] = dateTimeWheels(pending, pickerMode, interval);
+  const twoStep = pickerMode === 'datetime';
+  const shownWheels = twoStep
+    ? wheels.filter((w) => (step === 'date' ? w.name === 'date' : w.name !== 'date'))
+    : wheels;
   const pickerBody = (
     <>
       <View style={styles.pickerHead}>
-        <Pressable onPress={cancel} accessibilityRole="button">
-          <Text style={styles.pickerHeadBtn}>Cancel</Text>
-        </Pressable>
+        {twoStep && step === 'time' ? (
+          <Pressable onPress={() => setStep('date')} accessibilityRole="button">
+            <Text style={styles.pickerHeadBtn}>Back</Text>
+          </Pressable>
+        ) : (
+          <Pressable onPress={cancel} accessibilityRole="button">
+            <Text style={styles.pickerHeadBtn}>Cancel</Text>
+          </Pressable>
+        )}
         <Text style={styles.pickerHeadTitle}>{label ?? 'Choose'}</Text>
-        <Pressable onPress={done} accessibilityRole="button">
-          <Text style={[styles.pickerHeadBtn, styles.pickerHeadDone]}>Done</Text>
-        </Pressable>
+        {twoStep && step === 'date' ? (
+          <Pressable onPress={() => setStep('time')} accessibilityRole="button">
+            <Text style={[styles.pickerHeadBtn, styles.pickerHeadDone]}>Next</Text>
+          </Pressable>
+        ) : (
+          <Pressable onPress={done} accessibilityRole="button">
+            <Text style={[styles.pickerHeadBtn, styles.pickerHeadDone]}>Done</Text>
+          </Pressable>
+        )}
       </View>
       <View style={styles.wheelsRow}>
-        {wheels.map((wheel) => (
+        {shownWheels.map((wheel) => (
           <RgWheel
             key={wheel.name}
             options={wheel.options}
@@ -2592,10 +2647,10 @@ export function RgDateTimePicker({ value, mode = 'datetime', label, minuteInterv
         <Text style={styles.pickerValue}>{formatDateTimeValue(current, pickerMode)}</Text>
         <RgIcon name="calendar" size={20} color="textMuted" />
       </Pressable>
-      {presentation === 'modal' ? (
-        <RgDialog open={open} onClose={cancel}>{pickerBody}</RgDialog>
-      ) : (
+      {presentation === 'sheet' ? (
         <RgSheet open={open} onClose={cancel}>{pickerBody}</RgSheet>
+      ) : (
+        <RgDialog open={open} onClose={cancel}>{pickerBody}</RgDialog>
       )}
     </View>
   );

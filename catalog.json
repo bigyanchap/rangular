@@ -2743,7 +2743,7 @@
     },
     {
       "code": "GEN_PICKER_PRESENTATION",
-      "meaning": "A <datetime-picker> presentation is not one of the two containers (sheet, modal); the picker opens in a sheet."
+      "meaning": "A <datetime-picker> presentation is not one of the two containers (modal, sheet); the picker opens in a modal."
     },
     {
       "code": "GEN_BUTTON_COLOR",

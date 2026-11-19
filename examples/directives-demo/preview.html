@@ -1248,7 +1248,7 @@ function __buildPicker(el, scope, path) {
     if (interval === 5) {
       pending.minute = Math.min(55, Math.round(pending.minute / 5) * 5);
     }
-    __pickerStates[path] = { pending: pending };
+    __pickerStates[path] = { pending: pending, step: 'date' };
     __render();
   });
   wrap.appendChild(box);
@@ -1256,11 +1256,14 @@ function __buildPicker(el, scope, path) {
   if (pickerState) wrap.appendChild(__buildPickerSheet(el, scope, path, mode, interval, pickerState));
   return wrap;
 }
-// presentation="modal" centres the same head and wheels in a dialog
-// panel instead of the bottom sheet; the container is the only
-// difference, exactly as in the generated app.
+// The wheels open centred in a dialog panel by default;
+// presentation="sheet" slides the same head and wheels up in a
+// bottom sheet instead. The container is the only difference,
+// exactly as in the generated app. Datetime runs two steps in
+// that container: the date wheel with Next, then the time wheels
+// with Back and Done.
 function __buildPickerSheet(el, scope, path, mode, interval, pickerState) {
-  var modal = __attr(el, 'presentation', scope) === 'modal';
+  var modal = __attr(el, 'presentation', scope) !== 'sheet';
   var overlay = document.createElement('div');
   overlay.className = 'overlay' + (modal ? ' overlay-center' : '');
   var backdrop = document.createElement('div');
@@ -1277,16 +1280,28 @@ function __buildPickerSheet(el, scope, path, mode, interval, pickerState) {
     handle.className = 'sheet-handle';
     sheet.appendChild(handle);
   }
+  var twoStep = mode === 'datetime';
+  var step = pickerState.step || 'date';
   var head = document.createElement('div');
   head.className = 'picker-head';
   var cancel = document.createElement('button');
   cancel.type = 'button';
   cancel.className = 'picker-head-btn';
-  cancel.textContent = 'Cancel';
-  cancel.addEventListener('click', function () {
-    delete __pickerStates[path];
-    __render();
-  });
+  if (twoStep && step === 'time') {
+    cancel.textContent = 'Back';
+    cancel.addEventListener('click', function () {
+      var st = __pickerStates[path];
+      if (!st) return;
+      st.step = 'date';
+      __render();
+    });
+  } else {
+    cancel.textContent = 'Cancel';
+    cancel.addEventListener('click', function () {
+      delete __pickerStates[path];
+      __render();
+    });
+  }
   head.appendChild(cancel);
   var headTitle = document.createElement('span');
   headTitle.className = 'picker-head-title';
@@ -1296,19 +1311,32 @@ function __buildPickerSheet(el, scope, path, mode, interval, pickerState) {
   var done = document.createElement('button');
   done.type = 'button';
   done.className = 'picker-head-btn picker-head-done';
-  done.textContent = 'Done';
-  done.addEventListener('click', function () {
-    var st = __pickerStates[path];
-    if (!st) return;
-    var iso = __composeIso(st.pending);
-    delete __pickerStates[path];
-    __runChange(el, scope, iso);
-  });
+  if (twoStep && step === 'date') {
+    done.textContent = 'Next';
+    done.addEventListener('click', function () {
+      var st = __pickerStates[path];
+      if (!st) return;
+      st.step = 'time';
+      __render();
+    });
+  } else {
+    done.textContent = 'Done';
+    done.addEventListener('click', function () {
+      var st = __pickerStates[path];
+      if (!st) return;
+      var iso = __composeIso(st.pending);
+      delete __pickerStates[path];
+      __runChange(el, scope, iso);
+    });
+  }
   head.appendChild(done);
   sheet.appendChild(head);
   var wheels = document.createElement('div');
   wheels.className = 'wheels';
-  __wheelSpecs(pickerState.pending, mode, interval).forEach(function (spec) {
+  __wheelSpecs(pickerState.pending, mode, interval).filter(function (spec) {
+    if (!twoStep) return true;
+    return step === 'date' ? spec.name === 'date' : spec.name !== 'date';
+  }).forEach(function (spec) {
     var wheel = document.createElement('div');
     wheel.className = 'wheel' + (spec.name === 'date' ? ' wide' : '');
     wheel.setAttribute('data-wheel', spec.name);

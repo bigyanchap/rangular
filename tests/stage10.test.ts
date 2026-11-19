@@ -426,7 +426,7 @@ test('reminder example: zero diagnostics, doctor clean, golden and style snapsho
 test('reminder codegen: all four pieces are present in the generated file', () => {
   const { result } = compileExample('reminder');
   const code = normalize(result.code);
-  assert.ok(code.includes('<RgDateTimePicker mode="datetime" label="When" value={when} onChange={($event) => onWhen($event)} />'));
+  assert.ok(code.includes('<RgDateTimePicker mode="datetime" presentation="sheet" label="When" value={when} onChange={($event) => onWhen($event)} />'));
   assert.ok(code.includes('<RgSheet open={sheetOpen} onClose={() => closeSheet()}>'));
   assert.ok(code.includes('<RgDialog title="Delete this reminder?" open={confirmOpen} onClose={() => closeConfirm()}>'));
   assert.ok(code.includes("const ref = snack.open('Reminder deleted', 'Undo');"));
@@ -542,13 +542,20 @@ const wheelValue = (app: ShimElement, wheel: string, text: string): ShimElement 
   return item;
 };
 
-test('reminder preview behaviour: picker Done commits, Cancel discards', () => {
+test('reminder preview behaviour: datetime steps separate, Done commits, Cancel discards', () => {
   const { app } = loadPreview(renderReminderPreview());
   assert.ok(app.textContent.includes('When (ISO): 2026-11-13T09:00:00'));
   const box = findAll(app, (e) => e.className === 'picker-box')[0];
   assert.ok(box, 'the picker field is rendered');
   box.click();
   assert.ok(findAll(app, (e) => e.className === 'wheels').length === 1, 'the wheels open in a sheet');
+  // Datetime opens on the date step alone: the date wheel is
+  // there and the time wheels are not (his rule, 2026-11-19).
+  assert.ok(findAll(app, (e) => e.getAttribute('data-wheel') === 'date').length === 1, 'the date step shows the date wheel');
+  assert.equal(findAll(app, (e) => e.getAttribute('data-wheel') === 'hour').length, 0, 'the date step hides the time wheels');
+  buttonsWithText(app, 'Next')[0].click();
+  assert.equal(findAll(app, (e) => e.getAttribute('data-wheel') === 'date').length, 0, 'the time step hides the date wheel');
+  assert.ok(findAll(app, (e) => e.getAttribute('data-wheel') === 'hour').length === 1, 'the time step shows the time wheels');
   wheelValue(app, 'hour', '10').click();
   wheelValue(app, 'minute', '30').click();
   buttonsWithText(app, 'Done')[0].click();
@@ -557,7 +564,9 @@ test('reminder preview behaviour: picker Done commits, Cancel discards', () => {
   assert.equal(findAll(app, (e) => e.className === 'wheels').length, 0, 'the picker sheet closed');
 
   findAll(app, (e) => e.className === 'picker-box')[0].click();
+  buttonsWithText(app, 'Next')[0].click();
   wheelValue(app, 'hour', '11').click();
+  buttonsWithText(app, 'Back')[0].click();
   buttonsWithText(app, 'Cancel')[0].click();
   assert.ok(app.textContent.includes('When (ISO): 2026-11-13T10:30:00'), 'Cancel keeps the committed value');
   assert.equal(findAll(app, (e) => e.className === 'wheels').length, 0, 'Cancel closes the sheet');

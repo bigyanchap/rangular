@@ -2337,9 +2337,9 @@ class Generator {
         if (presentation !== 'sheet' && presentation !== 'modal') {
           diagnostics.push(error(
             'GEN_PICKER_PRESENTATION',
-            `<datetime-picker> presentation '${presentation}' is not a picker presentation; the picker opens in a sheet`,
+            `<datetime-picker> presentation '${presentation}' is not a picker presentation; the picker opens in a modal`,
             el.pos.line, el.pos.column,
-            'Use presentation="sheet" (the default) or presentation="modal"',
+            'Use presentation="modal" (the default) or presentation="sheet"',
           ));
         }
         props.push(`presentation="${escapeJsxAttrValue(presentation)}"`);
