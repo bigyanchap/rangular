@@ -1,0 +1,19 @@
+<screen>
+  <appbar title="Team"></appbar>
+  <card>
+    <form [formGroup]="teamForm" (submit)="save()">
+      <input label="Team name" placeholder="Red Tigers" formControlName="team">
+      <p *ngIf="teamForm.get('team').invalid && teamForm.get('team').touched">Team name is required.</p>
+      <div formArrayName="members">
+        <div *ngFor="let m of teamForm.get('members').controls; let i = index">
+          <input label="Member" placeholder="Member name" [formControlName]="i">
+          <p *ngIf="teamForm.get('members').at(i).invalid && teamForm.get('members').at(i).touched">Member name is required.</p>
+          <button (click)="removeMember(i)">Remove</button>
+        </div>
+      </div>
+      <button (click)="addMember()">Add member</button>
+      <button type="submit" [disabled]="teamForm.invalid">Save team</button>
+    </form>
+    <p *ngIf="summary">Saved: {{ summary }}</p>
+  </card>
+</screen>

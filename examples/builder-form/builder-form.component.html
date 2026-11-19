@@ -1,0 +1,19 @@
+<screen>
+  <appbar title="Sign up"></appbar>
+  <card>
+    <form [formGroup]="signupForm" (submit)="save()">
+      <input label="Name" placeholder="Your name" formControlName="name">
+      <p *ngIf="signupForm.get('name').invalid && signupForm.get('name').touched">Name is required.</p>
+      <input label="Email" placeholder="you@example.com" formControlName="email">
+      <p *ngIf="signupForm.get('email').invalid && signupForm.get('email').touched">Enter a valid email address.</p>
+      <input label="City" placeholder="Your city" formControlName="city">
+      <div formArrayName="aliases">
+        <div *ngFor="let a of signupForm.get('aliases').controls; let i = index">
+          <input label="Alias" placeholder="Another name" [formControlName]="i">
+        </div>
+      </div>
+      <button type="submit" [disabled]="signupForm.invalid">Create account</button>
+    </form>
+    <p *ngIf="summary">Saved: {{ summary }}</p>
+  </card>
+</screen>
