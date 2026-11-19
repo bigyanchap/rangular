@@ -80,6 +80,10 @@
   .btn[disabled] { opacity: .38; cursor: default; }
   .stack { display: flex; flex-direction: column; gap: 12px; }
   .btn-text { background: transparent; color: var(--primary); text-align: left; padding: 0 8px; }
+  .btn-danger { background: var(--role-danger); color: var(--role-on-error); }
+  .btn-neutral { background: var(--surface-variant); color: var(--role-on-surface-variant); }
+  .btn-text.btn-danger { background: transparent; color: var(--role-danger); }
+  .btn-text.btn-neutral { background: transparent; color: var(--text-muted); }
   .icon-btn { align-self: flex-start; width: 48px; height: 48px; display: inline-flex; align-items: center; justify-content: flex-start; background: transparent; border: none; padding: 0; cursor: pointer; }
   .form { display: flex; flex-direction: column; gap: 12px; }
   .tab-panel { display: flex; flex-direction: column; gap: 12px; }
@@ -1268,9 +1272,13 @@ function __buildPicker(el, scope, path) {
   if (pickerState) wrap.appendChild(__buildPickerSheet(el, scope, path, mode, interval, pickerState));
   return wrap;
 }
+// presentation="modal" centres the same head and wheels in a dialog
+// panel instead of the bottom sheet; the container is the only
+// difference, exactly as in the generated app.
 function __buildPickerSheet(el, scope, path, mode, interval, pickerState) {
+  var modal = __attr(el, 'presentation', scope) === 'modal';
   var overlay = document.createElement('div');
-  overlay.className = 'overlay';
+  overlay.className = 'overlay' + (modal ? ' overlay-center' : '');
   var backdrop = document.createElement('div');
   backdrop.className = 'overlay-backdrop';
   backdrop.addEventListener('click', function () {
@@ -1279,10 +1287,12 @@ function __buildPickerSheet(el, scope, path, mode, interval, pickerState) {
   });
   overlay.appendChild(backdrop);
   var sheet = document.createElement('section');
-  sheet.className = 'sheet';
-  var handle = document.createElement('div');
-  handle.className = 'sheet-handle';
-  sheet.appendChild(handle);
+  sheet.className = modal ? 'dialog' : 'sheet';
+  if (!modal) {
+    var handle = document.createElement('div');
+    handle.className = 'sheet-handle';
+    sheet.appendChild(handle);
+  }
   var head = document.createElement('div');
   head.className = 'picker-head';
   var cancel = document.createElement('button');
@@ -3467,7 +3477,9 @@ function __buildCore(el, scope, path, form) {
     case 'chips': return wrap('div', 'chips');
     case 'button': {
       var b = document.createElement('button');
-      b.className = el.attrs['variant'] === 'text' ? 'btn btn-text' : 'btn';
+      var bColor = __controlValue(el, 'color', scope);
+      b.className = (el.attrs['variant'] === 'text' ? 'btn btn-text' : 'btn') +
+        (bColor === 'danger' ? ' btn-danger' : bColor === 'neutral' ? ' btn-neutral' : '');
       var bTip = __controlValue(el, 'tooltip', scope);
       if (bTip) b.title = String(bTip);
       if (__binding(el, 'disabled', scope)) b.disabled = true;
