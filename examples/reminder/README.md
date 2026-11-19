@@ -1,6 +1,6 @@
 # Recipe: Reminder, iOS wheel picker, sheet, dialog and snackbar
 
-**Intent**: A small reminder form that proves the four Stage 10 overlay pieces together: an iOS style wheel date-time picker (shown twice, once in its default bottom sheet and once in a modal), a declarative bottom sheet holding repeat options, a declarative confirm dialog whose Cancel and Delete buttons carry the neutral and danger colours, and a SnackBar service with an Undo action.
+**Intent**: A small reminder form that proves the four Stage 10 overlay pieces together: an iOS style wheel date-time picker (shown twice, once in a bottom sheet and once in the default modal), a declarative bottom sheet holding repeat options, a declarative confirm dialog whose Cancel and Delete buttons carry the neutral and danger colours, and a SnackBar service with an Undo action.
 
 **Source**
 
@@ -74,7 +74,7 @@ export class ReminderComponent {
 
   <form (submit)="save()">
     <input label="Title" placeholder="What should I remember?" [(ngModel)]="title">
-    <datetime-picker label="When" mode="datetime" [value]="when" (change)="onWhen($event)"></datetime-picker>
+    <datetime-picker label="When" mode="datetime" presentation="sheet" [value]="when" (change)="onWhen($event)"></datetime-picker>
     <datetime-picker label="When (modal)" mode="datetime" presentation="modal" [value]="when" (change)="onWhen($event)"></datetime-picker>
     <p>When (ISO): {{ when }}</p>
     <p>Repeat: {{ repeat }}</p>
@@ -134,8 +134,8 @@ export default function Reminder() {
   return (
     <>
       <RgScreen>
-        <RgDateTimePicker mode="datetime" label="When" value={when} onChange={($event) => onWhen($event)} />
-        <RgDateTimePicker mode="datetime" label="When (modal)" presentation="modal" value={when} onChange={($event) => onWhen($event)} />
+        <RgDateTimePicker mode="datetime" presentation="sheet" label="When" value={when} onChange={($event) => onWhen($event)} />
+        <RgDateTimePicker mode="datetime" presentation="modal" label="When (modal)" value={when} onChange={($event) => onWhen($event)} />
         <RgSheet open={sheetOpen} onClose={() => closeSheet()}>
           <RgRadioGroup value={repeat} onChange={($event) => onRepeat($event)}>
             <RgRadio value="daily">Every day</RgRadio>
@@ -158,7 +158,7 @@ The entry component mirrors the module level SnackBar in state and renders the `
 
 **Rules used**
 
-- **Product rule: the picker is the iOS wheel picker on every platform.** The field opens the wheels in a bottom sheet by default, never a calendar grid and never an Android style date or time dialog. `presentation="modal"` centres the same wheels, header and commit rules in a dialog card instead; the container is the author's choice, the wheels are not negotiable. A presentation outside the two is a `GEN_PICKER_PRESENTATION` error. Date mode has month, day and year wheels. Time mode has hour 1 to 12, minute and AM/PM wheels. Datetime mode has one combined date wheel, then hour, minute and AM/PM wheels. Done and Cancel are accent coloured text buttons in the sheet header. Done commits through `(change)` as an ISO string; Cancel discards the pending value.
+- **Product rule: the picker is the iOS wheel picker on every platform.** The field opens the wheels centred in a modal dialog by default, never a calendar grid and never an Android style date or time dialog. `presentation="sheet"` slides the same wheels, header and commit rules up in a bottom sheet instead; the container is the author's choice, the wheels are not negotiable. A presentation outside the two is a `GEN_PICKER_PRESENTATION` error. Date mode has month, day and year wheels. Time mode has hour 1 to 12, minute and AM/PM wheels. Datetime mode has one combined date wheel, then hour, minute and AM/PM wheels. Done and Cancel are accent coloured text buttons in the sheet header. Done commits through `(change)` as an ISO string; Cancel discards the pending value.
 - **Button colours are roles, not paint.** `color` on a `<button>` takes `primary` (the default gradient), `danger` (the theme error role, for a destructive action) or `neutral` (the quiet surface-variant grey, for a cancelling one), with the `text` variant colouring only its label. The roles follow the theme in both modes; a colour name like `red` is a `GEN_BUTTON_COLOR` error whose fix lists the three roles.
 - **Picker ranges and steps.** The date mode year wheel runs from the value year minus 25 to the value year plus 25. The datetime date wheel lists 183 days before and after the value, the finite window this version uses in place of the endless iOS list. `minuteInterval` is 1 or 5; another value warns `GEN_PICKER_INTERVAL` and the generated code uses the nearest of the two. An unknown `mode` is a `GEN_PICKER_MODE` error whose fix lists the three modes.
 - **Material correspondence, adapted honestly.** `<datetime-picker>` adapts the Angular Material datepicker surface to a phone: Material uses an input, a toggle and a calendar popup, and a phone has no calendar popup culture, so Rangular makes the picker one dedicated block. `<sheet>` adapts MatBottomSheet and `<dialog>` adapts MatDialog. Both Material APIs open components from services; Rangular v1 is declarative instead, because templates here are declarative: `[open]` drives visibility and `(close)` reports a backdrop tap. `SnackBar` keeps the Material service shape: inject it, call `open(message, actionLabel, durationMs)`, with 4000 ms as the default duration.
@@ -170,7 +170,7 @@ The entry component mirrors the module level SnackBar in state and renders the `
 
 **Common mistakes**
 
-- **Asking for a calendar or an Android style picker.** There is none, by product rule. Every platform gets the iOS style wheels, in a bottom sheet by default or in a modal with `presentation="modal"`.
+- **Asking for a calendar or an Android style picker.** There is none, by product rule. Every platform gets the iOS style wheels, in a modal by default or in a bottom sheet with `presentation="sheet"`.
 - **Painting a button with a colour name.** `color="red"` is not a role and does not compile. Use `color="danger"` for the destructive action and `color="neutral"` for its cancel, as the dialog here does.
 - **Writing `(close)="confirmOpen = false"`.** Use a method: `(close)="closeConfirm()"` with `closeConfirm() { this.confirmOpen = false; }`.
 - **Expecting Cancel on the picker to emit.** Cancel discards the pending wheels value. Only Done emits `(change)`, once, with the composed ISO string.

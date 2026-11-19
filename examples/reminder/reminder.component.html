@@ -3,7 +3,7 @@
 
   <form (submit)="save()">
     <input label="Title" placeholder="What should I remember?" [(ngModel)]="title">
-    <datetime-picker label="When" mode="datetime" [value]="when" (change)="onWhen($event)"></datetime-picker>
+    <datetime-picker label="When" mode="datetime" presentation="sheet" [value]="when" (change)="onWhen($event)"></datetime-picker>
     <datetime-picker label="When (modal)" mode="datetime" presentation="modal" [value]="when" (change)="onWhen($event)"></datetime-picker>
     <p>When (ISO): {{ when }}</p>
     <p>Repeat: {{ repeat }}</p>

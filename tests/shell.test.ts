@@ -257,6 +257,7 @@ test('the keyboard contract lives in the shipped screen and fields', () => {
   assert.ok(primitivesSrc.includes('keyboardShouldPersistTaps'), 'taps persist while the keyboard is up');
   assert.ok(!primitivesSrc.includes('InputAccessoryView'), 'fields carry no keyboard accessory (removed at his word, 2026-11-19)');
   assert.ok(primitivesSrc.includes('keyboardWillShow'), 'the screen learns the keyboard frame from the keyboard events');
+  assert.ok(primitivesSrc.includes('bottom: keyboardHeight'), 'the overlay layer ends at the keyboard top edge, so a modal field is never under the keyboard');
   assert.ok(primitivesSrc.includes('measureInWindow'), 'the lift measures the focused field in the window');
   assert.ok(primitivesSrc.includes('requestLift'), 'a focused field hands its node to the screen for the calculated lift');
   assert.ok(!primitivesSrc.includes('scrollResponderScrollNativeHandleToKeyboard'), 'the legacy scroll responder lift is gone (it measured before the keyboard frame settled and under-scrolled on a phone, 2026-11-19)');

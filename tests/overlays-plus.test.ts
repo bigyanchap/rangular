@@ -11,8 +11,9 @@ import { renderPreview } from '../packages/compiler/src/preview/renderPreview';
 // presentation. A <button> gains color="primary|danger|neutral"
 // (danger paints the theme error role, neutral the quiet grey),
 // validated at compile time, and <datetime-picker> gains
-// presentation="sheet|modal": the same iOS wheels open in the
-// default bottom sheet or centred in a dialog card.
+// presentation="modal|sheet": the same iOS wheels open centred
+// in a dialog card by default, or in a bottom sheet when the
+// author asks for presentation="sheet".
 
 const ROOT = path.join(__dirname, '..', '..');
 const normalize = (s: string) => s.replace(/\s+/g, ' ').trim();
@@ -104,8 +105,9 @@ const FIXTURE_HTML = `
       <button color="danger" (click)="deleteItem()">Delete</button>
     </actions>
   </dialog>
-  <datetime-picker label="Sheet time" mode="time" [value]="when" (change)="onWhen($event)"></datetime-picker>
+  <datetime-picker label="Sheet time" mode="time" presentation="sheet" [value]="when" (change)="onWhen($event)"></datetime-picker>
   <datetime-picker label="Modal time" mode="time" presentation="modal" [value]="when" (change)="onWhen($event)"></datetime-picker>
+  <datetime-picker label="Default time" mode="time" [value]="when" (change)="onWhen($event)"></datetime-picker>
   <p>When: {{ when }}</p>
 </screen>
 `;
@@ -135,9 +137,10 @@ test('picker presentation reaches RgDateTimePicker; the default picker carries n
   const result = compileFixture();
   assert.deepEqual(result.diagnostics, [], JSON.stringify(result.diagnostics));
   assert.ok(result.code!.includes('presentation="modal"'), result.code!);
+  assert.ok(result.code!.includes('presentation="sheet"'), result.code!);
   const pickers = result.code!.match(/<RgDateTimePicker[^>]*>/g) ?? [];
-  assert.equal(pickers.length, 2, result.code!);
-  assert.equal(pickers.filter((p) => p.includes('presentation')).length, 1, result.code!);
+  assert.equal(pickers.length, 3, result.code!);
+  assert.equal(pickers.filter((p) => p.includes('presentation')).length, 2, result.code!);
 });
 
 test('a picker presentation outside the two containers is a GEN_PICKER_PRESENTATION error', () => {
@@ -239,10 +242,10 @@ test('preview: the dialog paints Cancel neutral and Delete danger', () => {
   assert.ok(del && hasClass(del, 'btn-danger'), del?.className);
 });
 
-test('preview: the modal picker opens centred in a dialog panel, the sheet picker does not', () => {
+test('preview: the modal and default pickers open centred in a dialog panel, the sheet picker does not', () => {
   const app = previewApp();
   const boxes = findAll(app, (e) => hasClass(e, 'picker-box'));
-  assert.equal(boxes.length, 2);
+  assert.equal(boxes.length, 3);
   boxes[1].click();
   let overlays = findAll(app, (e) => hasClass(e, 'overlay'));
   assert.equal(overlays.length, 1);
@@ -266,4 +269,14 @@ test('preview: the modal picker opens centred in a dialog panel, the sheet picke
   assert.equal(overlays.length, 1);
   assert.ok(!hasClass(overlays[0], 'overlay-center'), overlays[0].className);
   assert.equal(findAll(app, (e) => hasClass(e, 'sheet')).length, 1);
+  // And the picker with no presentation at all opens as a modal:
+  // modal is the default container.
+  const cancelBtn = findAll(app, (e) => hasClass(e, 'picker-head-btn') && e.textContent.trim() === 'Cancel')[0];
+  cancelBtn.click();
+  const boxesFinal = findAll(app, (e) => hasClass(e, 'picker-box'));
+  boxesFinal[2].click();
+  overlays = findAll(app, (e) => hasClass(e, 'overlay'));
+  assert.equal(overlays.length, 1);
+  assert.ok(hasClass(overlays[0], 'overlay-center'), overlays[0].className);
+  assert.equal(findAll(app, (e) => hasClass(e, 'dialog')).length, 1);
 });

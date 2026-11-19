@@ -71,6 +71,12 @@ test('content melts into a pinned bottom bar instead of being sliced by it', () 
     'the melt rides the bottom of the scroll box when a bar is pinned');
 });
 
+test('the picker wheel ticks the selection haptic while rolling', () => {
+  assert.ok(primitivesSrc.includes('tickWhileRolling'), 'the wheel tracks the row passing the centre');
+  assert.ok(primitivesSrc.includes('tickedIndexRef'), 'the wheel remembers the last ticked row, so one roll ticks once per row');
+  assert.ok(primitivesSrc.includes('onScroll={(e: any) => tickWhileRolling(e.nativeEvent.contentOffset.y)}'), 'the wheel scroll feeds the tick tracker');
+});
+
 test('the bottom nav answers a tab change with a haptic when asked', () => {
   assert.ok(primitivesSrc.includes('function fireSelectionHaptic()'), 'one shared selection haptic');
   assert.ok(
