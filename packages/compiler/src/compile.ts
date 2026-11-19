@@ -9,7 +9,7 @@ import {
   ServiceInfo,
 } from './class/parseComponent';
 import { parseRoutesFile, ResolvedRoute } from './class/parseRoutes';
-import { analyzeFormInitializer, isFormInitializer } from './class/formInit';
+import { analyzeFormInitializer, builderDepsOf, isFormInitializer } from './class/formInit';
 import { ChildUnitInput, generateComponent } from './codegen/generate';
 import { SourceMapV3 } from './codegen/sourceMap';
 import { Diagnostic, error, warning } from './diagnostics';
@@ -166,6 +166,7 @@ function isTemplateDriven(code: string): boolean {
     || code === 'GEN_NGMODEL_TARGET'
     || code === 'GEN_NGMODEL_EXPR'
     || code === 'GEN_FORM_CONTROL'
+    || code === 'GEN_FORM_ARRAY'
     || code === 'GEN_FORMGROUP_TYPE'
     || code === 'GEN_ROUTE_UNSUPPORTED'
     || code === 'GEN_PICKER_MODE'
@@ -607,16 +608,17 @@ export function compileComponent(options: CompileOptions): CompileResult {
     [component, entryKey] as const,
     ...children.map((c) => [c.info, c.fileName ?? entryKey] as const),
   ]) {
+    const builderDeps = builderDepsOf(info);
     for (const field of info.fields) {
-      if (!isFormInitializer(field.initializer)) continue;
-      const analysis = analyzeFormInitializer(field.initializer!);
+      if (!isFormInitializer(field.initializer, builderDeps)) continue;
+      const analysis = analyzeFormInitializer(field.initializer!, builderDeps);
       if (!analysis.supported) {
         diagnostics.push({
           ...warning(
             'GEN_FORM_INITIALIZER',
             `Field '${field.name}' of ${info.className} has a form initializer the preview cannot evaluate (${analysis.reason ?? 'unsupported shape'}); the generated app runs it as written, but the preview renders the form without live values`,
             undefined, undefined,
-            'Keep form initializers to literals, Validators references and validator calls: new FormGroup({ email: new FormControl(\'\', [Validators.required, Validators.email]) })',
+            'Keep form initializers to literals, Validators references and validator calls, nested groups and FormArrays, or the same shapes built by an injected FormBuilder: new FormGroup({ email: new FormControl(\'\', [Validators.required, Validators.email]) })',
           ),
           file,
         });

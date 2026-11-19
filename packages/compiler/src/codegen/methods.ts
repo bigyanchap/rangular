@@ -309,6 +309,19 @@ class Translator {
       }
       return `(${params}) => ${this.expr(node.body)}`;
     }
+    if (ts.isNewExpression(node)) {
+      // Forms (completion pass): rows are born in methods, an add-row
+      // handler is `this.members.push(new FormControl(''))`. The four
+      // forms classes translate verbatim: generated code imports the
+      // runtime classes, and the preview page binds the same names to
+      // its mirror factories.
+      const name = ts.isIdentifier(node.expression) ? node.expression.text : undefined;
+      if (name === 'FormControl' || name === 'FormGroup' || name === 'FormArray' || name === 'FormBuilder') {
+        const args = (node.arguments ?? []).map((a) => this.expr(a)).join(', ');
+        return `new ${name}(${args})`;
+      }
+      return this.fail(`new ${name ?? '...'}(...) in a method`);
+    }
     return this.fail(ts.SyntaxKind[node.kind]);
   }
 

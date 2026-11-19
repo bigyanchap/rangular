@@ -332,7 +332,8 @@ export class Container {
 // --- Forms (Stage 8) ---------------------------------------------------------
 //
 // The @angular/forms core, at the size Rangular templates can drive:
-// Validators, FormControl and FormGroup, plus validateValue, the merge
+// Validators, FormControl, FormGroup, FormArray and FormBuilder, plus
+// validateValue, the merge
 // helper generated code uses for template-driven (ngModel) inputs.
 // Semantics and error shapes follow Angular:
 //
@@ -425,11 +426,32 @@ export function validateValue(value: unknown, validators: ValidatorFn[]): Valida
 }
 
 /**
+ * Any node of a reactive form tree: a single control, a named group or
+ * an ordered array. The three classes share this one shape, so a group
+ * or an array can hold any of them and every aggregate simply recurses
+ * into its children. setValue and patchValue take any value at this
+ * level, exactly as Angular's AbstractControl declares them; each
+ * class narrows the shape it expects.
+ */
+export interface FormNode {
+  readonly value: unknown;
+  readonly valid: boolean;
+  readonly invalid: boolean;
+  readonly errors: ValidationErrors | null;
+  readonly touched: boolean;
+  readonly dirty: boolean;
+  readonly valueChanges: ObservableLite<any>;
+  setValue(value: any): void;
+  patchValue(value: any): void;
+  markAllAsTouched(): void;
+}
+
+/**
  * One reactive form control (Stage 8). Holds a value, validates it on
  * construction and on every setValue, tracks touched/dirty the way
  * Angular does, and exposes valueChanges as an Observable-lite.
  */
-export class FormControl {
+export class FormControl implements FormNode {
   value: unknown;
   errors: ValidationErrors | null = null;
   touched = false;
@@ -462,7 +484,10 @@ export class FormControl {
     for (const listener of [...this.listeners]) listener(value);
   }
 
+  patchValue(value: unknown): void { this.setValue(value); }
+
   markAsTouched(): void { this.touched = true; }
+  markAllAsTouched(): void { this.touched = true; }
   markAsDirty(): void { this.dirty = true; }
 
   private revalidate(): void {
@@ -470,27 +495,53 @@ export class FormControl {
   }
 }
 
-/**
- * A named set of FormControls (Stage 8). The group's value is the plain
- * object of control values; the group is valid exactly when every
- * control is valid. There are no group-level validators in this version,
- * so the group's own errors are always null, as in Angular when no group
- * validator is registered.
- */
-export class FormGroup {
-  readonly controls: Record<string, FormControl>;
 
-  constructor(controls: Record<string, FormControl>) {
+/** Write a value into any form node, recursing into containers. */
+function setNodeValue(node: FormNode, value: unknown): void {
+  if (node instanceof FormControl) node.setValue(value);
+  else if (node instanceof FormGroup) node.setValue(value as Record<string, unknown>);
+  else node.setValue(value as unknown[]);
+}
+
+/** Write a partial value into any form node, recursing into containers. */
+function patchNodeValue(node: FormNode, value: unknown): void {
+  if (node instanceof FormControl) node.patchValue(value);
+  else if (node instanceof FormGroup) node.patchValue(value as Record<string, unknown>);
+  else node.patchValue(value as unknown[]);
+}
+
+/**
+ * A named set of form nodes (Stage 8; tree nodes since the forms
+ * completion pass). The group's value is the plain object of child
+ * values (a FormArray child contributes an array, a nested FormGroup
+ * an object); the group is valid exactly when every child is valid.
+ * There are no group-level validators in this version, so the group's
+ * own errors are always null, as in Angular when no group validator
+ * is registered. The group's valueChanges emits its value whenever
+ * any descendant control changes.
+ */
+export class FormGroup implements FormNode {
+  readonly controls: Record<string, FormNode>;
+  readonly valueChanges: ObservableLite<Record<string, unknown>>;
+
+  constructor(controls: Record<string, FormNode>) {
     this.controls = controls;
+    this.valueChanges = {
+      subscribe: (next?: (value: Record<string, unknown>) => void) => {
+        const subs = Object.values(this.controls).map((child) =>
+          child.valueChanges.subscribe(() => { if (next) next(this.value); }));
+        return { unsubscribe: () => { subs.forEach((sub) => sub.unsubscribe()); } };
+      },
+    };
   }
 
-  get(name: string): FormControl {
+  get(name: string): FormNode {
     return this.controls[name];
   }
 
   get value(): Record<string, unknown> {
     const out: Record<string, unknown> = {};
-    for (const [name, control] of Object.entries(this.controls)) out[name] = control.value;
+    for (const [name, child] of Object.entries(this.controls)) out[name] = child.value;
     return out;
   }
 
@@ -510,7 +561,173 @@ export class FormGroup {
   }
 
   markAllAsTouched(): void {
-    for (const control of Object.values(this.controls)) control.markAsTouched();
+    for (const child of Object.values(this.controls)) child.markAllAsTouched();
+  }
+
+  /** Set every child from a complete value object, as in Angular. */
+  setValue(value: Record<string, unknown>): void {
+    for (const name of Object.keys(this.controls)) {
+      if (!(name in value)) throw new Error(`FormGroup.setValue: no value given for control '${name}'`);
+    }
+    for (const [name, v] of Object.entries(value)) {
+      const child = this.controls[name];
+      if (!child) throw new Error(`FormGroup.setValue: no control named '${name}'`);
+      setNodeValue(child, v);
+    }
+  }
+
+  /** Set the children named in a partial value object, as in Angular. */
+  patchValue(value: Record<string, unknown>): void {
+    for (const [name, v] of Object.entries(value)) {
+      const child = this.controls[name];
+      if (child) patchNodeValue(child, v);
+    }
+  }
+}
+
+/**
+ * An ordered list of form nodes (forms completion pass): the dynamic
+ * side of reactive forms, for rows the user can add and remove. The
+ * array's value is the array of child values; it is valid exactly
+ * when every child is valid. Its valueChanges emits whenever a child
+ * changes and whenever the structure changes (push, insert, removeAt,
+ * clear), so a component subscribed once stays live across edits.
+ * There are no array-level validators in this version, so the array's
+ * own errors are always null.
+ */
+export class FormArray implements FormNode {
+  readonly controls: FormNode[];
+  readonly valueChanges: ObservableLite<unknown[]>;
+  private readonly listeners = new Set<(value: unknown[]) => void>();
+  private readonly childSubs = new Map<FormNode, { unsubscribe(): void }>();
+
+  constructor(controls: FormNode[] = []) {
+    this.controls = [...controls];
+    this.valueChanges = {
+      subscribe: (next?: (value: unknown[]) => void) => {
+        if (next) this.listeners.add(next);
+        return { unsubscribe: () => { if (next) this.listeners.delete(next); } };
+      },
+    };
+    for (const child of this.controls) this.watch(child);
+  }
+
+  private watch(child: FormNode): void {
+    this.childSubs.set(child, child.valueChanges.subscribe(() => this.emit()));
+  }
+
+  private unwatch(child: FormNode): void {
+    this.childSubs.get(child)?.unsubscribe();
+    this.childSubs.delete(child);
+  }
+
+  private emit(): void {
+    const value = this.value;
+    for (const listener of [...this.listeners]) listener(value);
+  }
+
+  get length(): number { return this.controls.length; }
+
+  at(index: number): FormNode {
+    return this.controls[index];
+  }
+
+  push(control: FormNode): void {
+    this.controls.push(control);
+    this.watch(control);
+    this.emit();
+  }
+
+  insert(index: number, control: FormNode): void {
+    this.controls.splice(index, 0, control);
+    this.watch(control);
+    this.emit();
+  }
+
+  removeAt(index: number): void {
+    const removed = this.controls.splice(index, 1)[0];
+    if (removed) this.unwatch(removed);
+    this.emit();
+  }
+
+  clear(): void {
+    for (const child of this.controls) this.unwatch(child);
+    this.controls.length = 0;
+    this.emit();
+  }
+
+  get value(): unknown[] {
+    return this.controls.map((c) => c.value);
+  }
+
+  get valid(): boolean {
+    return this.controls.every((c) => c.valid);
+  }
+
+  get invalid(): boolean { return !this.valid; }
+  get errors(): ValidationErrors | null { return null; }
+
+  get touched(): boolean {
+    return this.controls.some((c) => c.touched);
+  }
+
+  get dirty(): boolean {
+    return this.controls.some((c) => c.dirty);
+  }
+
+  markAllAsTouched(): void {
+    for (const child of this.controls) child.markAllAsTouched();
+  }
+
+  /** Set every child from a complete array of values, as in Angular. */
+  setValue(values: unknown[]): void {
+    if (values.length !== this.controls.length) {
+      throw new Error(`FormArray.setValue: expected ${this.controls.length} values, got ${values.length}`);
+    }
+    this.controls.forEach((child, i) => setNodeValue(child, values[i]));
+  }
+
+  /** Set the first children from a partial array of values. */
+  patchValue(values: unknown[]): void {
+    values.forEach((v, i) => {
+      if (i < this.controls.length) patchNodeValue(this.controls[i], v);
+    });
+  }
+}
+
+/**
+ * The config-object factory for form trees (forms completion pass),
+ * Angular's convenience over the classes above. An injected built-in,
+ * like HttpClient: constructor(private fb: FormBuilder). Each config
+ * entry becomes a node: a FormControl, FormGroup or FormArray instance
+ * is used as-is; a tuple [initialValue, validators] becomes a
+ * FormControl with those validators; any other value becomes a
+ * FormControl holding it. A tuple's third element (Angular's async
+ * validators) is ignored: there are no async validators in this
+ * version.
+ */
+export class FormBuilder {
+  group(config: Record<string, unknown>): FormGroup {
+    const controls: Record<string, FormNode> = {};
+    for (const [name, entry] of Object.entries(config)) controls[name] = this.coerce(entry);
+    return new FormGroup(controls);
+  }
+
+  control(initialValue: unknown = null, validators?: ValidatorFn | ValidatorFn[] | null): FormControl {
+    return new FormControl(initialValue, validators);
+  }
+
+  array(entries: unknown[] = []): FormArray {
+    return new FormArray(entries.map((entry) => this.coerce(entry)));
+  }
+
+  private coerce(entry: unknown): FormNode {
+    if (entry instanceof FormControl || entry instanceof FormGroup || entry instanceof FormArray) return entry;
+    if (Array.isArray(entry)) {
+      const validators = entry.length > 1 ? entry[1] as ValidatorFn | ValidatorFn[] : undefined;
+      return new FormControl(entry.length ? entry[0] : null, validators);
+    }
+    return new FormControl(entry ?? null);
   }
 }
 

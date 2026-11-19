@@ -307,37 +307,78 @@ except `required` passes an empty value. Errors are the runtime
   template-driven form, no `(ngSubmit)` event object, no control
   registry. Gate the submit button with the refs.
 
-**D. Reactive forms.** `FormControl`, `FormGroup` and `Validators`
-imported from `@angular/forms` in source are the runtime classes of
-the same names. A field initialised with `new FormGroup(...)` or
-`new FormControl(...)` is a stable instance: the generated component
+**D. Reactive forms.** `FormControl`, `FormGroup`, `FormArray`,
+`FormBuilder` and `Validators` imported from `@angular/forms` in
+source are the runtime classes of the same names. A field initialised
+with `new FormGroup(...)`, `new FormControl(...)` or
+`new FormArray(...)` is a stable instance: the generated component
 holds it in a `useRef`, reads it as `profileFormRef.current`, and
-re-renders through a version counter subscribed to every control's
-`valueChanges`. The template surface is `[formGroup]="profileForm"`
-on the `<form>` and `formControlName="email"` on inputs (a static
-attribute; an unknown control name is a `GEN_FORM_CONTROL` error
-listing the group's controls). `profileForm.get('email')` evaluates
-in template expressions, generated code and preview alike, because
-the instance is real in all three. `(submit)` on a reactive form
-marks all controls touched, then calls the handler; handlers read
-`this.profileForm.value` and `.valid` as plain member reads.
+re-renders through a version counter subscribed to every top-level
+child's `valueChanges`. Groups and arrays are tree nodes: a group or
+an array holds controls, groups and arrays, and `value`, `valid`,
+`touched` and `dirty` aggregate over the children (a group's value
+is the object of child values, an array's the array of row values).
+`setValue` writes a complete shape and `patchValue` a partial one,
+recursing into containers. The template surface is
+`[formGroup]="profileForm"` on the `<form>` and
+`formControlName="email"` on inputs (a static attribute; an unknown
+control name is a `GEN_FORM_CONTROL` error listing the group's
+controls). `profileForm.get('email')` evaluates in template
+expressions, generated code and preview alike, because the instance
+is real in all three. `(submit)` on a reactive form marks all
+controls touched (rows included), then calls the handler; handlers
+read `this.profileForm.value` and `.valid` as plain member reads.
 
-- **Preview initializer subset.** The preview builds the group by
+- **FormArray.** A dynamic list of rows lives in the group as a
+  `FormArray` child. A container inside the form carries
+  `formArrayName="members"`, naming a control of the group that must
+  be a `FormArray` (anything else is a `GEN_FORM_ARRAY` error, as is
+  `formArrayName` outside a `[formGroup]` form). Inside the
+  container, rows repeat with `*ngFor` over
+  `profileForm.get('members').controls` with `let i = index`, and a
+  row input binds `[formControlName]="i"`: the binding form is
+  allowed only here, as a row index (a static number also works; a
+  static name is a `GEN_FORM_ARRAY` error, rows are numbered, not
+  named). Rows are born and removed in methods:
+  `(this.profileForm.get('members') as FormArray).push(new FormControl(''))`
+  and `.removeAt(i)` compile, as do `insert`, `clear`, `at` and
+  `length`. The array's `valueChanges` fires on row edits and on
+  structure changes, so one subscription keeps the form live. Reach
+  the array with `.get()` at each use site: class getters are not
+  part of the subset, so a `get members()` accessor is never
+  generated.
+- **FormBuilder.** `FormBuilder` is a built-in injection like
+  `HttpClient`, in components and in root services:
+  `constructor(private fb: FormBuilder)`, then a field such as
+  `profileForm = this.fb.group({ email: ['', [Validators.required, Validators.email]], city: 'Salem', aliases: this.fb.array([['', Validators.required]]) })`.
+  The generated component holds the builder in a local of the dep's
+  name and the initializer is rewritten onto it, nested builder
+  calls included. Config entries coerce the Angular way: an instance
+  is used as-is, a tuple `[initialValue, validators]` becomes a
+  control with those validators, any other value becomes a control
+  holding it; a tuple's third element (async validators) is ignored.
+  `fb.control(...)` also mints a control inside a method, ready to
+  push into an array.
+- **Preview initializer subset.** The preview builds the tree by
   evaluating the field initializer with a small hand-written
   evaluator (no eval): literal initial values, `Validators.x`
   references, validator calls like `Validators.minLength(3)`,
-  validator arrays, trailing commas, and a `FormGroup` object of
-  `FormControl`s. Anything richer warns `GEN_FORM_INITIALIZER`: the
-  generated app still runs the initializer verbatim, only the
-  preview cannot build the instance.
-- **Not built:** group-level validators (a group's `errors` is null
-  and its validity is all-controls-valid), `FormArray`, async
-  validators, `FormBuilder`, value changes streams beyond each
-  control's `valueChanges`, and template binding for a standalone
-  `FormControl` field (no `[formControl]` surface yet).
+  validator arrays, trailing commas, `FormGroup` objects of form
+  nodes, `FormArray` lists, nested groups, and `FormBuilder`
+  group/control/array calls with literal or tuple entries. Anything
+  richer warns `GEN_FORM_INITIALIZER`: the generated app still runs
+  the initializer verbatim, only the preview cannot build the
+  instance.
+- **Not built:** group-level and array-level validators (a
+  container's `errors` is null and its validity is
+  all-children-valid), async validators, value changes streams
+  beyond each node's `valueChanges`, and template binding for a
+  standalone `FormControl` field (no `[formControl]` surface yet).
 
-See `examples/signup-form/` (template-driven) and
-`examples/profile-form/` (reactive) and their recipe cards.
+See `examples/signup-form/` (template-driven),
+`examples/profile-form/` (reactive), `examples/team-form/`
+(FormArray rows) and `examples/builder-form/` (FormBuilder) and
+their recipe cards.
 
 ## Routing (Stage 9)
 

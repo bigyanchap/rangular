@@ -4,7 +4,7 @@ import { CHART_TYPES } from '../../../ui/src/chart';
 import { CarriedImportBinding, ComponentInfo, DirectiveInfo, PipeInfo, ServiceInfo } from '../class/parseComponent';
 import { DirectiveStyleAssign, directiveStyles } from '../class/parseDirective';
 import { ResolvedRoute } from '../class/parseRoutes';
-import { analyzeFormInitializer, FormFieldInfo, isFormInitializer } from '../class/formInit';
+import { analyzeFormInitializer, builderDepsOf, FormFieldInfo, isFormInitializer, rewriteBuilderInitializer } from '../class/formInit';
 import { Diagnostic, error, warning } from '../diagnostics';
 import { nearestOnScale, ParsedCss } from '../style/css';
 import { ElementNode, EventBinding, TemplateNode, TemplateRoot } from '../template/ast';
@@ -210,7 +210,7 @@ export function isLiteralInitializer(init: string): boolean {
  * source, so the two sides cannot drift.
  */
 export function verbatimInitFields(
-  component: MethodHost,
+  component: MethodHost & { constructorDeps?: { propertyName: string; typeName: string }[] },
 ): { name: string; initializer: string }[] {
   const mutated = analyzeMutatedFields(component);
   const out: { name: string; initializer: string }[] = [];
@@ -218,7 +218,7 @@ export function verbatimInitFields(
     if (field.isInput || field.isOutput) continue;
     if (!field.initializer) continue;
     if (isLiteralInitializer(field.initializer)) continue;
-    if (isFormInitializer(field.initializer)) continue;
+    if (isFormInitializer(field.initializer, builderDepsOf(component))) continue;
     if (mutated.has(field.name)) continue;
     if (initializerUsesThis(field.initializer)) continue;
     out.push({ name: field.name, initializer: field.initializer });
@@ -408,6 +408,10 @@ interface InputInfo {
   key?: string;
   groupField?: string;
   controlName?: string;
+  /** The FormArray control this input is a row of (formArrayName subtree). */
+  arrayName?: string;
+  /** The row index expression source for an array row input. */
+  indexExpr?: string;
 }
 
 interface StyleEntry {
@@ -852,7 +856,7 @@ class Generator {
     allowSnackBar = false,
   ): void {
     for (const dep of deps) {
-      if (dep.typeName === HTTP_CLIENT || this.rootServices.has(dep.typeName)) continue;
+      if (dep.typeName === HTTP_CLIENT || dep.typeName === 'FormBuilder' || this.rootServices.has(dep.typeName)) continue;
       if (this.routingActive && (dep.typeName === 'Router' || dep.typeName === 'ActivatedRoute')) continue;
       // SnackBar is a component-level built-in (Stage 10): components
       // receive the module-level instance; a service injecting it has
@@ -862,7 +866,7 @@ class Generator {
         'DI_UNKNOWN_TOKEN',
         `${owner}: no provider for '${dep.typeName}' (injected as '${dep.propertyName}'), it is not an @Injectable({ providedIn: 'root' }) service in this compilation and not a built-in token`,
         undefined, undefined,
-        `Make '${dep.typeName}' an @Injectable({ providedIn: 'root' }) class and import it from the component file (imports are followed transitively), or inject a built-in: HttpClient, Router / ActivatedRoute in a routed app, or SnackBar in a component`,
+        `Make '${dep.typeName}' an @Injectable({ providedIn: 'root' }) class and import it from the component file (imports are followed transitively), or inject a built-in: HttpClient, FormBuilder, Router / ActivatedRoute in a routed app, or SnackBar in a component`,
       ));
     }
   }
@@ -988,9 +992,12 @@ class Generator {
   private registrationLines(entry: ComponentInfo, children: ChildUnitInput[]): string[] {
     const needsHttp = [entry, ...children.map((c) => c.info), ...this.allServices]
       .some((host) => (host.constructorDeps ?? []).some((d) => d.typeName === HTTP_CLIENT));
-    if (!this.rootServices.size && !needsHttp) return [];
+    const needsFormBuilder = [entry, ...children.map((c) => c.info), ...this.allServices]
+      .some((host) => (host.constructorDeps ?? []).some((d) => d.typeName === 'FormBuilder'));
+    if (!this.rootServices.size && !needsHttp && !needsFormBuilder) return [];
     this.usedRuntime.add('Container');
     if (needsHttp) this.usedRuntime.add(HTTP_CLIENT);
+    if (needsFormBuilder) this.usedRuntime.add('FormBuilder');
 
     const order: string[] = [];
     const done = new Set<string>();
@@ -1029,10 +1036,12 @@ class Generator {
     // registration line. Registering it after the services made such an
     // app crash at startup with "no provider registered for token".
     if (needsHttp) lines.push(`__container.register(HttpClient, new HttpClient());`);
+    if (needsFormBuilder) lines.push(`__container.register(FormBuilder, new FormBuilder());`);
     for (const name of order) {
       const svc = this.rootServices.get(name)!;
       const args = svc.constructorDeps.map((d) => {
         if (d.typeName === HTTP_CLIENT) return `__container.get<HttpClient>(HttpClient)`;
+        if (d.typeName === 'FormBuilder') return `__container.get<FormBuilder>(FormBuilder)`;
         if (this.rootServices.has(d.typeName)) return `__container.get<${d.typeName}>(${d.typeName})`;
         return 'undefined';
       });
@@ -1390,8 +1399,8 @@ class Generator {
     const formFields = new Map<string, FormFieldInfo>();
     for (const field of component.fields) {
       if (field.isInput || field.isOutput) continue;
-      if (isFormInitializer(field.initializer)) {
-        formFields.set(field.name, analyzeFormInitializer(field.initializer!));
+      if (isFormInitializer(field.initializer, builderDepsOf(component))) {
+        formFields.set(field.name, analyzeFormInitializer(field.initializer!, builderDepsOf(component)));
       }
     }
 
@@ -1448,19 +1457,45 @@ class Generator {
     const modelInfos: InputInfo[] = [];
     const modelKeys = new Set<string>();
 
-    const inputInfoOf = (el: ElementNode, form: FormInfo | undefined): InputInfo => {
+    const inputInfoOf = (el: ElementNode, form: FormInfo | undefined, arrayCtx?: { groupField: string; arrayName: string }): InputInfo => {
       const validators = validatorsOf(el);
       const refName = el.ref && el.refExport === 'ngModel' ? el.ref : undefined;
       const info: InputInfo = { mode: 'plain', validators, refName };
-      if (el.propBindings.some((b) => b.name === 'formControlName')) {
+      const boundFcn = el.propBindings.find((b) => b.name === 'formControlName');
+      if (boundFcn) {
+        if (arrayCtx) {
+          // A row of a FormArray: the binding is the row index, most
+          // often the *ngFor loop variable.
+          info.mode = 'reactive';
+          info.groupField = arrayCtx.groupField;
+          info.arrayName = arrayCtx.arrayName;
+          info.indexExpr = boundFcn.expression;
+          return info;
+        }
         diagnostics.push(warning(
           'GEN_FORM_CONTROL',
           'formControlName is written as a [formControlName] binding; it must be a static attribute naming a control of the enclosing [formGroup]',
           el.pos.line, el.pos.column,
-          'Write formControlName="email" (no brackets) on the input',
+          'Write formControlName="email" (no brackets) on the input, or bind [formControlName] to a row index inside a formArrayName container',
         ));
       }
       const fcn = el.attrs['formControlName'];
+      if (fcn !== undefined && arrayCtx) {
+        if (/^\d+$/.test(fcn)) {
+          info.mode = 'reactive';
+          info.groupField = arrayCtx.groupField;
+          info.arrayName = arrayCtx.arrayName;
+          info.indexExpr = fcn;
+          return info;
+        }
+        diagnostics.push(error(
+          'GEN_FORM_ARRAY',
+          `formControlName="${fcn}" sits inside formArrayName="${arrayCtx.arrayName}", whose rows are numbered, not named; there is no row called '${fcn}'`,
+          el.pos.line, el.pos.column,
+          'Bind the row index instead: [formControlName]="i" with let i = index in the *ngFor over the array controls',
+        ));
+        return info;
+      }
       if (fcn !== undefined) {
         if (!form?.groupField) {
           diagnostics.push(error(
@@ -1509,11 +1544,12 @@ class Generator {
       return info;
     };
 
-    const walkForms = (nodes: TemplateNode[], formStack: FormInfo[]): void => {
+    const walkForms = (nodes: TemplateNode[], formStack: FormInfo[], arrayStack: ({ groupField: string; arrayName: string } | undefined)[]): void => {
       for (const node of nodes) {
         if (node.type !== 'element') continue;
         const tag = node.tag.toLowerCase();
         let stack = formStack;
+        let childArrays = arrayStack;
         if (tag === 'form') {
           const info: FormInfo = { touchedKeys: [] };
           info.submit = node.eventBindings.find(
@@ -1548,8 +1584,42 @@ class Generator {
           formInfos.set(node, info);
           stack = [...formStack, info];
         }
+        const arrayNameAttr = node.attrs['formArrayName'];
+        if (arrayNameAttr !== undefined) {
+          const form = stack[stack.length - 1];
+          let ctx: { groupField: string; arrayName: string } | undefined;
+          if (!form?.groupField) {
+            diagnostics.push(error(
+              'GEN_FORM_ARRAY',
+              `formArrayName="${arrayNameAttr}" is not inside a <form> with a [formGroup] binding, so there is no form array to bind`,
+              node.pos.line, node.pos.column,
+              `Wrap the container in <form [formGroup]="profileForm"> ... </form> and give the group a FormArray control named '${arrayNameAttr}'`,
+            ));
+          } else {
+            const gf = formFields.get(form.groupField);
+            const names = gf?.controlNames ?? [];
+            if (names.length && !names.includes(arrayNameAttr)) {
+              diagnostics.push(error(
+                'GEN_FORM_ARRAY',
+                `formArrayName="${arrayNameAttr}" does not match any control of the form group '${form.groupField}' (controls: ${names.join(', ')})`,
+                node.pos.line, node.pos.column,
+                `Use one of the group's controls (${names.join(', ')}), or add a '${arrayNameAttr}' FormArray to the group`,
+              ));
+            } else if (gf && gf.controlKinds[arrayNameAttr] && gf.controlKinds[arrayNameAttr] !== 'array') {
+              diagnostics.push(error(
+                'GEN_FORM_ARRAY',
+                `formArrayName="${arrayNameAttr}" names the '${form.groupField}' control '${arrayNameAttr}', which is a ${gf.controlKinds[arrayNameAttr]}, not a FormArray`,
+                node.pos.line, node.pos.column,
+                `Initialise '${arrayNameAttr}' as a FormArray: ${arrayNameAttr}: new FormArray([new FormControl('')])`,
+              ));
+            } else {
+              ctx = { groupField: form.groupField, arrayName: arrayNameAttr };
+            }
+          }
+          childArrays = [...arrayStack, ctx];
+        }
         if (tag === 'input') {
-          const info = inputInfoOf(node, stack[stack.length - 1]);
+          const info = inputInfoOf(node, stack[stack.length - 1], childArrays[childArrays.length - 1]);
           inputInfos.set(node, info);
           if (info.key) {
             if (!modelKeys.has(info.key)) {
@@ -1560,10 +1630,10 @@ class Generator {
             if (form && !form.touchedKeys.includes(info.key)) form.touchedKeys.push(info.key);
           }
         }
-        walkForms(node.children, stack);
+        walkForms(node.children, stack, childArrays);
       }
     };
-    walkForms(ast.children, []);
+    walkForms(ast.children, [], []);
 
     const styleKeys = new Set(Object.keys(css.styles));
     for (const [key, styleObj] of Object.entries(css.styles)) {
@@ -2041,11 +2111,14 @@ class Generator {
       } else if (info?.mode === 'valueOnly') {
         props.push(`value={${codeExpr(info.expression ?? '')}}`);
         lines.push(`${indent}{/* TODO(Rangular forms): ngModel target "${forBlockComment(info.expression ?? '')}" is not a plain field, the value is one-way only */}`);
-      } else if (info?.mode === 'reactive' && info.groupField && info.controlName) {
+      } else if (info?.mode === 'reactive' && info.groupField && (info.controlName || info.arrayName)) {
         const group = `${info.groupField}Ref.current`;
-        props.push(`value={${group}.get('${info.controlName}').value}`);
-        textCalls.push(`${group}.get('${info.controlName}').setValue($event)`);
-        blurCalls.push(`${group}.get('${info.controlName}').markAsTouched()`);
+        const resolver = info.arrayName
+          ? `${group}.get('${info.arrayName}').at(${codeExpr(info.indexExpr ?? '0')})`
+          : `${group}.get('${info.controlName}')`;
+        props.push(`value={${resolver}.value}`);
+        textCalls.push(`${resolver}.setValue($event)`);
+        blurCalls.push(info.arrayName ? `${resolver}.markAsTouched?.()` : `${resolver}.markAsTouched()`);
         blurCalls.push('setFormVersion((v) => v + 1)');
       }
 
@@ -2750,6 +2823,9 @@ class Generator {
         // sit next to the generated style prop as a duplicate.
         if (name === 'style') continue;
         if (name === 'routerLink') continue;
+        // formArrayName is forms machinery (forms completion pass): it
+        // scopes the rows of a FormArray for the inputs inside, never a prop.
+        if (name === 'formArrayName') continue;
         if (consumedByDirective.has(name)) continue;
         if (name === 'badge' && dropBadge) continue;
         if (name === 'tooltip' && dropTooltip) continue;
@@ -3082,6 +3158,10 @@ class Generator {
         depLines.push(`  const ${dep.propertyName} = useContext(ActivatedRouteContext) ?? new ActivatedRoute({});`);
       } else if (dep.typeName === 'SnackBar') {
         depLines.push(`  const ${dep.propertyName} = __snackBar;`);
+      } else if (dep.typeName === 'FormBuilder') {
+        this.usedRuntime.add('Container');
+        this.usedRuntime.add('FormBuilder');
+        depLines.push(`  const ${dep.propertyName} = __container.get<FormBuilder>(FormBuilder);`);
       } else if (this.rootServices.has(dep.typeName)) {
         this.usedRuntime.add('Container');
         this.reactImports.add('useSyncExternalStore');
@@ -3134,15 +3214,19 @@ class Generator {
       this.reactImports.add('useState');
       this.reactImports.add('useEffect');
       for (const field of component.fields) {
-        if (!formFields.has(field.name)) continue;
-        formLines.push(`  const ${field.name}Ref = useRef(${field.initializer});`);
+        const info = formFields.get(field.name);
+        if (!info) continue;
+        const initText = info.builderDep && field.initializer
+          ? rewriteBuilderInitializer(field.initializer, info.builderDep)
+          : field.initializer;
+        formLines.push(`  const ${field.name}Ref = useRef(${initText});`);
       }
       const formTexts: string[] = [];
       for (const field of component.fields) {
         if (formFields.has(field.name) && field.initializer) formTexts.push(field.initializer);
       }
       for (const m of component.methodDetails) if (m.body) formTexts.push(m.body);
-      for (const name of ['FormGroup', 'FormControl', 'Validators']) {
+      for (const name of ['FormGroup', 'FormControl', 'FormArray', 'FormBuilder', 'Validators']) {
         if (formTexts.some((t) => new RegExp(`\\b${name}\\b`).test(t))) this.usedRuntime.add(name);
       }
       formLines.push('  const [, setFormVersion] = useState(0);');

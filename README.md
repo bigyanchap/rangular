@@ -592,9 +592,12 @@ naming the real controls, and handlers read
 group from the field initializer with a small evaluator (literal
 values, `Validators` references and calls, validator arrays); a
 richer initializer warns `GEN_FORM_INITIALIZER` and still compiles
-for the app. Group-level validators, `FormArray` and async
-validators are not in this stage. The full boundary list is the
-Forms section of [docs/VIBE_CODING.md](docs/VIBE_CODING.md).
+for the app. `FormArray` rows
+(`formArrayName` plus a bound `[formControlName]` row index) and
+the `FormBuilder` built-in injection complete the forms surface;
+group-level validators and async validators are not built. The full
+boundary list is the Forms section of
+[docs/VIBE_CODING.md](docs/VIBE_CODING.md).
 
 ## Stage 9: routing
 

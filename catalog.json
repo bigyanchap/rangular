@@ -2707,7 +2707,11 @@
     },
     {
       "code": "GEN_FORM_INITIALIZER",
-      "meaning": "A field initialised with new FormGroup(...) or new FormControl(...) uses a shape the preview cannot evaluate (only literal values, Validators references and validator calls are supported); the generated app runs the initializer as written."
+      "meaning": "A field initialised with a form tree (new FormGroup/FormControl/FormArray(...) or a FormBuilder group/control/array call) uses a shape the preview cannot evaluate (only literal values, Validators references and calls, nested groups and arrays, and builder tuples are supported); the generated app runs the initializer as written."
+    },
+    {
+      "code": "GEN_FORM_ARRAY",
+      "meaning": "A formArrayName cannot be bound: it is not inside a <form> with a [formGroup], the name is not one of the group's controls, or that control is not a FormArray; or a static formControlName inside a formArrayName container names a row instead of numbering it."
     },
     {
       "code": "GEN_ROUTES_MISSING",
