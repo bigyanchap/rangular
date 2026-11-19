@@ -4,6 +4,7 @@
   <form (submit)="save()">
     <input label="Title" placeholder="What should I remember?" [(ngModel)]="title">
     <datetime-picker label="When" mode="datetime" [value]="when" (change)="onWhen($event)"></datetime-picker>
+    <datetime-picker label="When (modal)" mode="datetime" presentation="modal" [value]="when" (change)="onWhen($event)"></datetime-picker>
     <p>When (ISO): {{ when }}</p>
     <p>Repeat: {{ repeat }}</p>
     <button type="submit">Save</button>
@@ -27,8 +28,8 @@
   <dialog [open]="confirmOpen" (close)="closeConfirm()" title="Delete this reminder?">
     <p>This cannot be kept in the list after deletion. You can undo it from the message that follows.</p>
     <actions>
-      <button (click)="closeConfirm()">Cancel</button>
-      <button (click)="deleteReminder()">Delete</button>
+      <button color="neutral" (click)="closeConfirm()">Cancel</button>
+      <button color="danger" (click)="deleteReminder()">Delete</button>
     </actions>
   </dialog>
 </screen>

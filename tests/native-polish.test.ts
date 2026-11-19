@@ -79,8 +79,9 @@ test('the bottom nav answers a tab change with a haptic when asked', () => {
 });
 
 test('the filled button wears the primary gradient', () => {
-  assert.ok(primitivesSrc.includes('function ButtonFill()'), 'the button fill is defined');
-  assert.ok(primitivesSrc.includes('stopColor={c.primaryDeep}'), 'the fill lands on primaryDeep');
+  assert.ok(primitivesSrc.includes('function ButtonFill('), 'the button fill is defined');
+  assert.ok(primitivesSrc.includes('const stopBottom = bottom ?? c.primaryDeep;'), 'the fill lands on primaryDeep by default');
+  assert.ok(primitivesSrc.includes('stopColor={stopBottom}'), 'the lower stop is the resolved colour');
 });
 
 test('a list drops the hairline under its last row', () => {

@@ -54,6 +54,7 @@ export default function Reminder() {
         <RgSection>
           <RgInput label="Title" placeholder="What should I remember?" value={title} onChangeText={($event) => setTitle($event)} />
           <RgDateTimePicker mode="datetime" label="When" value={when} onChange={($event) => onWhen($event)} />
+          <RgDateTimePicker mode="datetime" presentation="modal" label="When (modal)" value={when} onChange={($event) => onWhen($event)} />
           <RgText variant="bodyLarge">When (ISO): {when}</RgText>
           <RgText variant="bodyLarge">Repeat: {repeat}</RgText>
           <RgButton onPress={() => save()}>Save</RgButton>
@@ -78,8 +79,8 @@ export default function Reminder() {
         <RgDialog title="Delete this reminder?" open={confirmOpen} onClose={() => closeConfirm()}>
           <RgText variant="bodyLarge">This cannot be kept in the list after deletion. You can undo it from the message that follows.</RgText>
           <RgActions>
-            <RgButton onPress={() => closeConfirm()}>Cancel</RgButton>
-            <RgButton onPress={() => deleteReminder()}>Delete</RgButton>
+            <RgButton color="neutral" onPress={() => closeConfirm()}>Cancel</RgButton>
+            <RgButton color="danger" onPress={() => deleteReminder()}>Delete</RgButton>
           </RgActions>
         </RgDialog>
       </RgScreen>
