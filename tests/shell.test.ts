@@ -163,7 +163,9 @@ test('an unlabelled section paints no header', () => {
 // --- Gmail light round (2026-11-17) --------------------------------
 // Bigyan's phone feedback on the gradient shell: he asked to try
 // the Gmail light design instead, for the keyboard to stop hiding
-// the field (content moves up, a Done button on the keyboard),
+// the field (content moves up; the Done accessory that round
+// added was removed again at his word on 2026-11-19, and the
+// lift became an explicit scroll of the focused field),
 // for lesson pages to open at the top, for back to stop jittering,
 // and for a switch to answer with a haptic, as an opt-in attribute
 // so a switch can be built with it or without it.
@@ -253,8 +255,9 @@ test('row icon and varied avatar tones paint in the preview', () => {
 test('the keyboard contract lives in the shipped screen and fields', () => {
   assert.ok(primitivesSrc.includes('KeyboardAvoidingView'), 'the screen avoids the keyboard');
   assert.ok(primitivesSrc.includes('keyboardShouldPersistTaps'), 'taps persist while the keyboard is up');
-  assert.ok(primitivesSrc.includes('InputAccessoryView'), 'fields carry the iOS Done bar');
-  assert.ok(primitivesSrc.includes('Keyboard.dismiss'), 'Done dismisses the keyboard');
+  assert.ok(!primitivesSrc.includes('InputAccessoryView'), 'fields carry no keyboard accessory (removed at his word, 2026-11-19)');
+  assert.ok(primitivesSrc.includes('scrollResponderScrollNativeHandleToKeyboard'), 'a focused field lifts to rest above the keyboard');
+  assert.ok(primitivesSrc.includes('Keyboard.dismiss'), 'submit dismisses the keyboard');
   assert.ok(primitivesSrc.includes('useLayoutEffect'), 'the pinned bar registers before paint, no jitter');
 });
 

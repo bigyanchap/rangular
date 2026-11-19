@@ -1209,13 +1209,18 @@ shell beside it and the behaviour fixes under both.
 - The keyboard contract: RgScreen wraps its scroll area in a
   KeyboardAvoidingView (padding on iOS, height on Android) and
   the ScrollView carries keyboardShouldPersistTaps="handled" and
-  a platform keyboardDismissMode, so a focused field is never
-  left under the keyboard. Every text field (both input forms
-  and the editor) carries returnKeyType="done", dismisses on
-  submit, and on iOS registers an InputAccessoryView with a Done
-  button under a per-field id. The browser preview has no
-  software keyboard and draws none of this; that is the stated
-  grain, the behaviour is native-only.
+  a platform keyboardDismissMode. When a field takes focus, the
+  screen's scroller rests the field's bottom 20px above the
+  keyboard's top (the scroll context and useKeyboardLift in
+  primitives.tsx; lessons QA round, 2026-11-19). Every text
+  field (both input forms and the editor) carries
+  returnKeyType="done" and dismisses on submit. Fields carry no
+  input accessory: an iOS Done accessory added in the Gmail
+  light round was removed at Bigyan's word on 2026-11-19,
+  because the stock keyboard's own return key already
+  dismisses. The browser preview has no software keyboard and
+  draws none of this; that is the stated grain, the behaviour
+  is native-only.
 - Route scroll: in a routed app the generated root keys the
   entry `<screen>` by the concrete path, so each navigation
   remounts the screen and every route opens at the top. Before
@@ -1289,6 +1294,15 @@ Found by the tutorial app acting as the integration test: its progress service n
 ## The phone polish round (2026-11-18, version 0.1.5)
 
 The tutorial app's first SQLite build ran on a real phone and found three native faults no web gate could see. The app bar's two actions travel into the bar's right zone as one array, and both now carry keys from birth (`key="action"`, `key="action2"`); React's unique key warning named the array on device. The scroll fade veil, six hard strips of the bar's colour, banded visibly over saturated content; it is now one SVG linear gradient of the same colour (react-native-svg was already a dependency), with the scroll-driven opacity unchanged. And the bottom bar sat above the safe area strip in the page background with its level2 shadow pointing down onto it, a visible seam: the bar's shadow now points up, and when a bottom bar is pinned the screen paints the strip behind it in the bar's surface colour. Guards live in `tests/native-polish.test.ts`. The same phone run hardened the tutorial's own save pattern (saves serialize, inserts are OR REPLACE, every promise carries a rejection handler); that part is the app's, not the framework's, and lives in the tutorial repo.
+
+## The lessons QA round (2026-11-19, version 0.3.1)
+
+Bigyan walked the tutorial's lessons on his phone and reported; each item landed the same day.
+
+- A field low on the screen stayed under the keyboard when typing started. KeyboardAvoidingView alone resizes the screen but never scrolls the focused field into place. RgScreen now lends its ScrollView ref through a context, and RgInput and RgEditor ask the scroll responder on focus to rest the field's bottom 20px above the keyboard's top (his measure), after a short wait for the keyboard frame to land.
+- The iOS Done accessory is gone, at his word: the stock keyboard's own return key dismisses, and every field already carries returnKeyType done with dismiss on submit. The keyboard contract above states the new truth.
+- The toast rested 32px above the bottom edge, inside the floating bottom bar's space. The snackbar host now rests at 100px (his measure), and the native grain approximation became a soft white gradient over the card, strongest at the top edge, closer to the noise the previews draw.
+- Tutorial side, same round: lesson code cards show the bare minimum complete code with lines broken for visibility (the standing rule, recorded in the tutorial round notes), and a lesson's best practice may now carry real code: an optional tipCode field renders as a code block inside the tip card, in the same format as the lesson's Code block. Lesson 6's best practice is the first user, with the spread add and the fat-arrow filter written out.
 
 ## The no-silent-drops wave (2026-11-18, version 0.3.0)
 

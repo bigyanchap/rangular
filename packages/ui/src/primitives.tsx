@@ -22,7 +22,7 @@ import {
   Easing,
   FlatList,
   Image,
-  InputAccessoryView,
+  findNodeHandle,
   Keyboard,
   KeyboardAvoidingView,
   PanResponder,
@@ -268,18 +268,6 @@ function buildStyles(t: Theme) {
       width: 28, height: 28, borderRadius: 14, flexShrink: 0,
       backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center',
     },
-    // The keyboard Done (Gmail light round, 2026-11-17; bar
-    // removed at his word later the same day): the iOS input
-    // accessory every text field carries paints no bar of its
-    // own, just the Done at the keyboard's top right.
-    keyboardDoneBar: {
-      flexDirection: 'row', justifyContent: 'flex-end',
-      paddingHorizontal: t.spacing.md, paddingVertical: t.spacing.sm,
-    },
-    keyboardDoneText: {
-      color: c.primary, fontWeight: '600',
-      fontSize: t.typography.body.fontSize,
-    },
     appbarChildren: { marginTop: t.spacing.sm },
     // The gradient surface (gradient shell round, 2026-11-17): a
     // rounded container the brand gradient fills; children sit in a
@@ -492,15 +480,18 @@ function buildStyles(t: Theme) {
     },
     // The toast (Stage 10, restyled in the tutorial round,
     // 2026-11-13, at Bigyan's order): a translucent black card at
-    // bottom centre, dark in both themes. The host spans the bar
-    // and centers the card; the card's surface token already
-    // carries 85 percent alpha. React Native has no texture asset
-    // for the grain the previews draw, so the grain is approximated
-    // honestly: a white sheen layer at five percent over the black
-    // and a hairline border catch the light the way grain does.
+    // bottom centre, dark in both themes, resting 100px above
+    // the bottom edge (lessons QA round, 2026-11-19, his
+    // measure: clear of the floating bottom bar, in open space).
+    // The host spans the bar and centers the card; the card's
+    // surface token already carries 85 percent alpha. React
+    // Native has no texture asset for the grain the previews
+    // draw, so the grain is approximated honestly: a soft white
+    // gradient over the black, strongest at the top edge, and a
+    // hairline border catch the light the way grain does.
     // See docs/VIBE_CODING.md, the tutorial round section.
     snackbarHost: {
-      position: 'absolute', left: 0, right: 0, bottom: t.spacing.xxxl,
+      position: 'absolute', left: 0, right: 0, bottom: 100,
       alignItems: 'center', zIndex: 20,
     },
     snackbar: {
@@ -513,7 +504,6 @@ function buildStyles(t: Theme) {
     },
     snackbarSheen: {
       position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
-      backgroundColor: 'rgba(255, 255, 255, 0.05)',
     },
     snackbarText: { flexShrink: 1, color: c.toastText, fontSize: t.typography.body.fontSize },
     snackbarAction: { color: c.toastAction, fontSize: t.typography.label.fontSize, fontWeight: '600' },
@@ -1042,6 +1032,11 @@ export const ActivatedRouteContext = createContext<any>(null);
  * with the same key cannot loop. An app bar with no screen above
  * it, or without `pin`, renders in place exactly as before.
  */
+// The screen's ScrollView ref, lent to the fields inside the
+// screen so a focused field can ask the scroller to lift it
+// above the keyboard (lessons QA round, 2026-11-19).
+const RgScrollContext = createContext<any>(null);
+
 const RgHeaderSlotContext = createContext<{
   register: (key: string, node: React.ReactNode, chrome?: string, wash?: boolean) => void;
   clear: (key: string) => void;
@@ -1310,7 +1305,7 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
             onScroll={onEndReached || fade ? handleScroll : undefined}
             scrollEventThrottle={fade ? 32 : 64}
           >
-            {body}
+            <RgScrollContext.Provider value={scrollRef}>{body}</RgScrollContext.Provider>
           </ScrollView>
           </KeyboardAvoidingView>
           {fade && veilFactor > 0 ? (
@@ -1667,33 +1662,31 @@ export function RgButton({ children, disabled, onPress, badge, style, variant, t
  * `secure` is the password form of the template's type attribute;
  * keyboardType passes the template's email/number choice through.
  */
-// The keyboard Done bar (Gmail light round, 2026-11-17): every
-// text field carries an iOS input accessory with a Done button
-// that dismisses the keyboard, the button the stock keyboard
-// lacks. Each field takes a unique accessory id from this
-// counter. Android needs no bar: its fields use returnKeyType
-// done and dismiss on submit. The bar is registered by id and
-// renders nothing in the layout.
-let rgAccessorySeq = 0;
-function useDoneAccessoryId(): string {
-  const ref = useRef<string | null>(null);
-  if (ref.current === null) {
-    rgAccessorySeq += 1;
-    ref.current = 'rg-done-' + rgAccessorySeq;
-  }
-  return ref.current;
-}
-function RgDoneAccessory({ nativeID, styles }: any) {
-  if (Platform.OS !== 'ios') return null;
-  return (
-    <InputAccessoryView nativeID={nativeID}>
-      <View style={styles.keyboardDoneBar}>
-        <Pressable onPress={() => Keyboard.dismiss()}>
-          <Text style={styles.keyboardDoneText}>Done</Text>
-        </Pressable>
-      </View>
-    </InputAccessoryView>
-  );
+// Keyboard dismissal (lessons QA round, 2026-11-19): fields
+// carry no input accessory. An earlier round added an iOS Done
+// accessory, first as a bar, then as a bare Done at the
+// keyboard's top right; Bigyan removed it at his word, because
+// the stock keyboard's own return key already dismisses. Every
+// field here uses returnKeyType="done" and dismisses on submit.
+
+// Keyboard lift (lessons QA round, 2026-11-19): when a field
+// that sits below the keyboard takes focus, the screen's
+// scroller rests the field's bottom 20px above the keyboard's
+// top, his measure. The keyboard frame lands a beat after the
+// focus event, so the request waits a moment first; on web
+// there is no keyboard and the call simply does nothing.
+function useKeyboardLift(): (node: any) => void {
+  const scrollRef = useContext(RgScrollContext);
+  return (node: any): void => {
+    if (!node || !scrollRef?.current || Platform.OS === 'web') return;
+    setTimeout(() => {
+      try {
+        const handle = findNodeHandle(node);
+        if (handle == null) return;
+        scrollRef.current?.getScrollResponder?.()?.scrollResponderScrollNativeHandleToKeyboard(handle, 20, true);
+      } catch { /* no software keyboard on this platform */ }
+    }, 120);
+  };
 }
 
 export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, label, error, disabled, secure, keyboardType, options, onOptionSelected, mask, variant, leadingIcon, onLeading, avatarText, pillTone, style }: any) {
@@ -1708,7 +1701,8 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
   // reports the choice through onOptionSelected.
   const [focused, setFocused] = useState(false);
   const pillRef = useRef<any>(null);
-  const doneId = useDoneAccessoryId();
+  const fieldRef = useRef<any>(null);
+  const liftAboveKeyboard = useKeyboardLift();
   const text = value === undefined || value === null ? '' : String(value);
   const matches = focused && Array.isArray(options) && text !== ''
     ? options.filter((o: unknown) => typeof o === 'string' && o.toLowerCase().includes(text.toLowerCase()))
@@ -1752,11 +1746,10 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
             style={styles.inputPillField}
             value={value}
             onChangeText={onChangeText}
-            onFocus={() => { setFocused(true); onFocus?.(); }}
+            onFocus={() => { setFocused(true); liftAboveKeyboard(pillRef.current); onFocus?.(); }}
             onBlur={() => { setFocused(false); onBlur?.(); }}
             onSubmitEditing={() => Keyboard.dismiss()}
             returnKeyType="done"
-            inputAccessoryViewID={Platform.OS === 'ios' ? doneId : undefined}
             placeholder={placeholder}
             placeholderTextColor={t.colors.textMuted}
             editable={!disabled}
@@ -1777,7 +1770,6 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
             </View>
           ) : null}
         </Pressable>
-        <RgDoneAccessory nativeID={doneId} styles={styles} />
         {error ? <Text style={styles.inputError}>{error}</Text> : null}
       </View>
     );
@@ -1787,12 +1779,13 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
       {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
       <View style={styles.inputAnchor}>
         <TextInput
+          ref={fieldRef}
           style={[styles.inputField, error ? styles.inputFieldError : null, disabled ? styles.inputDisabled : null]}
           value={mask ? applyMask(text, String(mask)) : value}
           onChangeText={mask
             ? (next: string) => onChangeText?.(applyMask(next, String(mask)))
             : onChangeText}
-          onFocus={() => { setFocused(true); onFocus?.(); }}
+          onFocus={() => { setFocused(true); liftAboveKeyboard(fieldRef.current); onFocus?.(); }}
           onBlur={() => { setFocused(false); onBlur?.(); }}
           placeholder={placeholder}
           placeholderTextColor={t.colors.textMuted}
@@ -1801,7 +1794,6 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
           keyboardType={keyboardType}
           onSubmitEditing={() => Keyboard.dismiss()}
           returnKeyType="done"
-          inputAccessoryViewID={Platform.OS === 'ios' ? doneId : undefined}
         />
         {matches.length ? (
           <View style={styles.autoPanel}>
@@ -1813,7 +1805,6 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
           </View>
         ) : null}
       </View>
-      <RgDoneAccessory nativeID={doneId} styles={styles} />
       {error ? <Text style={styles.inputError}>{error}</Text> : null}
     </View>
   );
@@ -2345,7 +2336,18 @@ export function RgSnackbar({ message, actionLabel, onAction, style }: any) {
   return (
     <View style={styles.snackbarHost} pointerEvents="box-none">
       <View style={[styles.snackbar, style]}>
-        <View style={styles.snackbarSheen} pointerEvents="none" />
+        <View style={styles.snackbarSheen} pointerEvents="none">
+          <Svg width="100%" height="100%">
+            <Defs>
+              <LinearGradient id="rgtoastgrain" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor="rgba(255, 255, 255, 1)" stopOpacity={0.14} />
+                <Stop offset="0.55" stopColor="rgba(255, 255, 255, 1)" stopOpacity={0.05} />
+                <Stop offset="1" stopColor="rgba(255, 255, 255, 1)" stopOpacity={0} />
+              </LinearGradient>
+            </Defs>
+            <Rect x="0" y="0" width="100%" height="100%" fill="url(#rgtoastgrain)" />
+          </Svg>
+        </View>
         <Text style={styles.snackbarText}>{message}</Text>
         {actionLabel ? (
           <Pressable onPress={onAction} accessibilityRole="button">
@@ -3834,7 +3836,8 @@ export function RgChart({ type = 'bar', data, width, height, style }: any) {
 export function RgEditor({ value, label, placeholder, disabled, onChange, style }: any) {
   const t = useRgTheme();
   const styles = stylesFor(t);
-  const doneId = useDoneAccessoryId();
+  const editorRef = useRef<any>(null);
+  const liftAboveKeyboard = useKeyboardLift();
   const text = value === undefined || value === null ? '' : String(value);
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const clampSel = (): { start: number; end: number } => {
@@ -3865,17 +3868,17 @@ export function RgEditor({ value, label, placeholder, disabled, onChange, style 
         {tool('List', listLine)}
       </View>
       <TextInput
+        ref={editorRef}
         style={[styles.inputField, styles.editorArea, disabled ? styles.inputDisabled : null]}
         value={text}
         onChangeText={(next: string) => onChange?.(next)}
         onSelectionChange={(e: any) => setSelection(e.nativeEvent.selection)}
+        onFocus={() => liftAboveKeyboard(editorRef.current)}
         placeholder={placeholder}
         placeholderTextColor={t.colors.textMuted}
         editable={!disabled}
         multiline
-        inputAccessoryViewID={Platform.OS === 'ios' ? doneId : undefined}
       />
-      <RgDoneAccessory nativeID={doneId} styles={styles} />
     </View>
   );
 }

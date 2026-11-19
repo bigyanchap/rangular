@@ -180,7 +180,7 @@ function cliVersion(root: string, checkout: boolean): string {
       /* try the next candidate */
     }
   }
-  return '0.3.0';
+  return '0.3.1';
 }
 
 const STARTER_TS = `import { Component } from '@angular/core';
