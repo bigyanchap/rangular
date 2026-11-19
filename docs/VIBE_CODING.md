@@ -1290,6 +1290,17 @@ Found by the tutorial app acting as the integration test: its progress service n
 
 The tutorial app's first SQLite build ran on a real phone and found three native faults no web gate could see. The app bar's two actions travel into the bar's right zone as one array, and both now carry keys from birth (`key="action"`, `key="action2"`); React's unique key warning named the array on device. The scroll fade veil, six hard strips of the bar's colour, banded visibly over saturated content; it is now one SVG linear gradient of the same colour (react-native-svg was already a dependency), with the scroll-driven opacity unchanged. And the bottom bar sat above the safe area strip in the page background with its level2 shadow pointing down onto it, a visible seam: the bar's shadow now points up, and when a bottom bar is pinned the screen paints the strip behind it in the bar's surface colour. Guards live in `tests/native-polish.test.ts`. The same phone run hardened the tutorial's own save pattern (saves serialize, inserts are OR REPLACE, every promise carries a rejection handler); that part is the app's, not the framework's, and lives in the tutorial repo.
 
+## The no-silent-drops wave (2026-11-18, version 0.3.0)
+
+Four ways the compiler used to lose source or emit broken code without a word, each closed the same way: a working translation where one exists, a coded error where none does.
+
+- A handler expression using `$event` on a foreign tag (and on the generic event path of framework blocks) was wrapped as `() => save($event)`, leaving `$event` unbound in the generated code. The wrapper now binds it, `($event) => save($event)`, the same shape the control contracts already used. Bare method references are unchanged.
+- A TypeScript syntax error in a class file was invisible: the parser recovered and the file read as a smaller valid file, so a malformed field initializer surfaced, if at all, as a misleading GEN_FIELD warning. Parse errors are now `CLS_PARSE` errors carrying the file, line and column TypeScript reported.
+- A component method named like a generated state setter (`setMinutes` beside a `minutes` field, the capstone's old wound, renamed by hand at the time) declared the name twice in the generated function. It is now a `GEN_SETTER_COLLISION` error whose fix is the rename. The wave's own gate caught three test fixtures (setCode, setBrand, setNotes) that had been generating exactly this collision unnoticed.
+- A relative import of a file holding no classes was dropped while its uses were emitted, the last of the silent import drops. A name imported from such a file and used as a value is now a `GEN_IMPORT_CLASSLESS` error; a name used only as a type stays quiet, so models files keep working.
+
+Regression tests live in `tests/silent-drops.test.ts`. The catalog gained the three new codes (71 in total).
+
 ## The logo round (2026-11-18)
 
 The project has a logo: the Split Shield, picked by Bigyan from the mockup page (direction 09, his own idea). One shield split in two: the top half is Angular red with a white R, the bottom half is dark with the cyan React atom. The master artwork is assets/logo.svg in this repo; assets/logo.png is its 512 px render for the README header (npm does not render SVG in READMEs, GitHub does, so the README uses the PNG and both files carry the same drawing).
@@ -1425,7 +1436,10 @@ One framework fix from the tutorial's phone retest: the search variant of `<inpu
   classes inlined, as before. One standing limit of that rule:
   only classes resolve through relative imports, so a relative
   import of a file holding no classes (a plain exported const,
-  say) is not inlined.
+  say) is not inlined; since the no-silent-drops wave
+  (2026-11-18) a name imported from such a file and used as a
+  value is a `GEN_IMPORT_CLASSLESS` error, while a name used
+  only as a type stays quiet.
 
 ## HttpClient (Stage 3, M6)
 

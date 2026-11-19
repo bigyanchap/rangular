@@ -2118,7 +2118,7 @@ class Generator {
         if (!known) {
           lines.push(`${indent}{/* (${ev.name}) has no standard RN prop, mapped to ${prop} */}`);
         }
-        props.push(isBareRef ? `${prop}={${src}}` : `${prop}={() => ${codeExpr(src)}}`);
+        props.push(isBareRef ? `${prop}={${src}}` : `${prop}={${src.includes('$event') ? '($event)' : '()'} => ${codeExpr(src)}}`);
       }
       const style = styleFor(el);
       if (style) props.push(`style={${style}}`);
@@ -2286,7 +2286,7 @@ class Generator {
         if (!known) {
           lines.push(`${indent}{/* (${ev.name}) has no standard RN prop, mapped to ${prop} */}`);
         }
-        props.push(isBareRef ? `${prop}={${src}}` : `${prop}={() => ${codeExpr(src)}}`);
+        props.push(isBareRef ? `${prop}={${src}}` : `${prop}={${src.includes('$event') ? '($event)' : '()'} => ${codeExpr(src)}}`);
       }
       const style = styleFor(el);
       if (style) props.push(`style={${style}}`);
@@ -2437,7 +2437,7 @@ class Generator {
         if (!known) {
           lines.push(`${indent}{/* (${ev.name}) has no standard RN prop, mapped to ${prop} */}`);
         }
-        props.push(isBareRef ? `${prop}={${src}}` : `${prop}={() => ${codeExpr(src)}}`);
+        props.push(isBareRef ? `${prop}={${src}}` : `${prop}={${src.includes('$event') ? '($event)' : '()'} => ${codeExpr(src)}}`);
       }
       const style = styleFor(el);
       if (style) props.push(`style={${style}}`);
@@ -2858,7 +2858,7 @@ class Generator {
         if (!known) {
           lines.push(`${indent}{/* (${ev.name}) has no standard RN prop, mapped to ${prop} */}`);
         }
-        props.push(isBareRef ? `${prop}={${src}}` : `${prop}={() => ${codeExpr(src)}}`);
+        props.push(isBareRef ? `${prop}={${src}}` : `${prop}={${src.includes('$event') ? '($event)' : '()'} => ${codeExpr(src)}}`);
       }
       if (submitPress) props.push(`onPress={${submitPress}}`);
       // A link with no (click) of its own navigates on tap (Stage 9).
@@ -3206,6 +3206,26 @@ class Generator {
       formFields: new Set(formFields.keys()),
     });
     diagnostics.push(...methodDiags);
+    // A method named like a generated setter (set + a state field's
+    // name, or a form field's touched setter) would be declared
+    // twice in the generated function, the later one winning. That
+    // collision used to be silent (the capstone's setMinutes); it
+    // is an error now, with the rename as the fix.
+    const generatedSetters = new Set<string>();
+    for (const f of stateFields) generatedSetters.add(setterName(f));
+    for (const info of modelInfos) {
+      if (info.key) generatedSetters.add(setterName(`${info.key}Touched`));
+    }
+    for (const m of translated) {
+      if (generatedSetters.has(m.name)) {
+        diagnostics.push(error(
+          'GEN_SETTER_COLLISION',
+          `Method '${m.name}' has the same name as a generated state setter in this component; the generated code would declare '${m.name}' twice and one would overwrite the other`,
+          undefined, undefined,
+          `Rename the method to say what it does, e.g. a method that chooses a value by hand can be named pick${m.name.slice(3)} or update${m.name.slice(3)}; the setter name (set + the field name) belongs to the generated code`,
+        ));
+      }
+    }
     const methodLines: string[] = [];
     for (const m of translated) {
       methodLines.push(`  const ${m.name} = (${m.paramTexts.join(', ')}) => {`);

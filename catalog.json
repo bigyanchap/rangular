@@ -1,6 +1,6 @@
 {
   "name": "rangular-framework",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "tags": [
     {
       "tag": "div",
@@ -2620,6 +2620,18 @@
     {
       "code": "CLS_NO_COMPONENT",
       "meaning": "No class decorated with @Component was found in the source file."
+    },
+    {
+      "code": "CLS_PARSE",
+      "meaning": "The TypeScript source has a syntax error. TypeScript reads on with error recovery, so classes and fields after the error can be silently missing or misread; the compiler reports the parse error itself instead of guessing."
+    },
+    {
+      "code": "GEN_SETTER_COLLISION",
+      "meaning": "A component method has the same name as a generated state setter (set + a field name, or a form field touched setter). The generated code would declare the name twice and one would overwrite the other, so the method must be renamed."
+    },
+    {
+      "code": "GEN_IMPORT_CLASSLESS",
+      "meaning": "A relative import binds names from a file that declares no component, service, pipe or directive. Nothing in that file is carried into the generated code, so a name used from it would be undefined at run time; the compiler reports the import instead of dropping it silently."
     },
     {
       "code": "CMP_TEMPLATE",

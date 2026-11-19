@@ -7,6 +7,7 @@ import * as SQLite from 'expo-sqlite';
 export class DatabaseService extends ReactiveService {
   db: any = null;
   ready = false;
+  error = '';
   notes: { id: number; text: string }[] = [];
   constructor() {
     super();
@@ -17,13 +18,22 @@ export class DatabaseService extends ReactiveService {
   this.ready = true;
   this.__notify();
   this.loadAll();
+}, (e: any) => {
+  this.error = 'Could not create the notes table.';
+  this.__notify();
 });
+}, (e: any) => {
+  this.error = 'Could not open the database.';
+  this.__notify();
 });
   }
   loadAll() {
     if (this.db) {
       this.db.getAllAsync('SELECT id, text FROM notes ORDER BY id DESC').then((rows: any) => {
   this.notes = rows;
+  this.__notify();
+}, (e: any) => {
+  this.error = 'Could not load the notes.';
   this.__notify();
 });
     }
@@ -32,6 +42,9 @@ export class DatabaseService extends ReactiveService {
     if (this.db) {
       this.db.runAsync('INSERT INTO notes (text) VALUES (?)', text).then(() => {
   this.loadAll();
+}, (e: any) => {
+  this.error = 'Could not save the note.';
+  this.__notify();
 });
     }
   }
@@ -39,6 +52,9 @@ export class DatabaseService extends ReactiveService {
     if (this.db) {
       this.db.runAsync('DELETE FROM notes WHERE id = ?', id).then(() => {
   this.loadAll();
+}, (e: any) => {
+  this.error = 'Could not delete the note.';
+  this.__notify();
 });
     }
   }

@@ -461,8 +461,8 @@ test('preview behaviour: rating stars, otp typing and carousel paging report thr
   assert.ok(rated.textContent.includes('Score 4'), 'the fourth star wrote 4');
 
   const otpApp = previewOf(
-    '<screen><otp length="4" [value]="code" (change)="setCode($event)"></otp><p>Code {{ code }}</p></screen>',
-    'code = ""; setCode(v: string) { this.code = v; }',
+    '<screen><otp length="4" [value]="code" (change)="onCode($event)"></otp><p>Code {{ code }}</p></screen>',
+    'code = ""; onCode(v: string) { this.code = v; }',
   );
   const otpInput = findAll(otpApp, (e) => hasClass(e, 'otp-input'))[0];
   assert.ok(otpInput, 'the otp renders its hidden input');
@@ -520,8 +520,8 @@ test('preview behaviour: the calendar moves months and a day tap reports the ISO
 
 test('preview behaviour: colour swatches, editor toolbar, lightbox close and crumb clicks', () => {
   const colour = previewOf(
-    '<screen><color-picker [value]="brand" (change)="setBrand($event)"></color-picker><p>Brand {{ brand }}</p></screen>',
-    'brand = "#0b57d0"; setBrand(v: string) { this.brand = v; }',
+    '<screen><color-picker [value]="brand" (change)="onBrand($event)"></color-picker><p>Brand {{ brand }}</p></screen>',
+    'brand = "#0b57d0"; onBrand(v: string) { this.brand = v; }',
   );
   findAll(colour, (e) => hasClass(e, 'picker-box'))[0].click();
   const swatches = findAll(colour, (e) => hasClass(e, 'swatch'));
@@ -532,8 +532,8 @@ test('preview behaviour: colour swatches, editor toolbar, lightbox close and cru
   assert.ok(colour.textContent.includes('Brand #d93025'), 'the swatch wrote its hex back');
 
   const editor = previewOf(
-    '<screen><editor [value]="notes" (change)="setNotes($event)"></editor><p>Notes: {{ notes }}</p></screen>',
-    'notes = "hello"; setNotes(v: string) { this.notes = v; }',
+    '<screen><editor [value]="notes" (change)="onNotes($event)"></editor><p>Notes: {{ notes }}</p></screen>',
+    'notes = "hello"; onNotes(v: string) { this.notes = v; }',
   );
   const area = findAll(editor, (e) => hasClass(e, 'editor-area'))[0] as unknown as {
     value: string; selectionStart?: number; selectionEnd?: number;

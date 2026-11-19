@@ -55,12 +55,11 @@ The rules:
   `[prop]` bindings become props, and child tags nest normally.
 - A lowercase tag the catalog does not know is not kept. It warns
   `GEN_UNKNOWN_TAG` and degrades to a plain view.
-- One limit today: a handler on a third-party tag does not receive
-  `$event`. Write the handler as a bare method reference, as in the
-  example above: `(regionChange)="regionChanged"` passes the event
-  value to the method itself. A handler written as
-  `onRegion($event)` compiles but the value never arrives. Path 2
-  avoids this entirely.
+- Handlers receive `$event` here as everywhere else: a handler
+  written as `(regionChange)="onRegion($event)"` gets the value the
+  third-party component passes, and a bare method reference, as in
+  the example above, `(regionChange)="regionChanged"`, receives it
+  as its argument directly.
 
 ## Path 2: wrap it in a child component (recommended)
 

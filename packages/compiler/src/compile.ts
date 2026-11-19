@@ -3,6 +3,7 @@ import {
   ClassFileInfo,
   ComponentInfo,
   DirectiveInfo,
+  ImportInfo,
   parseClassFile,
   PipeInfo,
   ServiceInfo,
@@ -217,6 +218,39 @@ export function compileComponent(options: CompileOptions): CompileResult {
     return allowed;
   };
 
+  /**
+   * The binding names of one import that the importing file actually
+   * uses as values, judged from its classes' own texts: field
+   * initializers, method bodies and constructor bodies. A name used
+   * only as a type never appears there, so type-only imports of a
+   * classless file (a models file, say) stay quiet.
+   */
+  const classlessUsedNames = (importerParsed: ClassFileInfo, imp: ImportInfo): string[] => {
+    const haystacks: string[] = [];
+    const collect = (fields: { initializer?: string }[], methods: { body?: string }[], ctor?: string): void => {
+      for (const f of fields) if (f.initializer) haystacks.push(f.initializer);
+      for (const m of methods) if (m.body) haystacks.push(m.body);
+      if (ctor) haystacks.push(ctor);
+    };
+    for (const c of importerParsed.components) collect(c.fields, c.methodDetails, c.constructorBody);
+    for (const s of importerParsed.services) collect(s.fields, s.methodDetails, s.constructorBody);
+    for (const p of importerParsed.pipes) collect(p.fields, p.methodDetails, p.constructorBody);
+    for (const d of importerParsed.directives) {
+      for (const i of d.inputs) if (i.initializer) haystacks.push(i.initializer);
+      if (d.initBody) haystacks.push(d.initBody);
+      if (d.setter) haystacks.push(d.setter.body);
+    }
+    const used: string[] = [];
+    for (const b of imp.bindings) {
+      if (b.typeOnly) continue;
+      const pattern = b.imported === '*'
+        ? new RegExp(`\\b${b.local}\\s*\\.`)
+        : new RegExp(`\\b${b.local}\\b`);
+      if (haystacks.some((h) => pattern.test(h))) used.push(b.local);
+    }
+    return used;
+  };
+
   const readRelative = (importer: string, rel: string): ResolvedSource | undefined => {
     if (options.resolveImport) return options.resolveImport(rel, importer);
     if (options.resolveFile) {
@@ -260,6 +294,12 @@ export function compileComponent(options: CompileOptions): CompileResult {
     stack.push(fileName);
     const parsed = parseClassFile(source, fileName);
     parsedByFile.set(fileName, parsed);
+    for (const pe of parsed.parseErrors) {
+      diagnostics.push({
+        ...error('CLS_PARSE', `TypeScript could not parse this file: ${pe.message}`, pe.line, pe.column, 'Fix the syntax error; classes and fields after it may be missing from the generated code'),
+        file: fileName,
+      });
+    }
     if (fileName === entryKey) entryParsed = parsed;
     for (const info of parsed.components) {
       if (!info.selector) continue;
@@ -303,6 +343,26 @@ export function compileComponent(options: CompileOptions): CompileResult {
         continue;
       }
       visitFile(resolved.fileName, resolved.source);
+      // A resolved file with no compilable class in it contributes
+      // nothing to the generated module, so a name imported from it
+      // and used as a value would be undefined at run time. That
+      // drop used to be silent; report it (GEN_IMPORT_CLASSLESS).
+      const target = parsedByFile.get(resolved.fileName);
+      if (target && target.components.length === 0 && target.services.length === 0
+        && target.pipes.length === 0 && target.directives.length === 0) {
+        const used = classlessUsedNames(parsed, imp);
+        if (used.length) {
+          diagnostics.push({
+            ...error(
+              'GEN_IMPORT_CLASSLESS',
+              `Import from '${imp.from}' binds ${used.map((n) => `'${n}'`).join(', ')}, but that file declares no component, service, pipe or directive, so nothing from it reaches the generated code and the name would be undefined at run time`,
+              imp.line, undefined,
+              'Move shared values into an @Injectable service and inject it, or declare the values in the class that uses them',
+            ),
+            file: fileName,
+          });
+        }
+      }
     }
     stack.pop();
   };

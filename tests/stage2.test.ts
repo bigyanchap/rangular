@@ -41,7 +41,7 @@ test('(click) with a bare method reference emits onPress={fn}', () => {
 
 test('(click) handlers pass $event through', () => {
   const { code } = compileSnippet('<button (click)="save($event)">Save</button>', 'save(e: any) {}');
-  assert.match(code, /onPress=\{\(\) => save\(\$event\)\}/);
+  assert.match(code, /onPress=\{\(\$event\) => save\(\$event\)\}/);
 });
 
 test('(click) on a row emits onPress too', () => {

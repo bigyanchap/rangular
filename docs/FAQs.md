@@ -208,7 +208,7 @@ measured; treat framework benchmarks quoted without a reproducible
 harness as marketing, whoever quotes them.
 
 **27. How is the framework itself tested?**
-A unit suite (448 tests at version 0.2.0) plus one rule held hard:
+A unit suite (460 tests at version 0.3.0) plus one rule held hard:
 the tutorial app is the integration test. Every release must
 compile the 95-lesson app with zero diagnostics, pass the doctor,
 produce Android and web bundles, and pass a phone-mode browser gate

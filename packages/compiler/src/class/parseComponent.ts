@@ -187,6 +187,14 @@ export interface ClassFileInfo {
   imports: ImportInfo[];
   /** `import A = require(...)` / `import A = B.C` declarations. */
   importEquals: ImportEqualsInfo[];
+  /**
+   * TypeScript syntax errors in this file, from the parser itself.
+   * TypeScript recovers from these and still returns a tree, so
+   * without this list a malformed file reads as a smaller, valid
+   * file: the silent drop the compiler must never do. compile.ts
+   * turns each entry into a CLS_PARSE error.
+   */
+  parseErrors: { message: string; line: number; column: number }[];
 }
 
 export interface ParseComponentResult {
@@ -445,7 +453,18 @@ function readDirectiveClass(node: ts.ClassDeclaration, sf: ts.SourceFile, fileNa
  */
 export function parseClassFile(tsSource: string, fileName = 'component.ts'): ClassFileInfo {
   const sf = ts.createSourceFile(fileName, tsSource, ts.ScriptTarget.Latest, /* setParentNodes */ true);
-  const result: ClassFileInfo = { components: [], services: [], pipes: [], directives: [], imports: [], importEquals: [] };
+  const parseErrors = ((sf as unknown as { parseDiagnostics?: readonly ts.DiagnosticWithLocation[] }).parseDiagnostics ?? [])
+    .map((d) => {
+      const pos = d.start !== undefined
+        ? sf.getLineAndCharacterOfPosition(d.start)
+        : { line: 0, character: 0 };
+      return {
+        message: ts.flattenDiagnosticMessageText(d.messageText, ' '),
+        line: pos.line + 1,
+        column: pos.character + 1,
+      };
+    });
+  const result: ClassFileInfo = { components: [], services: [], pipes: [], directives: [], imports: [], importEquals: [], parseErrors };
   const visit = (node: ts.Node): void => {
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
       const names: string[] = [];
@@ -507,7 +526,10 @@ export function parseClassFile(tsSource: string, fileName = 'component.ts'): Cla
  */
 export function parseComponent(tsSource: string, fileName = 'component.ts'): ParseComponentResult {
   const diagnostics: Diagnostic[] = [];
-  const { components } = parseClassFile(tsSource, fileName);
+  const { components, parseErrors } = parseClassFile(tsSource, fileName);
+  for (const pe of parseErrors) {
+    diagnostics.push(error('CLS_PARSE', `TypeScript could not parse this file: ${pe.message}`, pe.line, pe.column, 'Fix the syntax error; classes and fields after it may be missing from the generated code'));
+  }
   const found = components[0];
   if (!found) {
     diagnostics.push(error('CLS_NO_COMPONENT', 'No @Component-decorated class found in the source', undefined, undefined, "Decorate the class: @Component({ selector: 'app-x', templateUrl: './x.component.html' }) export class XComponent { ... }, only @Component classes are compiled; @NgModule/@Injectable classes are not entry points"));

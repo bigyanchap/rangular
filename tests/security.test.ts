@@ -26,7 +26,9 @@ function compileWithTemplate(tsSource: string, template: string, extra: Record<s
   return compileComponent({
     tsSource,
     fileName: '/proj/x.component.ts',
-    resolveFile: () => template,
+    // Only the template path resolves; anything else (the routes
+    // sibling the compiler probes for) does not exist in this fixture.
+    resolveFile: (rel) => (rel.endsWith('.html') ? template : undefined),
     ...extra,
   });
 }
