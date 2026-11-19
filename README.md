@@ -29,6 +29,16 @@ diagnostic, never as a preview-only success. A parity guard test scans
 every example's generated `.tsx` and fails if a web-only API, a web
 tag, or an out-of-subset style property leaks into generated code.
 
+## Learn it: the tutorial is also the documentation
+
+The [Rangular Tutorial](https://github.com/bigyanchap/rangular-framework-tutorial)
+app teaches the framework in 95 lessons, each with a live demo and the
+full working code in its Implementations section. It is a tutorial
+first, and it doubles as the framework's documentation: when the
+learning is done, the same pages stay beside you as reference while
+you build. The tutorial is itself built with the Rangular framework,
+and it is available on Android and iOS.
+
 ## Install and your first app
 
 The Rangular framework is installed and used the Angular way: install the CLI once,
