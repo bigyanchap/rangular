@@ -3820,7 +3820,7 @@ function __buildCore(el, scope, path, form) {
     case 'gradient': return wrap('div', 'gradient');
     case 'section': {
       var secLabel = __attr(el, 'label', scope);
-      if (!secLabel) return wrap('section', 'stack');
+      if (!secLabel) { var secWrap = wrap('section', 'stack'); __attachEvents(secWrap[0], el, scope); return secWrap; }
       var sec = document.createElement('section');
       sec.className = 'stack';
       var head = document.createElement('div');
@@ -3849,6 +3849,7 @@ function __buildCore(el, scope, path, form) {
       }
       sec.appendChild(head);
       kids.forEach(function (k) { sec.appendChild(k); });
+      __attachEvents(sec, el, scope);
       return [sec];
     }
     case 'div': return wrap('div', 'stack');
