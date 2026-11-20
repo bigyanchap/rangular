@@ -154,32 +154,25 @@ export function pickerMinutes(minuteInterval: number): number[] {
 
 /** One wheel of the picker: its name, its options and its selected value. */
 export interface WheelSpec {
-  name: 'month' | 'day' | 'year' | 'date' | 'hour' | 'minute' | 'ampm';
+  name: 'month' | 'day' | 'year' | 'hour' | 'minute' | 'ampm';
   options: { value: string; label: string }[];
   value: string;
-}
-
-/** How many days either side of the value the datetime mode date wheel spans. */
-export const DATE_WHEEL_DAYS = 183;
-
-/** Day arithmetic on the UTC calendar, so daylight saving never shifts a date. */
-function addDays(year: number, month: number, day: number, n: number): { year: number; month: number; day: number } {
-  const dt = new Date(Date.UTC(year, month - 1, day + n));
-  return { year: dt.getUTCFullYear(), month: dt.getUTCMonth() + 1, day: dt.getUTCDate() };
 }
 
 /**
  * The wheels of one picker mode for a pending value:
  * - date: month, day, year wheels;
  * - time: hour (1 to 12), minute, AM/PM wheels, the iOS form;
- * - datetime: one combined date wheel (a window of days around the
- *   value, labelled like `Nov 13 2026`, the way the iOS date and time
- *   picker lists days), then hour, minute and AM/PM wheels.
+ * - datetime: the same month, day and year wheels, then hour,
+ *   minute and AM/PM wheels. The picker shows them in two separate
+ *   steps, date first, time second (the overhaul of 2026-11-20: a
+ *   single combined day list scrolled wildly and gave no precise
+ *   control; separate wheels are the Apple Calendar form).
  */
 export function dateTimeWheels(parts: DateTimeParts, mode: PickerMode, minuteInterval: number): WheelSpec[] {
   const p = clampDateTimeParts(parts);
   const wheels: WheelSpec[] = [];
-  if (mode === 'date') {
+  if (mode === 'date' || mode === 'datetime') {
     wheels.push({
       name: 'month',
       options: MONTH_SHORT.map((label, i) => ({ value: `${i + 1}`, label })),
@@ -192,21 +185,6 @@ export function dateTimeWheels(parts: DateTimeParts, mode: PickerMode, minuteInt
       name: 'year',
       options: pickerYears(p.year).map((y) => ({ value: `${y}`, label: `${y}` })),
       value: `${p.year}`,
-    });
-  }
-  if (mode === 'datetime') {
-    const options: { value: string; label: string }[] = [];
-    for (let n = -DATE_WHEEL_DAYS; n <= DATE_WHEEL_DAYS; n++) {
-      const d = addDays(p.year, p.month, p.day, n);
-      options.push({
-        value: `${d.year}-${pad2(d.month)}-${pad2(d.day)}`,
-        label: `${MONTH_SHORT[d.month - 1]} ${d.day} ${d.year}`,
-      });
-    }
-    wheels.push({
-      name: 'date',
-      options,
-      value: `${p.year}-${pad2(p.month)}-${pad2(p.day)}`,
     });
   }
   if (mode === 'time' || mode === 'datetime') {
@@ -244,11 +222,6 @@ export function applyWheelValue(parts: DateTimeParts, wheel: string, value: stri
     case 'month': return clampDateTimeParts({ ...p, month: Number(value) });
     case 'day': return clampDateTimeParts({ ...p, day: Number(value) });
     case 'year': return clampDateTimeParts({ ...p, year: Number(value) });
-    case 'date': {
-      const parsed = parseDateTimeValue(value);
-      if (!parsed) return p;
-      return { ...p, year: parsed.year, month: parsed.month, day: parsed.day };
-    }
     case 'hour': {
       const h12 = Number(value);
       if (!Number.isFinite(h12)) return p;
