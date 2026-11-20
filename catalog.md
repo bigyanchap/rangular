@@ -351,7 +351,6 @@ Props are parsed from `packages/ui/src/primitives.tsx`; the primitives are shipp
 - `minuteInterval`: any
 - `onChange`: any
 - `style`: any
-- `presentation`: any
 
 ### RgTab
 
@@ -741,7 +740,7 @@ Full token values (both colour modes, the light and dark theme objects, elevatio
 | GEN_ROUTE_DUPLICATE | Two route entries declare the same path; matching tries entries in order, so the first one wins and the later one never renders. |
 | GEN_ROUTE_UNSUPPORTED | A route entry or routing construct uses an Angular routing feature Rangular does not support yet (child routes, guards, resolvers, lazy loading, nested outlets, routerLink on a component tag), or a route entry is not a plain object literal with a string path. |
 | GEN_PICKER_MODE | A <datetime-picker> mode is not one of the three picker modes (date, time, datetime). |
-| GEN_PICKER_PRESENTATION | A <datetime-picker> presentation is not one of the two containers (modal, sheet); the picker opens in a modal. |
+| GEN_PICKER_PRESENTATION | A <datetime-picker> carries a presentation attribute; the picker always opens in a modal and takes no presentation. |
 | GEN_BUTTON_COLOR | A <button> color is not one of the three colour roles (primary, danger, neutral); the button keeps the primary colour. |
 | GEN_CHART_TYPE | A <chart> type is not one of the three chart types (bar, line, pie); the chart would draw bars instead. |
 | GEN_OTP_LENGTH | An <otp> length is outside the supported 4 to 8; the generated control clamps it to the nearest of the two. |

@@ -74,7 +74,7 @@ the repo's actual behaviour today (through Stage 12), not aspirations.
 | Reactive forms (`FormGroup`, `FormControl`, `Validators` from `@angular/forms`) | Wired (Stage 8): the classes are runtime classes, a group field is a stable ref-held instance, `[formGroup]` plus `formControlName` binds controls, and `profileForm.get('email')` evaluates in template expressions. See the Forms section below |
 | `<form (submit)="save()">` | Wired (Stage 8) as a lightweight form element: a `<button type="submit">` inside calls the handler after marking every ngModel input touched (and `markAllAsTouched()` on a reactive group). There is no NgForm object |
 | Routing (`Routes` array, `<router-outlet>`, `routerLink`, `ActivatedRoute`, `Router`) | Wired (Stage 9) in the modern standalone form: the compiler mirrors the `export const routes: Routes = [...]` array that `provideRouter(routes)` consumes, not the historical `RouterModule.forRoot` module form. The root component hosts one `<router-outlet>`; route components are ordinary components imported by the routes file; `routerLink` (string or array form) on a `<button>` or `<row>` compiles to a navigation press; `ActivatedRoute.snapshot.params` and its `paramMap` Observable-lite, and `Router.navigate` / `navigateByUrl`, are runtime classes. See the Routing section below for the exact limits |
-| Date picker, bottom sheet, dialog and snack bar (`<datetime-picker>`, `<sheet>`, `<dialog>`, `<actions>`, `SnackBar`) | Wired (Stage 10) as documented native adaptations of the Angular Material surface: the picker is one block with iOS style wheels, opening in a centred modal on every platform by default and in a bottom sheet with `presentation="sheet"`; datetime runs as two separate steps, the date modal then the time modal; MatBottomSheet and MatDialog become declarative `[open]` plus `(close)` blocks whose children render inside the panel; MatSnackBar keeps the service form through the built-in `SnackBar` injection, `open(message, actionLabel, durationMs)` and a returned ref with `onAction`. Event bindings never hold assignments. See the Pickers and overlays section below for the exact limits |
+| Date picker, bottom sheet, dialog and snack bar (`<datetime-picker>`, `<sheet>`, `<dialog>`, `<actions>`, `SnackBar`) | Wired (Stage 10) as documented native adaptations of the Angular Material surface: the picker is one block with iOS style wheels, opening in a centred modal on every platform; datetime runs as two separate steps, the date modal then the time modal; MatBottomSheet and MatDialog become declarative `[open]` plus `(close)` blocks whose children render inside the panel; MatSnackBar keeps the service form through the built-in `SnackBar` injection, `open(message, actionLabel, durationMs)` and a returned ref with `onAction`. Event bindings never hold assignments. See the Pickers and overlays section below for the exact limits |
 | Data display (`<tabs>`, `<accordion>`, `<panel>`, `<table>`, `<slider>`, `<progress-bar>`, `<spinner>`, `<chips>`, `<chip>`, badge) | Wired (Stage 11) as adaptations of the Angular Material surface: mat-tab-group becomes `<tabs [index] (change)>` with `<tab label>` children that own their content; mat-expansion-panel becomes a self-managed `<panel>` and mat-accordion a single-open `<accordion>`; mat-table becomes `<table [data]>` with `<column name header>` declarations (identifier columns only, no templates, sorting or pagination); mat-autocomplete becomes `[options]` plus `(optionSelected)` on `<input>` (string options only, no `displayWith`); mat-slider, mat-progress-bar and mat-progress-spinner keep their shapes with snap, clamp and size rules; mat-chip becomes `<chip>` in a `<chips>` row; matBadge becomes a `badge` attribute on `<button>`, `<row>` and `<icon>` only. See the Data display section below for the exact limits |
 
 **Not supported yet**: do not use these in Rangular source today:
@@ -497,8 +497,7 @@ See `examples/mini-mail/` and its recipe card.
 like the iOS wheel picker on every platform.** It never renders a
 calendar grid, a clock face or an Android style material date or
 time dialog. The field row opens the wheels centred in a dialog
-card by default, or sliding up in a bottom sheet with
-`presentation="sheet"`; the selected value sits in the middle row,
+card; the selected value sits in the middle row,
 rows above and below are muted, and the header carries accent
 coloured text buttons either way. Rolling a wheel ticks one
 selection haptic per row that passes the centre.
@@ -521,11 +520,11 @@ Rangular adaptation is one dedicated block:
   day and year wheels, with a Next button), then the time step
   (hour, minute and AM/PM wheels, with Back and Done), two
   separate modals in sequence. The wheels are 40px rows in 20px
-  type, and a flick moves one notch: the wheel scroll carries no
-  interval momentum, so month, day and year stay under precise
-  control, the Apple Calendar form. (Before 2026-11-20 datetime
-  used one combined day list of 367 rows; it scrolled wildly and
-  is gone.)
+  type, in year, month, day order, and a flick moves one notch:
+  the wheel scroll carries no interval momentum, so year, month
+  and day stay under precise control, the Apple Calendar form.
+  (Before 2026-11-20 datetime used one combined day list of 367
+  rows; it scrolled wildly and is gone.)
 - **Value contract.** `[value]` accepts an ISO string or a `Date`.
   The picker keeps a pending value while the picker is open. Done
   emits `(change)` once, with the composed local ISO string
@@ -549,12 +548,11 @@ Rangular adaptation is one dedicated block:
   `datetime` is a `GEN_PICKER_MODE` error whose fix lists the
   three modes; the value is still emitted and the primitive treats
   it as `datetime`. A `[mode]` binding passes through unchecked.
-- **Presentation.** `presentation="modal"` is the default: the
-  wheels centre in a dialog card. `presentation="sheet"` slides
-  the same wheels, header and commit rules up in a bottom sheet.
-  A static value outside the two is a `GEN_PICKER_PRESENTATION`
-  error; a `[presentation]` binding passes through unchecked and
-  the primitive treats anything other than `sheet` as the modal.
+- **Container.** The wheels always open centred in a modal
+  dialog. The picker takes no presentation: a `presentation`
+  attribute or binding is a `GEN_PICKER_PRESENTATION` error. (A
+  sheet form existed until 2026-11-20 and was removed as
+  superfluous.)
 - **Preview.** The wheels are clickable lists in the preview:
   clicking a value selects it, with the same selected value
   outcome as scrolling a wheel to rest on it. The generated app

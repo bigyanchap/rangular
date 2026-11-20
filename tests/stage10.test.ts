@@ -192,10 +192,10 @@ test('datetime helpers: wheels, ranges, steps and wheel application', () => {
 
   const parts = { year: 2026, month: 11, day: 13, hour: 9, minute: 0 };
   const dateWheels = dateTimeWheels(parts, 'date', 1);
-  assert.deepEqual(dateWheels.map((w) => w.name), ['month', 'day', 'year']);
-  assert.equal(dateWheels[0].value, '11');
-  assert.equal(dateWheels[0].options[10].label, 'Nov');
-  assert.equal(dateWheels[2].options.length, 51);
+  assert.deepEqual(dateWheels.map((w) => w.name), ['year', 'month', 'day']);
+  assert.equal(dateWheels[0].options.length, 51);
+  assert.equal(dateWheels[1].value, '11');
+  assert.equal(dateWheels[1].options[10].label, 'Nov');
 
   const timeWheels = dateTimeWheels({ ...parts, hour: 23, minute: 3 }, 'time', 5);
   assert.deepEqual(timeWheels.map((w) => w.name), ['hour', 'minute', 'ampm']);
@@ -204,9 +204,9 @@ test('datetime helpers: wheels, ranges, steps and wheel application', () => {
   assert.equal(timeWheels[2].value, 'PM');
 
   const dateTime = dateTimeWheels(parts, 'datetime', 1);
-  assert.deepEqual(dateTime.map((w) => w.name), ['month', 'day', 'year', 'hour', 'minute', 'ampm'], 'datetime uses the separate month, day and year wheels, never one combined day list');
-  assert.equal(dateTime[0].value, '11');
-  assert.equal(dateTime[2].options.length, 51);
+  assert.deepEqual(dateTime.map((w) => w.name), ['year', 'month', 'day', 'hour', 'minute', 'ampm'], 'datetime uses the separate year, month and day wheels, never one combined day list');
+  assert.equal(dateTime[1].value, '11');
+  assert.equal(dateTime[0].options.length, 51);
 
   assert.deepEqual(
     applyWheelValue({ year: 2025, month: 1, day: 31, hour: 9, minute: 0 }, 'month', '2'),
@@ -425,7 +425,7 @@ test('reminder example: zero diagnostics, doctor clean, golden and style snapsho
 test('reminder codegen: all four pieces are present in the generated file', () => {
   const { result } = compileExample('reminder');
   const code = normalize(result.code);
-  assert.ok(code.includes('<RgDateTimePicker mode="datetime" presentation="sheet" label="When" value={when} onChange={($event) => onWhen($event)} />'));
+  assert.ok(code.includes('<RgDateTimePicker mode="datetime" label="When" value={when} onChange={($event) => onWhen($event)} />'));
   assert.ok(code.includes('<RgSheet open={sheetOpen} onClose={() => closeSheet()}>'));
   assert.ok(code.includes('<RgDialog title="Delete this reminder?" open={confirmOpen} onClose={() => closeConfirm()}>'));
   assert.ok(code.includes("const ref = snack.open('Reminder deleted', 'Undo');"));

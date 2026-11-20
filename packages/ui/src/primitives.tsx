@@ -1303,11 +1303,16 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
       });
     } catch { /* the field left the tree before the keyboard settled */ }
   };
+  // The passes run at 60, 320 and 700ms: the keyboard frame can
+  // grow after the first event, when the iCloud Keychain strip
+  // (two lines: the site, then the user name) expands over a
+  // password field, and the last pass still catches it.
   const scheduleLift = () => {
     liftTimers.current.forEach((t) => clearTimeout(t));
     liftTimers.current = [
       setTimeout(liftFocusedField, 60),
       setTimeout(liftFocusedField, 320),
+      setTimeout(liftFocusedField, 700),
     ];
   };
   const scrollControl = useRef({
@@ -1327,16 +1332,27 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
   // line, so a small modal whose field is clear does not move.
   const overlayNodeRef = useRef<any>(null);
   const overlayTimers = useRef<any[]>([]);
+  const overlayLiftRef = useRef(0);
   const [overlayLift, setOverlayLift] = useState(0);
+  const applyOverlayLift = (next: number) => {
+    overlayLiftRef.current = next;
+    setOverlayLift(next);
+  };
   const liftOverlayField = () => {
     const node = overlayNodeRef.current;
     const kb = keyboardHeightRef.current;
     if (!node || kb <= 0 || Platform.OS === 'web') return;
     try {
       node.measureInWindow?.((_x: number, y: number, _w: number, h: number) => {
+        // The measure reads the field where it sits NOW, already
+        // translated by the current lift, so the lift is added
+        // back before the overlap is judged. Without this the
+        // second pass saw a clear field and dropped the layer
+        // back under the keyboard (his phone report, 2026-11-20:
+        // pushed momentarily and came back).
         const restLine = Dimensions.get('window').height - kb - 20;
-        const overlap = y + h - restLine;
-        setOverlayLift(overlap > 0 ? overlap : 0);
+        const overlap = y + h + overlayLiftRef.current - restLine;
+        applyOverlayLift(overlap > 0 ? overlap : 0);
       });
     } catch { /* the field left the tree before the keyboard settled */ }
   };
@@ -1345,6 +1361,7 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
     overlayTimers.current = [
       setTimeout(liftOverlayField, 60),
       setTimeout(liftOverlayField, 320),
+      setTimeout(liftOverlayField, 700),
     ];
   };
   const overlayLiftControl = useRef({
@@ -1372,7 +1389,7 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
     const onHide = () => {
       keyboardHeightRef.current = 0;
       setKeyboardHeight(0);
-      setOverlayLift(0);
+      applyOverlayLift(0);
     };
     const subs = [
       Keyboard.addListener(showName as any, onFrame),
@@ -2581,7 +2598,7 @@ function RgWheel({ options, value, onSelect, wide }: any) {
         showsVerticalScrollIndicator={false}
         snapToInterval={WHEEL_ITEM_HEIGHT}
         disableIntervalMomentum
-        decelerationRate="fast"
+        decelerationRate={0.95}
         onScroll={(e: any) => tickWhileRolling(e.nativeEvent.contentOffset.y)}
         scrollEventThrottle={16}
         onScrollEndDrag={(e: any) => selectAtRest(e.nativeEvent.contentOffset.y)}
@@ -2621,17 +2638,15 @@ function RgWheel({ options, value, onSelect, wide }: any) {
  * onChange as an ISO string; Cancel discards it. `value` accepts
  * an ISO string or a Date; an unparseable value falls back to the
  * current time. minuteInterval is 1 or 5 (the compiler snaps
- * anything else). presentation chooses the container the wheels
- * open in: 'modal' (the default) centres them in a dialog card,
- * 'sheet' slides them up in a bottom sheet. The wheels, the header
- * and the commit rules are the same either way; only the container
- * changes. Datetime mode never mixes the two in one panel: it
- * opens the date step first (the date wheel, with a Next button),
+ * anything else). The wheels always open centred in a modal
+ * dialog; the picker takes no presentation (the sheet form was
+ * removed on 2026-11-20 at Bigyan's word: superfluous). Datetime
+ * mode never mixes the two in one panel: it opens the date step
+ * first (the year, month and day wheels, with a Next button),
  * then the time step (hour, minute and AM/PM wheels, with Back
- * and Done), two separate modals in sequence in whichever
- * container presentation chose.
+ * and Done), two separate modals in sequence.
  */
-export function RgDateTimePicker({ value, mode = 'datetime', label, minuteInterval = 1, onChange, style, presentation }: any) {
+export function RgDateTimePicker({ value, mode = 'datetime', label, minuteInterval = 1, onChange, style }: any) {
   const t = useRgTheme();
   const styles = stylesFor(t);
   const pickerMode: PickerMode = mode === 'date' || mode === 'time' ? mode : 'datetime';
@@ -2710,11 +2725,7 @@ export function RgDateTimePicker({ value, mode = 'datetime', label, minuteInterv
         <Text style={styles.pickerValue}>{formatDateTimeValue(current, pickerMode)}</Text>
         <RgIcon name="calendar" size={20} color="textMuted" />
       </Pressable>
-      {presentation === 'sheet' ? (
-        <RgSheet open={open} onClose={cancel}>{pickerBody}</RgSheet>
-      ) : (
-        <RgDialog open={open} onClose={cancel}>{pickerBody}</RgDialog>
-      )}
+      <RgDialog open={open} onClose={cancel}>{pickerBody}</RgDialog>
     </View>
   );
 }

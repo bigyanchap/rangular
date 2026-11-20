@@ -2332,20 +2332,17 @@ class Generator {
         }
       }
 
-      if (el.attrs['presentation'] !== undefined) {
-        const presentation = el.attrs['presentation'];
-        if (presentation !== 'sheet' && presentation !== 'modal') {
-          diagnostics.push(error(
-            'GEN_PICKER_PRESENTATION',
-            `<datetime-picker> presentation '${presentation}' is not a picker presentation; the picker opens in a modal`,
-            el.pos.line, el.pos.column,
-            'Use presentation="modal" (the default) or presentation="sheet"',
-          ));
-        }
-        props.push(`presentation="${escapeJsxAttrValue(presentation)}"`);
-      } else {
-        const presentationBinding = el.propBindings.find((b) => b.name === 'presentation');
-        if (presentationBinding) props.push(`presentation={${codeExpr(presentationBinding.expression)}}`);
+      // Presentation is gone (his word, 2026-11-20): the sheet
+      // form of the picker was superfluous, the picker always
+      // opens in a modal, and a presentation attribute or binding
+      // is an error rather than a silent drop.
+      if (el.attrs['presentation'] !== undefined || el.propBindings.some((b) => b.name === 'presentation')) {
+        diagnostics.push(error(
+          'GEN_PICKER_PRESENTATION',
+          '<datetime-picker> takes no presentation; the picker always opens in a modal',
+          el.pos.line, el.pos.column,
+          'Remove the presentation attribute; the picker always opens in a modal',
+        ));
       }
 
       const consumedAttrs = new Set(['class', 'style', 'mode', 'minuteInterval', 'presentation']);
