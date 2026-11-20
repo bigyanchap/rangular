@@ -1405,7 +1405,7 @@ The project is renamed to rangular-framework, everywhere, because the bare name 
 
 ## The wash and buttons round (2026-11-18, version 0.1.9)
 
-From the tutorial's button audit and the gradient pick (Option A: the header wash on every page top). (1) The search pill clears itself: when a `variant="search"` field holds text, a close tap inside the pill's right edge empties it through the same value contract (`onChangeText('')`) and keeps focus, labelled "Clear search"; the preview mirrors it. Apps no longer need a separate Clear button under a search field. (2) A `<card>` with a `(click)` is a Pressable now: the whole card is the tap target, the Material behaviour; a card without one stays a plain surface, and the preview wires the click the same way. Both guards live in `tests/native-polish.test.ts`.
+From the tutorial's button audit and the gradient pick (Option A: the header wash on every page top). (1) The search pill clears itself: when a `variant="search"` field holds text, a close tap inside the pill's right edge empties it through the same value contract (`onChangeText('')`) and keeps focus, labelled "Clear search"; the preview mirrors it. Apps no longer need a separate Clear button under a search field. (2) A `<card>` with a `(click)` is a Pressable now: the whole card is the tap target, the Material behaviour; a card without one stays a plain surface, and the preview wires the click the same way. Both guards live in `tests/native-polish.test.ts`. The same rule reached `<section>` in the device keys round (2026-11-20): the compiler already wired a section `(click)` to `onPress`, but `RgSection` dropped it silently, so the tutorial's device key faces, built as sections, rendered and never pressed. A section with a `(click)` is a Pressable now, exactly like the card; a section without one stays a plain view. Guard in `tests/native-polish.test.ts`.
 
 ## The steady shell round (2026-11-18, version 0.1.8)
 
@@ -1627,7 +1627,15 @@ One framework fix from the tutorial's phone retest: the search variant of `<inpu
   the theme error role for a destructive action, and `neutral` is
   the quiet surface variant grey for a cancelling one, with the
   `text` variant colouring only its label. A static colour outside
-  the three is a `GEN_BUTTON_COLOR` error.
+  the three is a `GEN_BUTTON_COLOR` error. A button sized
+  exactly by a class in the component styles (a width or a
+  height, the square action buttons of the tutorial's Pattern
+  A demos) gets compact padding and a centred label, so the
+  label can use the size it was given instead of the pill's
+  wide padding, and the gradient fill follows the corner
+  radius the class set: with the full pill curve the fill
+  drew a circle inside a square button, and the wide padding
+  left so little room that long words broke mid-word.
 - **Only meaningful buttons (2026-11-12, same finding).** Back is
   an `<icon-button name="chevron-left" routerLink="/home">`: a
   48 square target, glyph at the left edge, no label, the pattern

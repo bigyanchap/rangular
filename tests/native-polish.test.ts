@@ -98,6 +98,24 @@ test('the filled button wears the primary gradient', () => {
   assert.ok(primitivesSrc.includes('stopColor={stopBottom}'), 'the lower stop is the resolved colour');
 });
 
+test('the button fill follows the corner radius the caller set', () => {
+  assert.ok(primitivesSrc.includes('function ButtonFill({ top, bottom, radius }: any)'), 'the fill takes a radius');
+  assert.ok(primitivesSrc.includes('borderRadius: radius ?? t.radius.full'), 'the fill uses the given radius, the full curve by default');
+  assert.ok(primitivesSrc.includes('const fillRadius = styleObj && typeof styleObj.borderRadius === \'number\' ? styleObj.borderRadius : theme.radius.full;'), 'the button resolves the fill radius from its style');
+  assert.ok(primitivesSrc.includes('<ButtonFill radius={fillRadius} />'), 'the primary fill receives the resolved radius');
+});
+
+test('a button sized exactly by its caller gets compact padding and a centred label', () => {
+  assert.ok(primitivesSrc.includes('buttonSized: { paddingHorizontal: t.spacing.sm, paddingVertical: t.spacing.sm }'), 'the compact padding style exists');
+  assert.ok(primitivesSrc.includes('sized && !text ? styles.buttonSized : null'), 'sized buttons use the compact padding');
+  assert.ok(primitivesSrc.includes("buttonLabelSized: { textAlign: 'center', flexShrink: 1 }"), 'the sized label centres and may shrink');
+});
+
+test('a section with a click is a pressable, never a silent drop', () => {
+  assert.ok(primitivesSrc.includes('export function RgSection({ children, style, label, meta, icon, plain, onPress }: any)'), 'the section takes onPress');
+  assert.ok(primitivesSrc.includes('<Pressable onPress={onPress} style={({ pressed }) => [styles.section, style, pressed && styles.buttonPressed]}>'), 'the section renders a pressable when it carries a click');
+});
+
 test('a list drops the hairline under its last row', () => {
   assert.ok(primitivesSrc.includes('lastInList'), 'rows know the last-in-list mark');
   assert.ok(primitivesSrc.includes('React.cloneElement'), 'the list marks its last row');

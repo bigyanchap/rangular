@@ -339,6 +339,14 @@ function buildStyles(t: Theme) {
     },
     buttonPressed: { opacity: 0.85 },
     buttonDisabled: { opacity: 0.38 },
+    // A button the caller sized exactly (a width or a height in
+    // its style) trades the pill's wide padding for compact
+    // padding, so the label can use the size it was given: with
+    // the pill padding, an 84 wide square leaves 36 for the
+    // label and long words break mid-word. The sized label
+    // centres its lines and may shrink to fit its box.
+    buttonSized: { paddingHorizontal: t.spacing.sm, paddingVertical: t.spacing.sm },
+    buttonLabelSized: { textAlign: 'center', flexShrink: 1 },
     buttonLabel: { color: c.onPrimary, fontSize: t.typography.label.fontSize, fontWeight: '600' },
     // The text variant (variant="text"): a quiet action, for back
     // links and secondary choices that should not shout like a
@@ -974,7 +982,7 @@ function SoftFill() {
  * at the bottom, so the button reads as lit from above. The
  * host clips it with the pill radius and overflow.
  */
-function ButtonFill({ top, bottom }: any) {
+function ButtonFill({ top, bottom, radius }: any) {
   const t = useRgTheme();
   const c = t.colors;
   const stopTop = top ?? c.primary;
@@ -982,7 +990,7 @@ function ButtonFill({ top, bottom }: any) {
   const rawId = React.useId();
   const id = 'rgbtn' + rawId.replace(/[^a-zA-Z0-9]/g, '');
   return (
-    <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: t.radius.full, overflow: 'hidden' }}>
+    <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: radius ?? t.radius.full, overflow: 'hidden' }}>
       <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
         <Defs>
           <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
@@ -1707,7 +1715,7 @@ export function RgIconButton({ name, size = 28, color, onPress, style, tooltip }
   );
 }
 
-export function RgSection({ children, style, label, meta, icon, plain }: any) {
+export function RgSection({ children, style, label, meta, icon, plain, onPress }: any) {
   const styles = stylesFor(useRgTheme());
   // Labelled section (gradient shell round, 2026-11-17): a section
   // with a `label` opens with a header row, a short brand gradient
@@ -1715,23 +1723,38 @@ export function RgSection({ children, style, label, meta, icon, plain }: any) {
   // line at the right (a count, a range). The header is what makes
   // a section title stand out from the rows under it. A section
   // without a label renders exactly as before.
+  const head = label ? (
+    <View style={styles.sectionHead}>
+      {icon ? (
+        <View style={styles.sectionChip}>
+          <RgIcon name={icon} size={16} color="onPrimary" />
+        </View>
+      ) : plain ? null : (
+        <View style={styles.sectionBar}>
+          <GradientFill />
+        </View>
+      )}
+      <Text style={styles.sectionTitle}>{label}</Text>
+      {meta ? <Text style={styles.sectionMeta}>{meta}</Text> : null}
+    </View>
+  ) : null;
+  // A section with a (click) is a Pressable, the way a card is
+  // (button audit round, 2026-11-18; section round, 2026-11-20):
+  // the compiler wires a section (click) to onPress, and the
+  // primitive honours it, never drops it silently. The device
+  // keys of the tutorial's Pattern A demos are section faces
+  // that press, built on this.
+  if (onPress) {
+    return (
+      <Pressable onPress={onPress} style={({ pressed }) => [styles.section, style, pressed && styles.buttonPressed]}>
+        {head}
+        {children}
+      </Pressable>
+    );
+  }
   return (
     <View style={[styles.section, style]}>
-      {label ? (
-        <View style={styles.sectionHead}>
-          {icon ? (
-            <View style={styles.sectionChip}>
-              <RgIcon name={icon} size={16} color="onPrimary" />
-            </View>
-          ) : plain ? null : (
-            <View style={styles.sectionBar}>
-              <GradientFill />
-            </View>
-          )}
-          <Text style={styles.sectionTitle}>{label}</Text>
-          {meta ? <Text style={styles.sectionMeta}>{meta}</Text> : null}
-        </View>
-      ) : null}
+      {head}
       {children}
     </View>
   );
@@ -1820,6 +1843,14 @@ export function RgButton({ children, disabled, onPress, badge, style, variant, t
   const labelStyle = text
     ? (danger ? styles.buttonTextDanger : neutral ? styles.buttonTextNeutral : styles.buttonTextLabel)
     : (neutral ? styles.buttonLabelNeutral : styles.buttonLabel);
+  // A button the caller sized exactly (a width or a height in
+  // its style) gets compact padding and a centred label, so
+  // the label can use the size it was given, and the gradient
+  // fill follows the caller's corner radius: with the full
+  // pill curve the fill draws a circle inside a square button.
+  const styleObj = (style && typeof style === 'object' && !Array.isArray(style)) ? style : null;
+  const sized = !!styleObj && (typeof styleObj.width === 'number' || typeof styleObj.height === 'number');
+  const fillRadius = styleObj && typeof styleObj.borderRadius === 'number' ? styleObj.borderRadius : theme.radius.full;
   const tip = useTooltipBubble(tooltip, styles);
   return (
     <View style={styles.tooltipWrap}>
@@ -1830,13 +1861,14 @@ export function RgButton({ children, disabled, onPress, badge, style, variant, t
         style={({ pressed }) => [
           text ? styles.buttonText : styles.button,
           neutral && !text ? styles.buttonNeutral : null,
+          sized && !text ? styles.buttonSized : null,
           pressed && styles.buttonPressed,
           disabled && styles.buttonDisabled,
           style,
         ]}
       >
-        {text || neutral ? null : danger ? <ButtonFill top={theme.colors.danger} bottom={theme.colors.danger} /> : <ButtonFill />}
-        <Text style={labelStyle}>{children}</Text>
+        {text || neutral ? null : danger ? <ButtonFill top={theme.colors.danger} bottom={theme.colors.danger} radius={fillRadius} /> : <ButtonFill radius={fillRadius} />}
+        <Text style={[labelStyle, sized && !text ? styles.buttonLabelSized : null]}>{children}</Text>
         <BadgeDot value={badge} styles={styles} offset={{ top: -6, right: -6 }} />
       </Pressable>
       {tip.bubble}
