@@ -183,17 +183,20 @@ test('datetime helpers: leap years, parsing, composition and formatting', () => 
 });
 
 test('datetime helpers: wheels, ranges, steps and wheel application', () => {
-  const years = pickerYears(2026);
-  assert.equal(years.length, 51);
-  assert.equal(years[0], 2001);
-  assert.equal(years[50], 2051);
+  const years = pickerYears(2026, 2026);
+  assert.equal(years.length, 301);
+  assert.equal(years[0], 1876);
+  assert.equal(years[300], 2176);
+  const extended = pickerYears(1700, 2026);
+  assert.equal(extended[0], 1700, 'an out-of-range value year extends the fixed range to include it');
+  assert.equal(extended[extended.length - 1], 2176);
   assert.deepEqual(pickerMinutes(5), [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]);
   assert.equal(pickerMinutes(1).length, 60);
 
   const parts = { year: 2026, month: 11, day: 13, hour: 9, minute: 0 };
   const dateWheels = dateTimeWheels(parts, 'date', 1);
   assert.deepEqual(dateWheels.map((w) => w.name), ['year', 'month', 'day']);
-  assert.equal(dateWheels[0].options.length, 51);
+  assert.equal(dateWheels[0].options.length, pickerYears(2026, new Date().getFullYear()).length);
   assert.equal(dateWheels[1].value, '11');
   assert.equal(dateWheels[1].options[10].label, 'Nov');
 
@@ -206,7 +209,7 @@ test('datetime helpers: wheels, ranges, steps and wheel application', () => {
   const dateTime = dateTimeWheels(parts, 'datetime', 1);
   assert.deepEqual(dateTime.map((w) => w.name), ['year', 'month', 'day', 'hour', 'minute', 'ampm'], 'datetime uses the separate year, month and day wheels, never one combined day list');
   assert.equal(dateTime[1].value, '11');
-  assert.equal(dateTime[0].options.length, 51);
+  assert.equal(dateTime[0].options.length, pickerYears(2026, new Date().getFullYear()).length);
 
   assert.deepEqual(
     applyWheelValue({ year: 2025, month: 1, day: 31, hour: 9, minute: 0 }, 'month', '2'),

@@ -537,9 +537,13 @@ Rangular adaptation is one dedicated block:
   value and emits nothing. An unparseable value falls back to the
   current local date and time in the primitive. Children of the
   block are ignored.
-- **Ranges.** Years run from the value year minus 25 to the
-  value year plus 25, in date mode and in the datetime date step
-  alike. Day selections clamp into their month, so
+- **Ranges.** Years run over a fixed range, 150 years either
+  side of the current year (301 entries), in date mode and in
+  the datetime date step alike, extended only to include the
+  value's year when that lies outside it. The list never
+  follows the pending value; a value-centred list made the
+  year wheel jump and even reverse under the scroll. Day
+  selections clamp into their month, so
   January 31 followed by February becomes February 28 or 29, with
   leap years handled correctly.
 - **Minute interval.** `minuteInterval` is 1 or 5, default 1. A
