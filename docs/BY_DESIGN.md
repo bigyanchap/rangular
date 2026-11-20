@@ -16,6 +16,42 @@ at the DOM end here. In their place: bind data in the template,
 let the binding move the view, and keep element references for
 the few native handles the primitives hand back.
 
+## Standalone only: there are no NgModules
+
+Modern Angular made components standalone by default and left
+NgModules behind. The Rangular framework never had them. There
+is no `@NgModule`, no declarations list and no providers array:
+a component imports the child components, pipes and services it
+uses, in its own file, and that is the whole wiring. Routing
+takes the same modern form: a `Routes` array in
+`app.routes.ts`, the array `provideRouter(routes)` consumes,
+never the historical `RouterModule.forRoot` module form. An
+`@NgModule` file is an error (`CLS_NO_COMPONENT`), not a
+starting point.
+
+## The newest Angular syntax is not in the subset
+
+Angular's current wave (signals for component state, the
+built-in control flow, Signal Forms, `resource()`) is not
+translated, and the subset says so instead of guessing:
+
+- No `signal()`, `computed()` or `input()` / `output()`
+  functions in components. State is plain class fields, and
+  inputs and outputs are the `@Input()` / `@Output()`
+  decorators. (The runtime package carries a tiny `signal()`
+  helper for services; it is a utility, not Angular's signal
+  component model.)
+- No `@if`, `@for`, `@switch` blocks and no `@defer`.
+  Templates use `*ngIf` and `*ngFor`, which current Angular
+  still supports.
+- No Signal Forms and no `resource()` / `httpResource()`.
+  Forms are the template-driven and reactive APIs, and async
+  data is the HttpClient subscribe form or promises in `.then`
+  form.
+- Zoneless change detection and OnPush need no stance: there
+  is no zone.js and no Angular change detection here at all.
+  React re-renders the generated components.
+
 ## Angular component libraries do not run
 
 Libraries built for Angular on the web, ag-grid, Angular

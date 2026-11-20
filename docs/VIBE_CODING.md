@@ -56,6 +56,7 @@ the repo's actual behaviour today (through Stage 12), not aspirations.
 | Angular feature | In Rangular source |
 |---|---|
 | `@Component` decorator (selector, templateUrl, inline template, styles, styleUrls) | Same; read by the TypeScript compiler API |
+| Standalone components (the modern Angular default; no NgModules) | The only form: every component is standalone by construction, importing the children, pipes and services it uses in its own file; there is no module to declare it in. See the NgModules row in the next table |
 | `@Input()` / `@Output()` field decorators | Wired (Stage 3): `@Input` fields become props, the literal initializer is the default when unbound; an `@Output` field holding `new EventEmitter<T>()` becomes an `onX` callback prop and `this.x.emit(v)` compiles to `onX?.(v)` |
 | Child components (a tag matching another component's selector) | Same, with import-based resolution: the compiler follows the entry file's relative imports and any imported `@Component` class is a usable child, no module/declarations list |
 | Templates in separate `.html` files | Same |
@@ -88,6 +89,9 @@ the repo's actual behaviour today (through Stage 12), not aspirations.
 | SSR / hydration | Not supported, output is a React Native app, there is no server rendering | Not planned |
 | Full RxJS surface (operators, Subjects, Observables from other sources) | Not supported. Only the Observable-lite exists (`subscribe(next?, error?)`, no operators). The `async` pipe is wired (Stage 12): generated code subscribes in an effect and renders the latest value; the streamed expression is captured at mount, so stream a stable field or service property, not a fresh method call | Later stage |
 | `*ngIf` with `else` / `then` | Detected, warns `GEN_NGIF_ELSE_TODO`, element emitted unconditionally. Workaround: two elements, `*ngIf="cond"` and `*ngIf="!(cond)"` | Later stage |
+| Built-in control flow (`@if`, `@for`, `@switch`) and `@defer` | Not supported. Templates use the structural directives `*ngIf` and `*ngFor`; there are no lazy template blocks | Not planned |
+| Signals as component state (`signal()`, `computed()`, `input()`, `output()`) | Not supported. State is plain class fields; inputs and outputs are the `@Input()` / `@Output()` decorators. The runtime package's tiny `signal()` helper is a service-side utility, not the component model | Not planned |
+| Signal Forms, `resource()` / `httpResource()` | Not supported. Forms are the Stage 8 template-driven and reactive APIs; async data is the HttpClient subscribe form or promises in `.then` form | Not planned |
 | Two structural directives on one element (`*ngIf` and `*ngFor` together) | Detected, warns `TPL_STRUCTURAL_MULTIPLE`: the first directive is kept, each later one is dropped and named in a TODO comment in the generated code. Nest one element inside the other instead | Enforced (the keep-first degrade is the v1 behaviour) |
 | `[class]` / `[ngClass]` whole-value class bindings | Detected, warns `GEN_CLASS_BINDING`, binding dropped: a dynamic class string cannot be resolved to StyleSheet entries at compile time. Toggle one declared class with `[class.name]="cond"` instead (supported, see the styling notes) | Not planned |
 | `[style]` / `[style.prop]` / `[ngStyle]` bindings, and static `style="..."` attributes | Detected, warns `GEN_STYLE_BINDING`, dropped: raw CSS values bypass the token-snapped component styles, and a static style attribute has no StyleSheet entry to attach to. Declare a class in the component styles instead | Not planned |

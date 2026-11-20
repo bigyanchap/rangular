@@ -105,7 +105,13 @@ the rest.
 
 **14. What about NgModules, signals and RxJS?**
 NgModules are out by design; the mirrored form is the modern
-standalone one. State is plain class fields. RxJS is not bundled;
+standalone one. Routing follows the same modern form: a Routes
+array, the one provideRouter consumes, never
+RouterModule.forRoot. The newest template syntax is not in the
+subset either: no @if / @for blocks and no @defer, *ngIf and
+*ngFor are the form, and Signal Forms and resource() are out in
+favour of the classic forms and HttpClient. State is plain
+class fields. RxJS is not bundled;
 HTTP offers a small subscribe form, and services use promises in
 .then form. Pure-logic TypeScript libraries work inside services,
 which is where most business logic lives anyway.

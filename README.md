@@ -18,6 +18,20 @@ Polish is a system, not luck: simple blocks compile to pre-polished
 [docs/UI_POLISH.md](docs/UI_POLISH.md). The full architecture is in
 [docs/BLOCK_DIAGRAM.md](docs/BLOCK_DIAGRAM.md).
 
+## Modern Angular stance
+
+The framework follows current Angular, not the historical one.
+Components are standalone only: there are no NgModules, no
+declarations lists and no providers arrays; a component imports
+what it uses. Routing is the modern form too, a `Routes` array
+of the kind `provideRouter(routes)` consumes, never
+`RouterModule.forRoot`. The newest syntax wave (signals as
+component state, the `@if` / `@for` control flow, Signal Forms,
+`resource()`) is not in the compiled subset; state is plain
+class fields, templates use `*ngIf` and `*ngFor`, and forms are
+the template-driven and reactive APIs. The full boundary list
+is [docs/BY_DESIGN.md](docs/BY_DESIGN.md).
+
 ## Design principle: the preview is a promise
 
 Any code that is successful as a mobile responsive must be successful
