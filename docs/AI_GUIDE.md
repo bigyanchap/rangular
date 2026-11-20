@@ -525,11 +525,26 @@ Rangular adaptation is one dedicated block:
   day and year wheels, with a Next button), then the time step
   (hour, minute and AM/PM wheels, with Back and Done), two
   separate modals in sequence. The wheels are 40px rows in 20px
-  type, in year, month, day order, and a flick moves one notch:
-  the wheel scroll carries no interval momentum, so year, month
-  and day stay under precise control, the Apple Calendar form.
+  type, in year, month, day order, the Apple Calendar form.
   (Before 2026-11-20 datetime used one combined day list of 367
   rows; it scrolled wildly and is gone.)
+- **Gesture rules (iOS, settled 2026-11-20).** A wheel commits
+  its value once per gesture, at rest: momentum end always
+  commits, because the snap has landed the offset exactly on a
+  row and the reading is stable; drag end commits only when the
+  wheel is already resting exactly on a row. The wheel never
+  repositions itself for its own commits: a ref marks the last
+  self-committed index, and the centring effect scrolls only
+  for outside changes (the picker opens, a sibling wheel clamps
+  the day). The old wheel committed mid-flight on drag end and
+  hard-scrolled on every value change, which made the year
+  oscillate between two neighbours, 2025-2026-2025-2026, with a
+  haptic per flip. Physics: no interval momentum flag (that is
+  a paging prop, and it grabbed fast flicks), decelerationRate
+  fast, snap to the 40px row. Rows are memoized, so a centre
+  change re-renders two rows, not the whole wheel. The haptic
+  stays one selection tick per row that crosses the centre,
+  fired from the scroll offset, never from a commit.
 - **Value contract.** `[value]` accepts an ISO string or a `Date`.
   The picker keeps a pending value while the picker is open. Done
   emits `(change)` once, with the composed local ISO string

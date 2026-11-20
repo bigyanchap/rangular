@@ -2596,6 +2596,24 @@ const WHEEL_ITEM_HEIGHT = 40;
  * value ticks once. The wheel's values and the selection math come
  * from ./datetime, shared with the preview.
  */
+// One wheel row, memoized (iOS gesture rules round, 2026-11-20):
+// a centre change re-renders only the row that left the centre
+// and the row that entered it, never the whole wheel. The year
+// wheel carries 301 rows; re-rendering all of them on every row
+// crossed saturated the JS thread at speed, the bold lagged the
+// real centre and the roll felt crazy on a fast flick (his
+// phone report). Rows receive only their own label, their
+// selected flag and a stable press callback, so memo holds.
+const WheelRow = React.memo(function WheelRow({ label, selected, onPressRow, styles }: any) {
+  return (
+    <Pressable onPress={onPressRow} style={styles.wheelItem}>
+      <Text style={[styles.wheelText, selected ? styles.wheelTextSelected : null]} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+});
+
 function RgWheel({ options, value, onSelect, wide }: any) {
   const styles = stylesFor(useRgTheme());
   const selectedIndex = Math.max(0, options.findIndex((o: WheelSpec['options'][number]) => o.value === value));
@@ -2605,23 +2623,45 @@ function RgWheel({ options, value, onSelect, wide }: any) {
   // passes the centre, the iOS wheel feel). Programmatic centring
   // updates the mark without ticking.
   const tickedIndexRef = useRef(selectedIndex);
+  // The last index this wheel committed itself (iOS gesture
+  // rules round, 2026-11-20, from his 2025-2026-2025-2026 phone
+  // report). The old wheel committed on drag end, mid-flight,
+  // and an effect then hard-scrolled to the committed row on
+  // EVERY value change, including its own commits: the wheel
+  // teleported mid-momentum, the snap settled a hair across the
+  // boundary, the next commit flipped the value back, and each
+  // flip ticked. A native picker never repositions the wheel
+  // for its own selection. So: commits mark this ref first, and
+  // the centring effect scrolls only when the value changed
+  // from outside (the picker opened, a sibling wheel clamped
+  // the day), which is exactly when the two disagree. It starts
+  // at -1 so the first run still centres the wheel on open.
+  const committedIndexRef = useRef(-1);
+  // True while a tapped row animates to the centre: the roll
+  // still moves the bold, but rows the animation merely passes
+  // never tick and never commit; the tapped row already did.
+  const animatingRef = useRef(false);
 
-  // Centre the selected value whenever the wheel opens or a sibling
-  // wheel moves the selection (a day clamped by a month change).
   useEffect(() => {
+    if (selectedIndex === committedIndexRef.current) return;
+    committedIndexRef.current = selectedIndex;
     tickedIndexRef.current = selectedIndex;
     setCenterIndex(selectedIndex);
     scrollRef.current?.scrollTo({ y: selectedIndex * WHEEL_ITEM_HEIGHT, animated: false });
   }, [selectedIndex]);
 
   // The bold row follows the CENTRE while the wheel rolls, not
-  // the committed value: on a long wheel (the year wheel, 51
+  // the committed value: on a long wheel (the year wheel, 301
   // rows) a value-bound bold row visibly rode away toward the
   // top or bottom during a flick (his phone report, 2026-11-20).
   // Short wheels travelled too little to show it.
   const [centerIndex, setCenterIndex] = useState(selectedIndex);
   const tickWhileRolling = (offsetY: number): void => {
     const idx = Math.min(options.length - 1, Math.max(0, Math.round(offsetY / WHEEL_ITEM_HEIGHT)));
+    if (animatingRef.current) {
+      setCenterIndex(idx);
+      return;
+    }
     if (idx !== tickedIndexRef.current) {
       tickedIndexRef.current = idx;
       setCenterIndex(idx);
@@ -2629,10 +2669,43 @@ function RgWheel({ options, value, onSelect, wide }: any) {
     }
   };
 
-  const selectAtRest = (offsetY: number): void => {
-    const idx = Math.min(options.length - 1, Math.max(0, Math.round(offsetY / WHEEL_ITEM_HEIGHT)));
+  // Commit once per gesture, at rest (iOS gesture rules round,
+  // 2026-11-20). Momentum end is the rest that matters: the
+  // snap has landed the offset exactly on a row multiple, so
+  // the rounded index is stable and can never alternate. Drag
+  // end commits only when the wheel is already resting exactly
+  // on a row (a slow drag released without momentum); a
+  // mid-flight release commits nothing and waits for momentum
+  // end. Every commit marks committedIndexRef before reporting,
+  // so the centring effect never answers a self-caused change.
+  const commitAt = (idx: number): void => {
+    committedIndexRef.current = idx;
     const opt = options[idx];
     if (opt && opt.value !== value) onSelect?.(opt.value);
+  };
+  const selectAtRest = (offsetY: number): void => {
+    animatingRef.current = false;
+    const idx = Math.min(options.length - 1, Math.max(0, Math.round(offsetY / WHEEL_ITEM_HEIGHT)));
+    tickedIndexRef.current = idx;
+    commitAt(idx);
+  };
+  const selectAtDragEnd = (offsetY: number): void => {
+    if (Math.abs(offsetY - Math.round(offsetY / WHEEL_ITEM_HEIGHT) * WHEEL_ITEM_HEIGHT) < 1) selectAtRest(offsetY);
+  };
+  // A tapped row is a deliberate selection outside any scroll
+  // gesture: commit it, tick once if it changed the value, and
+  // centre it smoothly, the way a native picker does.
+  const tapRow = (idx: number): void => {
+    committedIndexRef.current = idx;
+    tickedIndexRef.current = idx;
+    setCenterIndex(idx);
+    animatingRef.current = true;
+    scrollRef.current?.scrollTo({ y: idx * WHEEL_ITEM_HEIGHT, animated: true });
+    const opt = options[idx];
+    if (opt && opt.value !== value) {
+      fireSelectionHaptic();
+      onSelect?.(opt.value);
+    }
   };
 
   return (
@@ -2641,20 +2714,16 @@ function RgWheel({ options, value, onSelect, wide }: any) {
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
         snapToInterval={WHEEL_ITEM_HEIGHT}
-        disableIntervalMomentum
-        decelerationRate={0.95}
+        decelerationRate="fast"
         onScroll={(e: any) => tickWhileRolling(e.nativeEvent.contentOffset.y)}
         scrollEventThrottle={16}
-        onScrollEndDrag={(e: any) => selectAtRest(e.nativeEvent.contentOffset.y)}
+        onScrollBeginDrag={() => { animatingRef.current = false; }}
+        onScrollEndDrag={(e: any) => selectAtDragEnd(e.nativeEvent.contentOffset.y)}
         onMomentumScrollEnd={(e: any) => selectAtRest(e.nativeEvent.contentOffset.y)}
         contentContainerStyle={{ paddingVertical: WHEEL_ITEM_HEIGHT * 2 }}
       >
         {options.map((o: WheelSpec['options'][number], i: number) => (
-          <Pressable key={o.value} onPress={() => { if (o.value !== value) fireSelectionHaptic(); onSelect?.(o.value); }} style={styles.wheelItem}>
-            <Text style={[styles.wheelText, i === Math.min(centerIndex, options.length - 1) ? styles.wheelTextSelected : null]} numberOfLines={1}>
-              {o.label}
-            </Text>
-          </Pressable>
+          <WheelRow key={o.value} label={o.label} selected={i === Math.min(centerIndex, options.length - 1)} onPressRow={() => tapRow(i)} styles={styles} />
         ))}
       </ScrollView>
     </View>

@@ -116,6 +116,14 @@ test('a section with a click is a pressable, never a silent drop', () => {
   assert.ok(primitivesSrc.includes('<Pressable onPress={onPress} style={({ pressed }) => [styles.section, style, pressed && styles.buttonPressed]}>'), 'the section renders a pressable when it carries a click');
 });
 
+test('the wheel follows iOS gesture rules: rest-only commits, no self-repositioning, fast deceleration', () => {
+  assert.ok(primitivesSrc.includes('const committedIndexRef = useRef(-1)'), 'the wheel marks its own commits');
+  assert.ok(primitivesSrc.includes('if (selectedIndex === committedIndexRef.current) return;'), 'the centring effect never answers a self-caused change');
+  assert.ok(primitivesSrc.includes('decelerationRate="fast"'), 'the wheel decelerates fast, like a native picker');
+  assert.ok(!primitivesSrc.includes('disableIntervalMomentum'), 'the paging prop is gone from the wheel');
+  assert.ok(primitivesSrc.includes('const WheelRow = React.memo('), 'wheel rows are memoized, so a centre change re-renders two rows, not the whole wheel');
+});
+
 test('a list drops the hairline under its last row', () => {
   assert.ok(primitivesSrc.includes('lastInList'), 'rows know the last-in-list mark');
   assert.ok(primitivesSrc.includes('React.cloneElement'), 'the list marks its last row');
