@@ -1023,7 +1023,10 @@ function __wheelSpecs(parts, mode, minuteInterval) {
   var i, d;
   if (mode === 'date' || mode === 'datetime') {
     var years = [];
-    for (i = p.year - 25; i <= p.year + 25; i++) years.push({ value: '' + i, label: '' + i });
+    var thisYear = new Date().getFullYear();
+    var yStart = Math.min(thisYear - 150, p.year);
+    var yEnd = Math.max(thisYear + 150, p.year);
+    for (i = yStart; i <= yEnd; i++) years.push({ value: '' + i, label: '' + i });
     wheels.push({ name: 'year', options: years, value: '' + p.year });
     var months = [];
     for (i = 0; i < 12; i++) months.push({ value: '' + (i + 1), label: __MONTH_SHORT[i] });
