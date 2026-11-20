@@ -1036,15 +1036,15 @@ function __wheelSpecs(parts, mode, minuteInterval) {
   var wheels = [];
   var i, d;
   if (mode === 'date' || mode === 'datetime') {
+    var years = [];
+    for (i = p.year - 25; i <= p.year + 25; i++) years.push({ value: '' + i, label: '' + i });
+    wheels.push({ name: 'year', options: years, value: '' + p.year });
     var months = [];
     for (i = 0; i < 12; i++) months.push({ value: '' + (i + 1), label: __MONTH_SHORT[i] });
     wheels.push({ name: 'month', options: months, value: '' + p.month });
     var days = [];
     for (d = 1; d <= __daysInMonth(p.year, p.month); d++) days.push({ value: '' + d, label: '' + d });
     wheels.push({ name: 'day', options: days, value: '' + p.day });
-    var years = [];
-    for (i = p.year - 25; i <= p.year + 25; i++) years.push({ value: '' + i, label: '' + i });
-    wheels.push({ name: 'year', options: years, value: '' + p.year });
   }
   if (mode === 'time' || mode === 'datetime') {
     var hours = [];
@@ -1266,16 +1266,13 @@ function __buildPicker(el, scope, path) {
   if (pickerState) wrap.appendChild(__buildPickerSheet(el, scope, path, mode, interval, pickerState));
   return wrap;
 }
-// The wheels open centred in a dialog panel by default;
-// presentation="sheet" slides the same head and wheels up in a
-// bottom sheet instead. The container is the only difference,
-// exactly as in the generated app. Datetime runs two steps in
-// that container: the date wheel with Next, then the time wheels
-// with Back and Done.
+// The wheels always open centred in a dialog panel, exactly as
+// in the generated app (the sheet form was removed, 2026-11-20).
+// Datetime runs two steps in that modal: the date wheels with
+// Next, then the time wheels with Back and Done.
 function __buildPickerSheet(el, scope, path, mode, interval, pickerState) {
-  var modal = __attr(el, 'presentation', scope) !== 'sheet';
   var overlay = document.createElement('div');
-  overlay.className = 'overlay' + (modal ? ' overlay-center' : '');
+  overlay.className = 'overlay overlay-center';
   var backdrop = document.createElement('div');
   backdrop.className = 'overlay-backdrop';
   backdrop.addEventListener('click', function () {
@@ -1284,12 +1281,7 @@ function __buildPickerSheet(el, scope, path, mode, interval, pickerState) {
   });
   overlay.appendChild(backdrop);
   var sheet = document.createElement('section');
-  sheet.className = modal ? 'dialog' : 'sheet';
-  if (!modal) {
-    var handle = document.createElement('div');
-    handle.className = 'sheet-handle';
-    sheet.appendChild(handle);
-  }
+  sheet.className = 'dialog';
   var twoStep = mode === 'datetime';
   var step = pickerState.step || 'date';
   var head = document.createElement('div');
