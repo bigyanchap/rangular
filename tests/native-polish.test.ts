@@ -71,6 +71,14 @@ test('content melts into a pinned bottom bar instead of being sliced by it', () 
     'the melt rides the bottom of the scroll box when a bar is pinned');
 });
 
+test('the picker marks its centre row with two full-width lines and the bold follows the centre', () => {
+  assert.ok(primitivesSrc.includes('pickerCenterLine'), 'the centre lines are styled in the shell');
+  assert.ok(primitivesSrc.includes('pickerCenterLineTop: { top: 80 }'), 'the top line brackets the 40px centre row');
+  assert.ok(primitivesSrc.includes('pickerCenterLineBottom: { top: 120 }'), 'the bottom line brackets the 40px centre row');
+  assert.ok(!primitivesSrc.includes('wheelBandTop'), 'the stale per-wheel bands are gone');
+  assert.ok(primitivesSrc.includes('setCenterIndex(idx)'), 'the bold row follows the row passing the centre while rolling');
+});
+
 test('the picker wheel ticks the selection haptic while rolling', () => {
   assert.ok(primitivesSrc.includes('tickWhileRolling'), 'the wheel tracks the row passing the centre');
   assert.ok(primitivesSrc.includes('tickedIndexRef'), 'the wheel remembers the last ticked row, so one roll ticks once per row');
