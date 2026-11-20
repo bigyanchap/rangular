@@ -554,14 +554,18 @@ function buildStyles(t: Theme) {
     wheelItem: { height: 40, alignItems: 'center', justifyContent: 'center', paddingHorizontal: t.spacing.xs },
     wheelText: { fontSize: t.typography.title.fontSize, lineHeight: 26, color: c.textMuted },
     wheelTextSelected: { color: c.text, fontWeight: '600' },
-    wheelBandTop: {
-      position: 'absolute', left: 0, right: 0, top: 64,
-      borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border,
+    // Two thin lines bracket the centre row across the WHOLE
+    // picker (his ask, 2026-11-20), so the current row reads at
+    // a glance. They sit on the wheels wrap, not on each wheel:
+    // per-wheel bands were segmented, faint, and still pointed
+    // at the old 32px rows (top 64/96) after the 40px overhaul.
+    wheelsWrap: { position: 'relative' },
+    pickerCenterLine: {
+      position: 'absolute', left: 0, right: 0, height: 1,
+      backgroundColor: c.textMuted, opacity: 0.4, zIndex: 2,
     },
-    wheelBandBottom: {
-      position: 'absolute', left: 0, right: 0, top: 96,
-      borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border,
-    },
+    pickerCenterLineTop: { top: 80 },
+    pickerCenterLineBottom: { top: 120 },
     // Badge (Stage 11): one count dot shared by the three hosts
     // (button, row, icon); each host adjusts the offset in place.
     badgeDot: {
@@ -2574,13 +2578,21 @@ function RgWheel({ options, value, onSelect, wide }: any) {
   // wheel moves the selection (a day clamped by a month change).
   useEffect(() => {
     tickedIndexRef.current = selectedIndex;
+    setCenterIndex(selectedIndex);
     scrollRef.current?.scrollTo({ y: selectedIndex * WHEEL_ITEM_HEIGHT, animated: false });
   }, [selectedIndex]);
 
+  // The bold row follows the CENTRE while the wheel rolls, not
+  // the committed value: on a long wheel (the year wheel, 51
+  // rows) a value-bound bold row visibly rode away toward the
+  // top or bottom during a flick (his phone report, 2026-11-20).
+  // Short wheels travelled too little to show it.
+  const [centerIndex, setCenterIndex] = useState(selectedIndex);
   const tickWhileRolling = (offsetY: number): void => {
     const idx = Math.min(options.length - 1, Math.max(0, Math.round(offsetY / WHEEL_ITEM_HEIGHT)));
     if (idx !== tickedIndexRef.current) {
       tickedIndexRef.current = idx;
+      setCenterIndex(idx);
       fireSelectionHaptic();
     }
   };
@@ -2605,16 +2617,14 @@ function RgWheel({ options, value, onSelect, wide }: any) {
         onMomentumScrollEnd={(e: any) => selectAtRest(e.nativeEvent.contentOffset.y)}
         contentContainerStyle={{ paddingVertical: WHEEL_ITEM_HEIGHT * 2 }}
       >
-        {options.map((o: WheelSpec['options'][number]) => (
+        {options.map((o: WheelSpec['options'][number], i: number) => (
           <Pressable key={o.value} onPress={() => { if (o.value !== value) fireSelectionHaptic(); onSelect?.(o.value); }} style={styles.wheelItem}>
-            <Text style={[styles.wheelText, o.value === value ? styles.wheelTextSelected : null]} numberOfLines={1}>
+            <Text style={[styles.wheelText, i === Math.min(centerIndex, options.length - 1) ? styles.wheelTextSelected : null]} numberOfLines={1}>
               {o.label}
             </Text>
           </Pressable>
         ))}
       </ScrollView>
-      <View pointerEvents="none" style={styles.wheelBandTop} />
-      <View pointerEvents="none" style={styles.wheelBandBottom} />
     </View>
   );
 }
@@ -2632,9 +2642,9 @@ function RgWheel({ options, value, onSelect, wide }: any) {
  * behaves like the iOS wheel picker on every platform. Never a
  * calendar grid, never an Android style dialog. The field row shows
  * the formatted value; tapping it opens the wheels centred in a
- * modal dialog (date mode: month, day, year; time mode: hour 1 to
- * 12, minute, AM/PM; datetime mode: one combined date wheel plus
- * hour, minute and AM/PM). Done commits the pending value through
+ * modal dialog (date mode: year, month, day; time mode: hour 1 to
+ * 12, minute, AM/PM; datetime mode: the date wheels, then the
+ * time wheels, in two steps). Done commits the pending value through
  * onChange as an ISO string; Cancel discards it. `value` accepts
  * an ISO string or a Date; an unparseable value falls back to the
  * current time. minuteInterval is 1 or 5 (the compiler snaps
@@ -2704,16 +2714,20 @@ export function RgDateTimePicker({ value, mode = 'datetime', label, minuteInterv
           </Pressable>
         )}
       </View>
-      <View style={styles.wheelsRow}>
-        {shownWheels.map((wheel) => (
-          <RgWheel
-            key={wheel.name}
-            options={wheel.options}
-            value={wheel.value}
-            wide={false}
-            onSelect={(v: string) => setPending((p: DateTimeParts) => applyWheelValue(p, wheel.name, v))}
-          />
-        ))}
+      <View style={styles.wheelsWrap}>
+        <View style={styles.wheelsRow}>
+          {shownWheels.map((wheel) => (
+            <RgWheel
+              key={wheel.name}
+              options={wheel.options}
+              value={wheel.value}
+              wide={false}
+              onSelect={(v: string) => setPending((p: DateTimeParts) => applyWheelValue(p, wheel.name, v))}
+            />
+          ))}
+        </View>
+        <View pointerEvents="none" style={[styles.pickerCenterLine, styles.pickerCenterLineTop]} />
+        <View pointerEvents="none" style={[styles.pickerCenterLine, styles.pickerCenterLineBottom]} />
       </View>
     </>
   );
