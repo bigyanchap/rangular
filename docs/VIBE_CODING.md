@@ -517,12 +517,15 @@ Rangular adaptation is one dedicated block:
 - **Modes.** `mode="date"` shows month, day and year wheels.
   `mode="time"` shows hour 1 to 12, minute and AM/PM wheels, the
   iOS en-US form. `mode="datetime"` is the default and never mixes
-  the two in one panel: it opens the date step first (one combined
-  date wheel, with a Next button), then the time step (hour,
-  minute and AM/PM wheels, with Back and Done), two separate
-  modals in sequence. The date wheel labels days like
-  `Nov 13 2026`, the way the iOS combined date and time picker
-  lists them.
+  the two in one panel: it opens the date step first (the month,
+  day and year wheels, with a Next button), then the time step
+  (hour, minute and AM/PM wheels, with Back and Done), two
+  separate modals in sequence. The wheels are 40px rows in 20px
+  type, and a flick moves one notch: the wheel scroll carries no
+  interval momentum, so month, day and year stay under precise
+  control, the Apple Calendar form. (Before 2026-11-20 datetime
+  used one combined day list of 367 rows; it scrolled wildly and
+  is gone.)
 - **Value contract.** `[value]` accepts an ISO string or a `Date`.
   The picker keeps a pending value while the picker is open. Done
   emits `(change)` once, with the composed local ISO string
@@ -530,10 +533,9 @@ Rangular adaptation is one dedicated block:
   value and emits nothing. An unparseable value falls back to the
   current local date and time in the primitive. Children of the
   block are ignored.
-- **Ranges.** Date mode years run from the value year minus 25 to
-  the value year plus 25. The datetime date wheel is a finite
-  window of 183 days before and after the value, standing in for
-  the endless iOS list. Day selections clamp into their month, so
+- **Ranges.** Years run from the value year minus 25 to the
+  value year plus 25, in date mode and in the datetime date step
+  alike. Day selections clamp into their month, so
   January 31 followed by February becomes February 28 or 29, with
   leap years handled correctly.
 - **Minute interval.** `minuteInterval` is 1 or 5, default 1. A
@@ -579,10 +581,14 @@ declarative, because Rangular templates are declarative:
   with a plain timing animation, never a spring. `<dialog>`
   compiles to `RgDialog`: a centred themed card over a dimmed
   backdrop, with a quick fade and settle. Both are Modal-free
-  absolute overlays inside the screen. While the keyboard is up,
-  the screen's overlay layer ends at the keyboard's top edge, so
-  a dialog centres in the visible area and a text field inside a
-  modal is never hidden under the keyboard.
+  absolute overlays inside the screen. A sheet panel carries an
+  extra 24px of bottom padding under its content, so its action
+  buttons clear the Android navigation and gesture zone. While
+  the keyboard is up, a focused field inside an overlay lifts
+  the whole overlay layer by exactly its own overlap, so the
+  field's bottom rests 20px above the keyboard; a field already
+  at or above that line moves nothing, and a large modal keeps
+  its size.
 - **Children render inside the panel**, the way card children
   render inside a card. A dialog takes its heading from the
   `title` attribute. Ordinary `<button>` children stay ordinary

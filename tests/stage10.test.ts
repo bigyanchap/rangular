@@ -204,10 +204,9 @@ test('datetime helpers: wheels, ranges, steps and wheel application', () => {
   assert.equal(timeWheels[2].value, 'PM');
 
   const dateTime = dateTimeWheels(parts, 'datetime', 1);
-  assert.deepEqual(dateTime.map((w) => w.name), ['date', 'hour', 'minute', 'ampm']);
-  assert.equal(dateTime[0].options.length, 367, '183 days either side plus the value day');
-  assert.equal(dateTime[0].options[183].label, 'Nov 13 2026');
-  assert.equal(dateTime[0].value, '2026-11-13');
+  assert.deepEqual(dateTime.map((w) => w.name), ['month', 'day', 'year', 'hour', 'minute', 'ampm'], 'datetime uses the separate month, day and year wheels, never one combined day list');
+  assert.equal(dateTime[0].value, '11');
+  assert.equal(dateTime[2].options.length, 51);
 
   assert.deepEqual(
     applyWheelValue({ year: 2025, month: 1, day: 31, hour: 9, minute: 0 }, 'month', '2'),
@@ -551,10 +550,11 @@ test('reminder preview behaviour: datetime steps separate, Done commits, Cancel 
   assert.ok(findAll(app, (e) => e.className === 'wheels').length === 1, 'the wheels open in a sheet');
   // Datetime opens on the date step alone: the date wheel is
   // there and the time wheels are not (his rule, 2026-11-19).
-  assert.ok(findAll(app, (e) => e.getAttribute('data-wheel') === 'date').length === 1, 'the date step shows the date wheel');
+  assert.ok(findAll(app, (e) => e.getAttribute('data-wheel') === 'month').length === 1, 'the date step shows the month wheel');
+  assert.ok(findAll(app, (e) => e.getAttribute('data-wheel') === 'year').length === 1, 'the date step shows the year wheel');
   assert.equal(findAll(app, (e) => e.getAttribute('data-wheel') === 'hour').length, 0, 'the date step hides the time wheels');
   buttonsWithText(app, 'Next')[0].click();
-  assert.equal(findAll(app, (e) => e.getAttribute('data-wheel') === 'date').length, 0, 'the time step hides the date wheel');
+  assert.equal(findAll(app, (e) => e.getAttribute('data-wheel') === 'month').length, 0, 'the time step hides the date wheels');
   assert.ok(findAll(app, (e) => e.getAttribute('data-wheel') === 'hour').length === 1, 'the time step shows the time wheels');
   wheelValue(app, 'hour', '10').click();
   wheelValue(app, 'minute', '30').click();

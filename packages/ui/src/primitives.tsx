@@ -466,7 +466,11 @@ function buildStyles(t: Theme) {
     sheetPanel: {
       backgroundColor: c.surface,
       borderTopLeftRadius: t.radius.xl, borderTopRightRadius: t.radius.xl,
-      paddingHorizontal: t.spacing.lg, paddingTop: t.spacing.sm, paddingBottom: t.spacing.xxl,
+      // The extra 24 under the xxl padding is deliberate (his
+      // measure, 2026-11-20): on Android the sheet rests on the
+      // screen edge, inside the navigation and gesture zone, and
+      // the action buttons must clear what lives there.
+      paddingHorizontal: t.spacing.lg, paddingTop: t.spacing.sm, paddingBottom: t.spacing.xxl + 24,
       ...t.elevation.level2,
       flexDirection: 'column', gap: t.spacing.md,
     },
@@ -546,9 +550,9 @@ function buildStyles(t: Theme) {
     pickerHeadDone: { fontWeight: '600' },
     pickerHeadTitle: { fontSize: t.typography.label.fontSize, fontWeight: '600', color: c.text },
     wheelsRow: { flexDirection: 'row', gap: t.spacing.xs },
-    wheel: { height: 160, overflow: 'hidden' },
-    wheelItem: { height: 32, alignItems: 'center', justifyContent: 'center', paddingHorizontal: t.spacing.xs },
-    wheelText: { fontSize: t.typography.body.fontSize, color: c.textMuted },
+    wheel: { height: 200, overflow: 'hidden' },
+    wheelItem: { height: 40, alignItems: 'center', justifyContent: 'center', paddingHorizontal: t.spacing.xs },
+    wheelText: { fontSize: t.typography.title.fontSize, lineHeight: 26, color: c.textMuted },
     wheelTextSelected: { color: c.text, fontWeight: '600' },
     wheelBandTop: {
       position: 'absolute', left: 0, right: 0, top: 64,
@@ -1049,6 +1053,16 @@ export const ActivatedRouteContext = createContext<any>(null);
 // the lift calculation itself (lessons QA round 2, 2026-11-19).
 const RgScrollContext = createContext<any>(null);
 
+// The overlay layer's own keyboard lift control (his rule,
+// 2026-11-20): a field inside a dialog or a sheet reports its
+// node here, and the screen translates the whole overlay layer
+// up by exactly that field's overlap, so the field's bottom
+// rests 20px above the keyboard. A field already at or above
+// that line moves nothing. This replaces the earlier approach
+// of shrinking the overlay layer to the keyboard's top edge,
+// which could not serve a large modal.
+const RgOverlayLiftContext = createContext<any>(null);
+
 const RgHeaderSlotContext = createContext<{
   register: (key: string, node: React.ReactNode, chrome?: string, wash?: boolean) => void;
   clear: (key: string) => void;
@@ -1305,6 +1319,43 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
       if (focusedNodeRef.current === node) focusedNodeRef.current = null;
     },
   }).current;
+  // The overlay twin of the lift above: same measured facts,
+  // same 20px rest line, but the overlay layer cannot scroll,
+  // so it translates. The lift is recomputed on every focus and
+  // every keyboard frame, and it is exactly the focused field's
+  // overlap: zero when the field already rests at or above the
+  // line, so a small modal whose field is clear does not move.
+  const overlayNodeRef = useRef<any>(null);
+  const overlayTimers = useRef<any[]>([]);
+  const [overlayLift, setOverlayLift] = useState(0);
+  const liftOverlayField = () => {
+    const node = overlayNodeRef.current;
+    const kb = keyboardHeightRef.current;
+    if (!node || kb <= 0 || Platform.OS === 'web') return;
+    try {
+      node.measureInWindow?.((_x: number, y: number, _w: number, h: number) => {
+        const restLine = Dimensions.get('window').height - kb - 20;
+        const overlap = y + h - restLine;
+        setOverlayLift(overlap > 0 ? overlap : 0);
+      });
+    } catch { /* the field left the tree before the keyboard settled */ }
+  };
+  const scheduleOverlayLift = () => {
+    overlayTimers.current.forEach((t) => clearTimeout(t));
+    overlayTimers.current = [
+      setTimeout(liftOverlayField, 60),
+      setTimeout(liftOverlayField, 320),
+    ];
+  };
+  const overlayLiftControl = useRef({
+    requestLift: (node: any) => {
+      overlayNodeRef.current = node;
+      if (keyboardHeightRef.current > 0) scheduleOverlayLift();
+    },
+    releaseLift: (node: any) => {
+      if (overlayNodeRef.current === node) overlayNodeRef.current = null;
+    },
+  }).current;
   useEffect(() => {
     if (Platform.OS === 'web') return;
     const showName = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -1316,10 +1367,12 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
       keyboardHeightRef.current = h;
       setKeyboardHeight(h);
       scheduleLift();
+      scheduleOverlayLift();
     };
     const onHide = () => {
       keyboardHeightRef.current = 0;
       setKeyboardHeight(0);
+      setOverlayLift(0);
     };
     const subs = [
       Keyboard.addListener(showName as any, onFrame),
@@ -1329,6 +1382,7 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
     return () => {
       subs.forEach((s) => s.remove());
       liftTimers.current.forEach((t) => clearTimeout(t));
+      overlayTimers.current.forEach((t) => clearTimeout(t));
     };
   }, []);
   // The overlay slot: overlays inside the scrollable content
@@ -1451,17 +1505,19 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
           ) : null}
           {navs}
           {bottomNode}
-          {/* Overlays end above the keyboard (his rule, 2026-11-19):
-              the slotted overlay layer's box stops at the keyboard's
-              top edge, so a dialog centres in the visible area and a
-              sheet rests on the keyboard, and a text field inside a
-              modal is never hidden under the keyboard, exactly as a
-              field in the scroll body is lifted. With no keyboard the
-              layer is the full screen box, as before. */}
+          {/* The overlay layer's keyboard lift (his rule,
+              2026-11-20): the layer stays the full screen box and
+              translates up by exactly the focused field's overlap,
+              so that field's bottom rests 20px above the keyboard
+              and a field already clear of it moves nothing, the
+              same measure the scroll body uses. A large modal
+              keeps its size; only the overlap is travelled. */}
           {overlayNodes.length > 0 ? (
-            <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: keyboardHeight }}>
-              {overlayNodes}
-            </View>
+            <RgOverlayLiftContext.Provider value={overlayLiftControl}>
+              <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, transform: [{ translateY: -overlayLift }] }}>
+                {overlayNodes}
+              </View>
+            </RgOverlayLiftContext.Provider>
           ) : null}
         </RgHeaderSlotContext.Provider>
         </RgBottomSlotContext.Provider>
@@ -1795,9 +1851,13 @@ export function RgButton({ children, disabled, onPress, badge, style, variant, t
 // lift. On web there is no keyboard and the call does nothing.
 function useKeyboardLift(): (node: any) => void {
   const control = useContext(RgScrollContext);
+  const overlayControl = useContext(RgOverlayLiftContext);
   return (node: any): void => {
     if (!node || Platform.OS === 'web') return;
+    // A field lives in the scroll body or in an overlay, never
+    // both; each control is null outside its own home.
     control?.requestLift?.(node);
+    overlayControl?.requestLift?.(node);
   };
 }
 
@@ -2471,7 +2531,7 @@ export function RgSnackbar({ message, actionLabel, onAction, style }: any) {
   );
 }
 
-const WHEEL_ITEM_HEIGHT = 32;
+const WHEEL_ITEM_HEIGHT = 40;
 
 /**
  * One iOS style wheel column (Stage 10), internal to the date-time
@@ -2520,6 +2580,7 @@ function RgWheel({ options, value, onSelect, wide }: any) {
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
         snapToInterval={WHEEL_ITEM_HEIGHT}
+        disableIntervalMomentum
         decelerationRate="fast"
         onScroll={(e: any) => tickWhileRolling(e.nativeEvent.contentOffset.y)}
         scrollEventThrottle={16}
@@ -2601,7 +2662,9 @@ export function RgDateTimePicker({ value, mode = 'datetime', label, minuteInterv
   const wheels: WheelSpec[] = dateTimeWheels(pending, pickerMode, interval);
   const twoStep = pickerMode === 'datetime';
   const shownWheels = twoStep
-    ? wheels.filter((w) => (step === 'date' ? w.name === 'date' : w.name !== 'date'))
+    ? wheels.filter((w) => (step === 'date'
+      ? w.name === 'month' || w.name === 'day' || w.name === 'year'
+      : w.name === 'hour' || w.name === 'minute' || w.name === 'ampm'))
     : wheels;
   const pickerBody = (
     <>
@@ -2632,7 +2695,7 @@ export function RgDateTimePicker({ value, mode = 'datetime', label, minuteInterv
             key={wheel.name}
             options={wheel.options}
             value={wheel.value}
-            wide={wheel.name === 'date'}
+            wide={false}
             onSelect={(v: string) => setPending((p: DateTimeParts) => applyWheelValue(p, wheel.name, v))}
           />
         ))}
