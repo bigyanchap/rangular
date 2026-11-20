@@ -53,8 +53,7 @@ export default function Reminder() {
         <RgAppbar title="Reminder" />
         <RgSection>
           <RgInput label="Title" placeholder="What should I remember?" value={title} onChangeText={($event) => setTitle($event)} />
-          <RgDateTimePicker mode="datetime" presentation="sheet" label="When" value={when} onChange={($event) => onWhen($event)} />
-          <RgDateTimePicker mode="datetime" presentation="modal" label="When (modal)" value={when} onChange={($event) => onWhen($event)} />
+          <RgDateTimePicker mode="datetime" label="When" value={when} onChange={($event) => onWhen($event)} />
           <RgText variant="bodyLarge">When (ISO): {when}</RgText>
           <RgText variant="bodyLarge">Repeat: {repeat}</RgText>
           <RgButton onPress={() => save()}>Save</RgButton>

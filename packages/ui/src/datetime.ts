@@ -161,9 +161,9 @@ export interface WheelSpec {
 
 /**
  * The wheels of one picker mode for a pending value:
- * - date: month, day, year wheels;
+ * - date: year, month, day wheels;
  * - time: hour (1 to 12), minute, AM/PM wheels, the iOS form;
- * - datetime: the same month, day and year wheels, then hour,
+ * - datetime: the same year, month and day wheels, then hour,
  *   minute and AM/PM wheels. The picker shows them in two separate
  *   steps, date first, time second (the overhaul of 2026-11-20: a
  *   single combined day list scrolled wildly and gave no precise
@@ -173,6 +173,12 @@ export function dateTimeWheels(parts: DateTimeParts, mode: PickerMode, minuteInt
   const p = clampDateTimeParts(parts);
   const wheels: WheelSpec[] = [];
   if (mode === 'date' || mode === 'datetime') {
+    // Order is year, month, day (his word, 2026-11-20).
+    wheels.push({
+      name: 'year',
+      options: pickerYears(p.year).map((y) => ({ value: `${y}`, label: `${y}` })),
+      value: `${p.year}`,
+    });
     wheels.push({
       name: 'month',
       options: MONTH_SHORT.map((label, i) => ({ value: `${i + 1}`, label })),
@@ -181,11 +187,6 @@ export function dateTimeWheels(parts: DateTimeParts, mode: PickerMode, minuteInt
     const days: { value: string; label: string }[] = [];
     for (let d = 1; d <= daysInMonth(p.year, p.month); d++) days.push({ value: `${d}`, label: `${d}` });
     wheels.push({ name: 'day', options: days, value: `${p.day}` });
-    wheels.push({
-      name: 'year',
-      options: pickerYears(p.year).map((y) => ({ value: `${y}`, label: `${y}` })),
-      value: `${p.year}`,
-    });
   }
   if (mode === 'time' || mode === 'datetime') {
     const hours: { value: string; label: string }[] = [];

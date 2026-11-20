@@ -7,8 +7,8 @@ import * as vm from 'node:vm';
 import { compileComponent, CompileResult } from '../packages/compiler/src/compile';
 import { renderPreview } from '../packages/compiler/src/preview/renderPreview';
 
-// Overlays completion pass: button colour roles and the picker
-// presentation. A <button> gains color="primary|danger|neutral"
+// Overlays completion pass: button colour roles. A <button>
+// gains color="primary|danger|neutral"
 // (danger paints the theme error role, neutral the quiet grey),
 // validated at compile time, and <datetime-picker> gains
 // presentation="modal|sheet": the same iOS wheels open centred
@@ -105,8 +105,8 @@ const FIXTURE_HTML = `
       <button color="danger" (click)="deleteItem()">Delete</button>
     </actions>
   </dialog>
-  <datetime-picker label="Sheet time" mode="time" presentation="sheet" [value]="when" (change)="onWhen($event)"></datetime-picker>
-  <datetime-picker label="Modal time" mode="time" presentation="modal" [value]="when" (change)="onWhen($event)"></datetime-picker>
+  <datetime-picker label="First time" mode="time" [value]="when" (change)="onWhen($event)"></datetime-picker>
+  <datetime-picker label="Modal time" mode="time" [value]="when" (change)="onWhen($event)"></datetime-picker>
   <datetime-picker label="Default time" mode="time" [value]="when" (change)="onWhen($event)"></datetime-picker>
   <p>When: {{ when }}</p>
 </screen>
@@ -133,30 +133,28 @@ test('a button color outside the three roles is a GEN_BUTTON_COLOR error with th
   assert.ok(diag.fix?.includes('color="danger"'), diag.fix);
 });
 
-test('picker presentation reaches RgDateTimePicker; the default picker carries none', () => {
+test('no picker carries a presentation prop; the picker always opens in a modal', () => {
   const result = compileFixture();
   assert.deepEqual(result.diagnostics, [], JSON.stringify(result.diagnostics));
-  assert.ok(result.code!.includes('presentation="modal"'), result.code!);
-  assert.ok(result.code!.includes('presentation="sheet"'), result.code!);
   const pickers = result.code!.match(/<RgDateTimePicker[^>]*>/g) ?? [];
   assert.equal(pickers.length, 3, result.code!);
-  assert.equal(pickers.filter((p) => p.includes('presentation')).length, 2, result.code!);
+  assert.equal(pickers.filter((p) => p.includes('presentation')).length, 0, result.code!);
 });
 
-test('a picker presentation outside the two containers is a GEN_PICKER_PRESENTATION error', () => {
-  const result = compileFixture(FIXTURE_HTML.replace('presentation="modal"', 'presentation="popup"'));
+test('any picker presentation is a GEN_PICKER_PRESENTATION error (the sheet form is removed)', () => {
+  const result = compileFixture(FIXTURE_HTML.replace('label="First time"', 'label="First time" presentation="sheet"'));
   const diag = result.diagnostics.find((d) => d.code === 'GEN_PICKER_PRESENTATION');
   assert.ok(diag, JSON.stringify(result.diagnostics));
   assert.equal(diag.severity, 'error');
-  assert.ok(diag.fix?.includes('presentation="modal"'), diag.fix);
+  assert.ok(diag.fix?.includes('always opens in a modal'), diag.fix);
 });
 
 // --- Reminder example --------------------------------------------------------------------
 
-test('reminder example: the modal picker and the coloured dialog buttons are in the golden', () => {
+test('reminder example: the picker and the coloured dialog buttons are in the golden', () => {
   const { result } = compileExample('reminder');
   assert.deepEqual(result.diagnostics, [], JSON.stringify(result.diagnostics));
-  assert.ok(result.code!.includes('presentation="modal"'), result.code!);
+  assert.ok(!result.code!.includes('presentation'), result.code!);
   assert.ok(result.code!.includes('color="danger"'), result.code!);
   assert.ok(result.code!.includes('color="neutral"'), result.code!);
 });
@@ -242,7 +240,7 @@ test('preview: the dialog paints Cancel neutral and Delete danger', () => {
   assert.ok(del && hasClass(del, 'btn-danger'), del?.className);
 });
 
-test('preview: the modal and default pickers open centred in a dialog panel, the sheet picker does not', () => {
+test('preview: every picker opens centred in a dialog panel', () => {
   const app = previewApp();
   const boxes = findAll(app, (e) => hasClass(e, 'picker-box'));
   assert.equal(boxes.length, 3);
@@ -262,21 +260,17 @@ test('preview: the modal and default pickers open centred in a dialog panel, the
   done.click();
   const when = findAll(app, (e) => e.tagName === 'P' && e.textContent.includes('When:'))[0];
   assert.ok(when.textContent.includes('2026-11-13T11:00:00'), when.textContent);
-  // The sheet picker still opens as a sheet.
-  const boxesAfter = findAll(app, (e) => hasClass(e, 'picker-box'));
-  boxesAfter[0].click();
-  overlays = findAll(app, (e) => hasClass(e, 'overlay'));
-  assert.equal(overlays.length, 1);
-  assert.ok(!hasClass(overlays[0], 'overlay-center'), overlays[0].className);
-  assert.equal(findAll(app, (e) => hasClass(e, 'sheet')).length, 1);
-  // And the picker with no presentation at all opens as a modal:
-  // modal is the default container.
-  const cancelBtn = findAll(app, (e) => hasClass(e, 'picker-head-btn') && e.textContent.trim() === 'Cancel')[0];
-  cancelBtn.click();
-  const boxesFinal = findAll(app, (e) => hasClass(e, 'picker-box'));
-  boxesFinal[2].click();
-  overlays = findAll(app, (e) => hasClass(e, 'overlay'));
-  assert.equal(overlays.length, 1);
-  assert.ok(hasClass(overlays[0], 'overlay-center'), overlays[0].className);
-  assert.equal(findAll(app, (e) => hasClass(e, 'dialog')).length, 1);
+  // The first and third pickers open in the same centred dialog:
+  // there is no sheet form of the picker anymore.
+  for (const idx of [0, 2]) {
+    const boxesNow = findAll(app, (e) => hasClass(e, 'picker-box'));
+    boxesNow[idx].click();
+    overlays = findAll(app, (e) => hasClass(e, 'overlay'));
+    assert.equal(overlays.length, 1);
+    assert.ok(hasClass(overlays[0], 'overlay-center'), overlays[0].className);
+    assert.equal(findAll(app, (e) => hasClass(e, 'dialog')).length, 1);
+    assert.equal(findAll(app, (e) => hasClass(e, 'sheet')).length, 0);
+    const cancelBtn = findAll(app, (e) => hasClass(e, 'picker-head-btn') && e.textContent.trim() === 'Cancel')[0];
+    cancelBtn.click();
+  }
 });
