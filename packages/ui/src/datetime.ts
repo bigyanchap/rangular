@@ -137,10 +137,19 @@ export function formatDateTimeValue(parts: DateTimeParts, mode: PickerMode): str
   return `${date} ${time}`;
 }
 
-/** The year wheel of date mode: the value's year plus and minus 25 years (51 entries). */
-export function pickerYears(anchorYear: number): number[] {
+/** The year wheel of date mode: a FIXED range, 150 years either
+ * side of the current year (301 entries), extended only to
+ * include the value's year when that lies outside it. The range
+ * never follows the pending value. A value-centred list rebuilt
+ * itself under the scroll offset on every selection, so the
+ * year wheel jumped several years per flick and could move
+ * against the scroll direction (his phone report, 2026-11-20).
+ * A fixed list makes one notch exactly one year. */
+export function pickerYears(valueYear: number, todayYear: number): number[] {
+  const start = Math.min(todayYear - 150, valueYear);
+  const end = Math.max(todayYear + 150, valueYear);
   const years: number[] = [];
-  for (let y = anchorYear - 25; y <= anchorYear + 25; y++) years.push(y);
+  for (let y = start; y <= end; y++) years.push(y);
   return years;
 }
 
@@ -176,7 +185,7 @@ export function dateTimeWheels(parts: DateTimeParts, mode: PickerMode, minuteInt
     // Order is year, month, day (his word, 2026-11-20).
     wheels.push({
       name: 'year',
-      options: pickerYears(p.year).map((y) => ({ value: `${y}`, label: `${y}` })),
+      options: pickerYears(p.year, new Date().getFullYear()).map((y) => ({ value: `${y}`, label: `${y}` })),
       value: `${p.year}`,
     });
     wheels.push({
