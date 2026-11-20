@@ -269,6 +269,6 @@ Tutorial app, from screenshots on a real phone:
   toastText and toastAction chosen to read on near black; the
   previews draw a real SVG noise grain over it, the app
   approximates the grain with a five percent white sheen and a
-  hairline border, recorded in docs/VIBE_CODING.md). The centered
+  hairline border, recorded in docs/AI_GUIDE.md). The centered
   app bar title reuses the avatar's 28 width as its balancing
   side zones. No new radii, no springs.

@@ -89,7 +89,7 @@ developer meets first:
 - Dependency injection is constructor parameter properties on
   root services and components.
 
-The full delta tables live in `docs/VIBE_CODING.md`. They are
+The full delta tables live in `docs/AI_GUIDE.md`. They are
 the contract: if a construct is not listed as supported, the
 compiler will tell you, by code.
 

@@ -91,7 +91,7 @@ and the styles land in the generated `StyleSheet.create` exactly as written: `ch
 
 - **The row carries the tap.** `(click)` on `<row>` compiles to `onPress` on `RgRow`, and the whole row is the tap target, like the real app. The 34 by 34 square is visual state, not the target itself, which is why doctor's 44 by 44 tap target rule does not fire on it: the rule measures the element carrying the `(click)`.
 - **Done and not-done are a `*ngIf` pair.** One square shows the filled green state with the check mark, the other the grey outline. This is the documented workaround for `*ngIf` else, used here on purpose.
-- **Title, time and pieces are the row's three lines.** `[title]`, `[subtitle]` and `[detail]` map to the row's headline, second and third lines (see the block semantics section in docs/VIBE_CODING.md). An empty `pieces` string renders no third line.
+- **Title, time and pieces are the row's three lines.** `[title]`, `[subtitle]` and `[detail]` map to the row's headline, second and third lines (see the block semantics section in docs/AI_GUIDE.md). An empty `pieces` string renders no third line.
 - **Brand colours need a doctor hall pass.** The green `#2f9e44` and grey `#868e96` are the modelled app's brand colours, not Rangular Material roles, and they do not go into the shared token set. The styles carry a CSS comment containing `doctor: allow-hex`, which disables doctor's hex check for this file's styles only, with the reason written next to it. Doctor passes on this example with zero findings.
 
 **How this compares to a real day planner row**

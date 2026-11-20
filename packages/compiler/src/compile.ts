@@ -416,7 +416,7 @@ export function compileComponent(options: CompileOptions): CompileResult {
 
   // --- Routes (Stage 9) ------------------------------------------------------
   // Discovery rule (the one rule, also stated in AGENTS.md and the
-  // Routing section of docs/VIBE_CODING.md): the routes file is the one
+  // Routing section of docs/AI_GUIDE.md): the routes file is the one
   // named by routesSpecifier (the CLI --routes flag), or a sibling
   // 'app.routes.ts' next to the entry component. It is read whenever it
   // exists; it is REQUIRED whenever routing is used: a <router-outlet>

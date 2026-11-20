@@ -22,7 +22,7 @@ Read this document if you are about to open an issue or a pull request, fix a bu
 
 This playbook is a guide to how work is done. It is not a reference for what the framework can do, and it does not replace the other documents in this repository:
 
-* To learn what you may write in Rangular source, read the generated catalog, `catalog.md`, and the delta tables in `docs/VIBE_CODING.md`, which state exactly how Rangular differs from Angular and from React.
+* To learn what you may write in Rangular source, read the generated catalog, `catalog.md`, and the delta tables in `docs/AI_GUIDE.md`, which state exactly how Rangular differs from Angular and from React.
 * To learn how the framework itself is designed, read `docs/BLOCK_DIAGRAM.md` and `docs/PINPOINT_MAP.md`.
 * To learn how generated UI stays polished, read `docs/UI_POLISH.md`.
 * To learn Rangular as a user, work through the examples in `examples/`, each with its recipe card, and the tutorial app in the `rangular-tutorial` repository.
@@ -233,7 +233,7 @@ Done means: a clean branch list that any contributor can act on in one pass.
 
 ## Playbook 12: Authoring a Skill
 
-For a new agent skill, a recipe card, or a change to the AI facing layer in `docs/VIBE_CODING.md`, `AGENTS.md`, or `llms.txt`.
+For a new agent skill, a recipe card, or a change to the AI layer in `docs/AI_GUIDE.md`, `AGENTS.md`, or `llms.txt`.
 
 1. Keep only prose that changes a decision. When in doubt, delete.
 2. Validate the result: names, descriptions, referenced files, and links all check out. Add a test case if the skill is structural.

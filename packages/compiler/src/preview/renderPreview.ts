@@ -269,7 +269,7 @@ function evalSafeModule(source: string, scope: Scope, refs?: Scope, pipes?: Pipe
  * so their function returns undefined and the interpolation paints
  * empty; the interactive page below runs the full translated body,
  * and the generated app runs the real class. That boundary is stated
- * in docs/VIBE_CODING.md.
+ * in docs/AI_GUIDE.md.
  */
 function buildPipeFunctions(pipes: PipeInfo[] | undefined): PipeFunctions {
   const fns: PipeFunctions = {};

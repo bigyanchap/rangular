@@ -192,7 +192,7 @@ flowchart TB
 | M2 | Interpolation `{{ }}` + `[prop]` binding | ✅ Done (Stage 0+1) |
 | M3 | Events + state (counter) | ✅ Done (Stage 2) |
 | M4 | `*ngIf` / `*ngFor` | ✅ Done (Stage 2) |
-| - | **Stage 2.5: Vibe layer**, `AGENTS.md`, `llms.txt`, generated catalog, recipe cards, `--json` diagnostics with `fix:` lines, delta tables | ✅ Done |
+| - | **Stage 2.5: AI layer**, `AGENTS.md`, `llms.txt`, generated catalog, recipe cards, `--json` diagnostics with `fix:` lines, delta tables | ✅ Done |
 | M5 | Child components, `@Input` / `@Output` | ✅ Done (Stage 3) |
 | M6 | Injected service + lifecycle + HttpClient | ✅ Done (Stage 3) |
 | - | **Stage 4: Polish lock-in** - complete token set (light + dark), themed primitives, CSS snapping (`STYLE_OFF_SCALE`), preview Light/Dark toggle, showcase example | ✅ Done |
@@ -231,7 +231,7 @@ flowchart TB
 - [docs/UI_POLISH.md](docs/UI_POLISH.md), how generated UI stays
   polished: tokens only, pre-polished primitives, compiler defaults,
   visual proof.
-- [docs/VIBE_CODING.md](docs/VIBE_CODING.md), the AI-facing layer plus
+- [docs/AI_GUIDE.md](docs/AI_GUIDE.md), the AI-facing layer plus
   the full delta tables (Rangular vs Angular, Rangular vs React).
 - [docs/THIRD_PARTY.md](docs/THIRD_PARTY.md), how to use third-party
   libraries that are not built in (maps, video, WebView, camera,
@@ -253,10 +253,10 @@ All documentation is Markdown on purpose: GitHub renders the Mermaid
 diagrams natively, diffs and search work, and AI tools read it directly.
 Markdown is the canonical format. There are no PDF copies to drift.
 
-## Vibe-coding ready
+## Built to be authored without guessing
 
 Rangular is built to be written by AI assistants (and humans working
-through them) **without guessing**, see [docs/VIBE_CODING.md](docs/VIBE_CODING.md):
+through them) **without guessing**, see [docs/AI_GUIDE.md](docs/AI_GUIDE.md):
 
 - **[AGENTS.md](AGENTS.md)**, the rules of this repo: never edit generated
   files; every capability ships with compiler support + tests + a tiny
@@ -291,7 +291,7 @@ through them) **without guessing**, see [docs/VIBE_CODING.md](docs/VIBE_CODING.m
 - **Machine-readable errors**, `rangular build --json` prints a single
   JSON object (`{ ok, outFile?, diagnostics[] }`) on stdout; every
   diagnostic carries a concrete `fix:` suggestion.
-- **Delta tables**, [docs/VIBE_CODING.md](docs/VIBE_CODING.md) states
+- **Delta tables**, [docs/AI_GUIDE.md](docs/AI_GUIDE.md) states
   exactly how Rangular source differs from Angular (what is the same,
   what is not supported yet, with stages) and from React (no JSX, no
   hooks in source; classes + HTML templates).
@@ -611,7 +611,7 @@ for the app. `FormArray` rows
 the `FormBuilder` built-in injection complete the forms surface;
 group-level validators and async validators are not built. The full
 boundary list is the Forms section of
-[docs/VIBE_CODING.md](docs/VIBE_CODING.md).
+[docs/AI_GUIDE.md](docs/AI_GUIDE.md).
 
 ## Stage 9: routing
 
@@ -665,7 +665,7 @@ Make an app below). The
 shell, inbox, a `mail/:id` detail reading its param over the
 shared MailService, and a wildcard page reached through a
 deliberately stale link. The full boundary list is the Routing
-section of [docs/VIBE_CODING.md](docs/VIBE_CODING.md).
+section of [docs/AI_GUIDE.md](docs/AI_GUIDE.md).
 
 ## Stage 10: pickers and overlays
 
@@ -716,7 +716,7 @@ bar and then fires the callbacks. The
 together: a form with the picker, a sheet holding a repeat radio
 group, a confirm dialog, and Undo on the deleted snackbar. The
 full boundary list is the Pickers and overlays section of
-[docs/VIBE_CODING.md](docs/VIBE_CODING.md).
+[docs/AI_GUIDE.md](docs/AI_GUIDE.md).
 
 ## Stage 11: data display
 
@@ -759,7 +759,7 @@ translator carries. **Badge** is matBadge as an attribute:
 `<icon>` only, an error coloured count dot that hides at 0 and
 caps at `99+`. The [mailbox-pro example](examples/mailbox-pro/)
 exercises all seven on one screen. The full boundary list is the
-Data display section of [docs/VIBE_CODING.md](docs/VIBE_CODING.md).
+Data display section of [docs/AI_GUIDE.md](docs/AI_GUIDE.md).
 
 ## Stage 12: language completeness and app readiness
 
@@ -812,7 +812,7 @@ badge values, custom pipe names, projection children and scaffold
 paths each fixture-tested clean. The full record is in
 [SECURITY.md](SECURITY.md). The exact limits of everything in this
 stage are the Pipes, Attribute directives, Content projection and
-Expo app scaffold sections of [docs/VIBE_CODING.md](docs/VIBE_CODING.md).
+Expo app scaffold sections of [docs/AI_GUIDE.md](docs/AI_GUIDE.md).
 
 ## Stage 14: the missing Material pieces
 
@@ -925,7 +925,7 @@ card at bottom centre, dark in both themes, with a subtle grain
 (a real SVG noise texture in the HTML previews; in React
 Native, which has no texture asset, a five percent white sheen
 and a hairline border approximate it, recorded in
-docs/VIBE_CODING.md). The catalog now stands at 75 tags, 69
+docs/AI_GUIDE.md). The catalog now stands at 75 tags, 69
 primitives and 62 diagnostic codes.
 
 ## v1 is complete

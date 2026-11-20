@@ -502,7 +502,7 @@ function buildStyles(t: Theme) {
     // draw, so the grain is approximated honestly: a soft white
     // gradient over the black, strongest at the top edge, and a
     // hairline border catch the light the way grain does.
-    // See docs/VIBE_CODING.md, the tutorial round section.
+    // See docs/AI_GUIDE.md, the tutorial round section.
     snackbarHost: {
       position: 'absolute', left: 0, right: 0, bottom: 100,
       alignItems: 'center', zIndex: 20,

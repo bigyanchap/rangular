@@ -494,7 +494,7 @@ ${metroBullet}
 
 The starter has one screen, so there is nothing to go back to. When
 an app grows a router (see the routing section of the repo's
-docs/VIBE_CODING.md), navigation inside the app is complete:
+docs/AI_GUIDE.md), navigation inside the app is complete:
 routerLink and the Router service work. The Android hardware back
 button is not wired to the Rangular navigator in this version: the
 compiled root module keeps its navigator private, so App.tsx cannot
