@@ -1022,7 +1022,7 @@ function __wheelSpecs(parts, mode, minuteInterval) {
   var p = __clampParts(parts);
   var wheels = [];
   var i, d;
-  if (mode === 'date') {
+  if (mode === 'date' || mode === 'datetime') {
     var months = [];
     for (i = 0; i < 12; i++) months.push({ value: '' + (i + 1), label: __MONTH_SHORT[i] });
     wheels.push({ name: 'month', options: months, value: '' + p.month });
@@ -1032,14 +1032,6 @@ function __wheelSpecs(parts, mode, minuteInterval) {
     var years = [];
     for (i = p.year - 25; i <= p.year + 25; i++) years.push({ value: '' + i, label: '' + i });
     wheels.push({ name: 'year', options: years, value: '' + p.year });
-  }
-  if (mode === 'datetime') {
-    var dates = [];
-    for (i = -183; i <= 183; i++) {
-      var dd = __addDays(p.year, p.month, p.day, i);
-      dates.push({ value: dd.year + '-' + __pad2(dd.month) + '-' + __pad2(dd.day), label: __MONTH_SHORT[dd.month - 1] + ' ' + dd.day + ' ' + dd.year });
-    }
-    wheels.push({ name: 'date', options: dates, value: p.year + '-' + __pad2(p.month) + '-' + __pad2(p.day) });
   }
   if (mode === 'time' || mode === 'datetime') {
     var hours = [];
@@ -1060,11 +1052,6 @@ function __applyWheel(parts, wheel, value) {
   if (wheel === 'month') { next = { year: p.year, month: Number(value), day: p.day, hour: p.hour, minute: p.minute }; return __clampParts(next); }
   if (wheel === 'day') { next = { year: p.year, month: p.month, day: Number(value), hour: p.hour, minute: p.minute }; return __clampParts(next); }
   if (wheel === 'year') { next = { year: Number(value), month: p.month, day: p.day, hour: p.hour, minute: p.minute }; return __clampParts(next); }
-  if (wheel === 'date') {
-    parsed = __parseParts(value);
-    if (!parsed) return p;
-    return { year: parsed.year, month: parsed.month, day: parsed.day, hour: p.hour, minute: p.minute };
-  }
   if (wheel === 'hour') {
     h12 = Number(value);
     if (!isFinite(h12)) return p;
@@ -1345,10 +1332,10 @@ function __buildPickerSheet(el, scope, path, mode, interval, pickerState) {
   wheels.className = 'wheels';
   __wheelSpecs(pickerState.pending, mode, interval).filter(function (spec) {
     if (!twoStep) return true;
-    return step === 'date' ? spec.name === 'date' : spec.name !== 'date';
+    return step === 'date' ? ['month', 'day', 'year'].indexOf(spec.name) >= 0 : ['hour', 'minute', 'ampm'].indexOf(spec.name) >= 0;
   }).forEach(function (spec) {
     var wheel = document.createElement('div');
-    wheel.className = 'wheel' + (spec.name === 'date' ? ' wide' : '');
+    wheel.className = 'wheel';
     wheel.setAttribute('data-wheel', spec.name);
     spec.options.forEach(function (option) {
       var item = document.createElement('button');
