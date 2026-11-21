@@ -685,9 +685,13 @@ function buildStyles(t: Theme) {
       position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
       flexDirection: 'row', zIndex: 10,
     },
+    // The panel starts below the clock (lesson 69 report,
+    // 2026-11-21): the overlay root does not sit inside the
+    // screen's safe area, so the top padding itself must clear
+    // the status bar zone before the first content paints.
     drawerPanel: {
       width: 280, maxWidth: '85%', height: '100%', backgroundColor: c.surface,
-      paddingHorizontal: t.spacing.lg, paddingTop: t.spacing.xxl, paddingBottom: t.spacing.lg,
+      paddingHorizontal: t.spacing.lg, paddingTop: t.spacing.xxxl + t.spacing.lg, paddingBottom: t.spacing.lg,
       ...t.elevation.level2,
       flexDirection: 'column', gap: t.spacing.md,
     },
@@ -737,11 +741,11 @@ function buildStyles(t: Theme) {
     // on long press; the wrap makes the host a positioning parent.
     tooltipWrap: { position: 'relative' },
     tooltipBubble: {
-      position: 'absolute', bottom: '100%', alignSelf: 'center', marginBottom: t.spacing.xs,
+      position: 'absolute', bottom: '100%', alignSelf: 'flex-start', marginBottom: t.spacing.xs,
       backgroundColor: c.onSurface, borderRadius: t.radius.sm,
       paddingHorizontal: t.spacing.md, paddingVertical: t.spacing.xs, zIndex: 20,
     },
-    tooltipText: { color: c.background, fontSize: t.typography.caption.fontSize },
+    tooltipText: { color: c.background, fontSize: t.typography.caption.fontSize, textAlign: 'center' },
     // Table pager (Stage 14): a right aligned row under the table
     // with the page range and two chevron buttons.
     tablePager: {
@@ -1699,7 +1703,7 @@ export function RgIconButton({ name, size = 28, color, onPress, style, tooltip }
   const styles = stylesFor(useRgTheme());
   const tip = useTooltipBubble(tooltip, styles);
   return (
-    <View style={[styles.tooltipWrap, { alignSelf: 'flex-start' }, style]}>
+    <View ref={tip.wrapRef} style={[styles.tooltipWrap, { alignSelf: 'flex-start' }, style]}>
       <Pressable
         onPress={onPress}
         onLongPress={tip.show}
@@ -1813,21 +1817,71 @@ export function RgCode({ children, style }: any) {
  */
 function useTooltipBubble(tooltip: unknown, styles: any) {
   const [visible, setVisible] = useState(false);
+  const [shift, setShift] = useState(0);
+  const [placed, setPlaced] = useState(false);
   const timer = useRef<any>(null);
+  const fallback = useRef<any>(null);
+  const wrapRef = useRef<any>(null);
+  const hostX = useRef<number | null>(null);
+  const bubbleW = useRef(0);
   const text = tooltip === undefined || tooltip === null ? '' : String(tooltip);
+  // Placement (lesson 76 report, 2026-11-21): the bubble used to
+  // centre itself on its host, so a host near the screen's left
+  // edge pushed part of the bubble off the screen. The bubble
+  // now starts at the host's left edge and grows to the right,
+  // shifting left only as far as the right edge of the screen
+  // demands, with 8px margins: the host is measured in the
+  // window on show, the bubble is measured as it lays out, and
+  // the bubble stays transparent until its offset is known,
+  // the menu's reveal rule, so it never paints wrongly first.
+  // The shift rides a transform, never a left inset: an inset
+  // would cap the bubble's width at the host's width in the
+  // layout engine and wrap a one line hint over three lines.
+  const place = (): void => {
+    if (hostX.current === null || bubbleW.current <= 0) return;
+    const screenW = Dimensions.get('window').width;
+    let left = hostX.current;
+    if (left + bubbleW.current > screenW - 8) left = screenW - 8 - bubbleW.current;
+    if (left < 8) left = 8;
+    setShift(left - hostX.current);
+    setPlaced(true);
+  };
   const show = text
     ? () => {
       setVisible(true);
+      setPlaced(false);
+      setShift(0);
+      hostX.current = null;
+      bubbleW.current = 0;
+      if (wrapRef.current && typeof wrapRef.current.measureInWindow === 'function') {
+        wrapRef.current.measureInWindow((x: number) => { hostX.current = x; place(); });
+      }
+      if (fallback.current) clearTimeout(fallback.current);
+      fallback.current = setTimeout(() => {
+        if (hostX.current === null) { setShift(0); setPlaced(true); }
+      }, 120);
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => setVisible(false), 1800);
     }
     : undefined;
+  // The bubble carries an explicit width estimated from its
+  // text (about 7px a character at the caption size, plus its
+  // padding, capped by the screen): left to shrink to fit, an
+  // absolutely placed bubble is capped at its host's width on
+  // both layout engines, and a 48px host wraps a one line hint
+  // over three lines. The measured layout width still drives
+  // the clamp above, so the estimate only sets the shape.
+  const bubbleWidth = Math.min(Math.ceil(text.length * 7) + 24, Dimensions.get('window').width - 16);
   const bubble = visible && text ? (
-    <View style={styles.tooltipBubble} pointerEvents="none">
+    <View
+      onLayout={(e: any) => { bubbleW.current = e.nativeEvent.layout.width; place(); }}
+      style={[styles.tooltipBubble, { width: bubbleWidth, transform: [{ translateX: shift }], opacity: placed ? 1 : 0 }]}
+      pointerEvents="none"
+    >
       <Text style={styles.tooltipText}>{text}</Text>
     </View>
   ) : null;
-  return { show, bubble };
+  return { show, bubble, wrapRef };
 }
 
 export function RgButton({ children, disabled, onPress, badge, style, variant, tooltip, color }: any) {
@@ -1853,7 +1907,7 @@ export function RgButton({ children, disabled, onPress, badge, style, variant, t
   const fillRadius = styleObj && typeof styleObj.borderRadius === 'number' ? styleObj.borderRadius : theme.radius.full;
   const tip = useTooltipBubble(tooltip, styles);
   return (
-    <View style={styles.tooltipWrap}>
+    <View ref={tip.wrapRef} style={styles.tooltipWrap}>
       <Pressable
         disabled={disabled}
         onPress={(e: any) => { notePressPoint(e); onPress?.(e); }}
@@ -2007,6 +2061,10 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
           ref={fieldRef}
           style={[styles.inputField, error ? styles.inputFieldError : null, disabled ? styles.inputDisabled : null]}
           value={mask ? applyMask(text, String(mask)) : value}
+          // The maxLength below caps a masked field at the
+          // pattern's own length (lesson 85 report, 2026-11-21):
+          // the extra character is refused by the field itself,
+          // so it never flashes before the mask can trim it.
           onChangeText={mask
             ? (next: string) => onChangeText?.(applyMask(next, String(mask)))
             : onChangeText}
@@ -2016,6 +2074,7 @@ export function RgInput({ value, onChangeText, onBlur, onFocus, placeholder, lab
           placeholderTextColor={t.colors.textMuted}
           editable={!disabled}
           secureTextEntry={!!secure}
+          maxLength={mask ? String(mask).length : undefined}
           keyboardType={keyboardType}
           onSubmitEditing={() => Keyboard.dismiss()}
           returnKeyType="done"
@@ -2211,12 +2270,17 @@ export function RgRadioGroup({ value, disabled, onChange, children, style }: any
 }
 
 export function RgList({ data, renderItem, keyExtractor, children, refreshing, onRefresh, onEndReached }: any) {
+  const tint = useRgTheme().colors.primary;
   const onScroll = useRef(endReachedScrollHandler(onEndReached)).current;
   // Generated code (Stage 2) renders rows as children, e.g. a *ngFor map,
   // rather than via FlatList's data/renderItem. Support both shapes.
   // Stage 15: a list that refreshes or pages becomes its own
   // scroller (RefreshControl plus the shared end-reached handler);
   // a plain list stays a plain View inside the screen's scroll.
+  // The scroller opts into nested scrolling (lesson 80 report,
+  // 2026-11-21): without it, Android hands every drag to the
+  // screen's scroller and the list's pull to refresh can never
+  // engage. The spinner wears the theme's primary colour.
   if (children) {
     // Hairlines live between rows, never under the last one
     // (seamless round, 2026-11-18): a closing hairline under a
@@ -2233,8 +2297,9 @@ export function RgList({ data, renderItem, keyExtractor, children, refreshing, o
     if (onRefresh || onEndReached) {
       return (
         <ScrollView
+          nestedScrollEnabled
           refreshControl={onRefresh
-            ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} />
+            ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={tint} colors={[tint]} />
             : undefined}
           onScroll={onEndReached ? onScroll : undefined}
           scrollEventThrottle={64}
@@ -2247,11 +2312,12 @@ export function RgList({ data, renderItem, keyExtractor, children, refreshing, o
   }
   return (
     <FlatList
+      nestedScrollEnabled
       data={data}
       renderItem={renderItem}
       keyExtractor={keyExtractor ?? ((item: any, index: number) => String(item?.id ?? index))}
       refreshControl={onRefresh
-        ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} />
+        ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={tint} colors={[tint]} />
         : undefined}
       onEndReached={onEndReached}
       onEndReachedThreshold={0.4}
@@ -2403,7 +2469,7 @@ export function RgRow({ title, subtitle, detail, time, avatar, avatarText, avata
   let inner: React.ReactNode;
   if (onPress || tip.show) {
     inner = (
-      <View style={styles.tooltipWrap}>
+      <View ref={tip.wrapRef} style={styles.tooltipWrap}>
         <Pressable onPress={onPress} onLongPress={tip.show} style={({ pressed }: any) => [styles.row, selected && styles.rowSelected, lastInList && { borderBottomWidth: 0 }, pressed && { opacity: 0.7 }]}>
           {content}
         </Pressable>
@@ -2782,6 +2848,7 @@ export function RgDateTimePicker({ value, mode = 'datetime', label, minuteInterv
     const minute = Math.min(60 - snap, Math.round(current.minute / snap) * snap);
     setPending({ ...current, minute });
     setStep('date');
+    Keyboard.dismiss();
     setOpen(true);
   };
   const done = (): void => {
@@ -3461,7 +3528,14 @@ export function RgSelect({ value, label, placeholder, disabled, onChange, childr
       {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
       <Pressable
         disabled={disabled}
-        onPress={() => setOpen(true)}
+        onPress={() => {
+          // Leaving a field for a picker puts the keyboard away
+          // first (lesson 71 report, 2026-11-21): the options
+          // sheet must not open over a keyboard the user has
+          // already moved on from.
+          Keyboard.dismiss();
+          setOpen(true);
+        }}
         style={[styles.pickerBox, disabled ? styles.inputDisabled : null]}
         accessibilityRole="button"
       >
