@@ -294,9 +294,10 @@
   .lightbox-close { position: absolute; top: 16px; right: 16px; z-index: 2; background: var(--role-surface); border-radius: 50%; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border: none; padding: 0; }
   .lightbox-caption { position: relative; z-index: 1; color: #fff; text-align: center; padding: 12px; }
   .color-chip { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--border); display: inline-block; flex: none; }
-  .swatch-grid { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 0 12px; }
-  .swatch { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--border); cursor: pointer; padding: 0; }
+  .swatch-wheel { position: relative; width: 264px; height: 264px; margin: 8px auto; }
+  .swatch { position: absolute; width: 46px; height: 46px; border-radius: 9999px; border: 1px solid var(--border); cursor: pointer; padding: 0; }
   .swatch.selected { border: 3px solid var(--primary); }
+  .swatch-center { position: absolute; left: 86px; top: 86px; width: 92px; height: 92px; border-radius: 9999px; border: 1px solid var(--border); }
   .breadcrumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
   .crumb { font-size: 14px; color: var(--primary); cursor: pointer; background: none; border: none; font: inherit; padding: 0; }
   .crumb.current { color: var(--text); font-weight: 600; cursor: default; }
@@ -3063,21 +3064,28 @@ function __buildColorPicker(el, scope, path, form) {
     var handle = document.createElement('div');
     handle.className = 'sheet-handle';
     sheet.appendChild(handle);
-    var grid = document.createElement('div');
-    grid.className = 'swatch-grid';
-    __SWATCHES.forEach(function (hex) {
+    var wheel = document.createElement('div');
+    wheel.className = 'swatch-wheel';
+    var center = document.createElement('div');
+    center.className = 'swatch-center';
+    if (current) center.setAttribute('style', 'background:' + current);
+    wheel.appendChild(center);
+    __SWATCHES.forEach(function (hex, i) {
       var sw = document.createElement('button');
       sw.type = 'button';
       sw.className = 'swatch' + (hex.toLowerCase() === current.toLowerCase() ? ' selected' : '');
-      sw.setAttribute('style', 'background:' + hex);
+      var ang = (i * 30 - 90) * Math.PI / 180;
+      var x = Math.round(132 + 102 * Math.cos(ang) - 23);
+      var y = Math.round(132 + 102 * Math.sin(ang) - 23);
+      sw.setAttribute('style', 'background:' + hex + ';left:' + x + 'px;top:' + y + 'px');
       sw.setAttribute('data-hex', hex);
       sw.addEventListener('click', function () {
         __colorStates[path] = false;
         __runChange(el, scope, hex);
       });
-      grid.appendChild(sw);
+      wheel.appendChild(sw);
     });
-    sheet.appendChild(grid);
+    sheet.appendChild(wheel);
     var customRow = document.createElement('div');
     customRow.className = 'field';
     var customInput = document.createElement('input');
