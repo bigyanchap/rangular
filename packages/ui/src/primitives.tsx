@@ -1067,6 +1067,9 @@ export const ActivatedRouteContext = createContext<any>(null);
 // inside the screen: a field reports its node on focus, and
 // the screen owns the keyboard frame, the scroll offset and
 // the lift calculation itself (lessons QA round 2, 2026-11-19).
+// The same control carries a list's pull to refresh
+// registration (lesson 80, 2026-11-21): the list declares
+// the contract, the screen owns the pull gesture.
 const RgScrollContext = createContext<any>(null);
 
 // The overlay layer's own keyboard lift control (his rule,
@@ -1331,6 +1334,15 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
       setTimeout(liftFocusedField, 700),
     ];
   };
+  // Pull to refresh lent by a list inside the screen (lesson
+  // 80, 2026-11-21): the list registers its contract here and
+  // the screen's own RefreshControl runs it, because the
+  // screen is the scroller that owns the pull gesture. The
+  // ref always holds the freshest entry; the state mirror
+  // only moves when the spinner's facts change (presence or
+  // the refreshing flag), so registration churn cannot loop.
+  const [listRefresh, setListRefresh] = useState<any>(null);
+  const listRefreshRef = useRef<any>(null);
   const scrollControl = useRef({
     requestLift: (node: any) => {
       focusedNodeRef.current = node;
@@ -1338,6 +1350,13 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
     },
     releaseLift: (node: any) => {
       if (focusedNodeRef.current === node) focusedNodeRef.current = null;
+    },
+    registerRefresh: (entry: any) => {
+      const prev = listRefreshRef.current;
+      listRefreshRef.current = entry;
+      const changed = !!prev !== !!entry
+        || (prev && entry && prev.refreshing !== entry.refreshing);
+      if (changed) setListRefresh(entry);
     },
   }).current;
   // The overlay twin of the lift above: same measured facts,
@@ -1482,7 +1501,14 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
               : null]}
             refreshControl={onRefresh
               ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} />
-              : undefined}
+              : listRefresh
+                ? <RefreshControl
+                    refreshing={!!listRefresh.refreshing}
+                    onRefresh={() => listRefreshRef.current?.fire?.()}
+                    tintColor={active.colors.primary}
+                    colors={[active.colors.primary]}
+                  />
+                : undefined}
             onScroll={handleScroll}
             scrollEventThrottle={16}
           >
@@ -2272,15 +2298,39 @@ export function RgRadioGroup({ value, disabled, onChange, children, style }: any
 export function RgList({ data, renderItem, keyExtractor, children, refreshing, onRefresh, onEndReached }: any) {
   const tint = useRgTheme().colors.primary;
   const onScroll = useRef(endReachedScrollHandler(onEndReached)).current;
+  // Pull to refresh (lesson 80, final shape, 2026-11-21): a
+  // list of rows does not own a pull gesture. Inside a
+  // scrolling screen the scroller takes every vertical drag,
+  // and a RefreshControl wrapped on the list never engages
+  // (his phone, twice). So the list registers its contract
+  // with the screen through RgScrollContext and the screen's
+  // RefreshControl runs it: pull the page, the list's
+  // handler fires. The handler is read through a ref, so the
+  // registration only moves when the flag does. One
+  // refreshable list per screen: the last one registered is
+  // the one the pull runs.
+  const scrollControl = useContext(RgScrollContext);
+  const refreshHandler = useRef<any>(null);
+  refreshHandler.current = onRefresh;
+  const wantsPull = !!onRefresh && !onEndReached;
+  useEffect(() => {
+    if (!scrollControl?.registerRefresh || !wantsPull) return;
+    scrollControl.registerRefresh({
+      refreshing: !!refreshing,
+      fire: () => refreshHandler.current?.(),
+    });
+    return () => scrollControl.registerRefresh(null);
+  }, [scrollControl, wantsPull, refreshing]);
   // Generated code (Stage 2) renders rows as children, e.g. a *ngFor map,
   // rather than via FlatList's data/renderItem. Support both shapes.
-  // Stage 15: a list that refreshes or pages becomes its own
-  // scroller (RefreshControl plus the shared end-reached handler);
-  // a plain list stays a plain View inside the screen's scroll.
-  // The scroller opts into nested scrolling (lesson 80 report,
-  // 2026-11-21): without it, Android hands every drag to the
-  // screen's scroller and the list's pull to refresh can never
-  // engage. The spinner wears the theme's primary colour.
+  // Stage 15: a list that pages becomes its own scroller (the
+  // shared end-reached handler); a list that refreshes lends
+  // its pull to the screen (the registration above); a plain
+  // list stays a plain View inside the screen's scroll.
+  // The paging scroller opts into nested scrolling (lesson 80
+  // report, 2026-11-21). The FlatList below keeps the platform
+  // RefreshControl, themed: a data list is normally the
+  // screen's own scroller, where the platform control works.
   if (children) {
     // Hairlines live between rows, never under the last one
     // (seamless round, 2026-11-18): a closing hairline under a
@@ -2294,14 +2344,14 @@ export function RgList({ data, renderItem, keyExtractor, children, refreshing, o
         ? React.cloneElement(k as React.ReactElement<any>, { lastInList: true })
         : k
     ));
-    if (onRefresh || onEndReached) {
+    if (onRefresh && !onEndReached) {
+      return <View>{marked}</View>;
+    }
+    if (onEndReached) {
       return (
         <ScrollView
           nestedScrollEnabled
-          refreshControl={onRefresh
-            ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={tint} colors={[tint]} />
-            : undefined}
-          onScroll={onEndReached ? onScroll : undefined}
+          onScroll={onScroll}
           scrollEventThrottle={64}
         >
           {marked}

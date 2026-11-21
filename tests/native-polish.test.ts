@@ -221,3 +221,15 @@ test('the tooltip bubble is measured and clamped on screen, never centred', () =
   const bubbleStyle = primitivesSrc.split('tooltipBubble: {')[1].split('},')[0];
   assert.ok(!bubbleStyle.includes("alignSelf: 'center'"), 'the bubble no longer centres on its host');
 });
+
+test('a refreshing list lends its pull to the screen that owns the gesture', () => {
+  const listFn = primitivesSrc.slice(
+    primitivesSrc.indexOf('export function RgList'),
+    primitivesSrc.indexOf('export function RgRowAction'));
+  assert.ok(listFn.includes('registerRefresh'), 'the list registers its refresh contract');
+  const screenFn = primitivesSrc.slice(
+    primitivesSrc.indexOf('export function RgScreen'),
+    primitivesSrc.indexOf('export function RgAppbar'));
+  assert.ok(screenFn.includes('listRefresh'), 'the screen holds the registered pull');
+  assert.ok(screenFn.includes('listRefreshRef.current?.fire?.()'), 'the screen control fires the freshest handler');
+});

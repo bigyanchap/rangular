@@ -1106,8 +1106,13 @@ built, in three tour examples: `examples/feed/` (Tier 1),
   declarations warn `GEN_CONTROL_NESTING`.
 - **Refresh and infinite scroll are scroller events, not tags.**
   `<screen>` and `<list>` take `[refreshing]="busy"`,
-  `(refresh)="reload()"` and `(endReached)="loadMore()"`. The app
-  wires React Native's RefreshControl and fires end reached once
+  `(refresh)="reload()"` and `(endReached)="loadMore()"`. On a
+  screen the app wires React Native's RefreshControl. A list
+  of rows cannot own the pull: it stands inside the screen's
+  scroll, so it registers its contract with the screen and
+  the screen's RefreshControl runs it (pull the page, the
+  list's handler fires). One refreshable list per screen.
+  End reached fires once
   per approach (again only after the content grows). The preview
   cannot pull or scroll to an end: a true flag paints the spinner
   row, and small documented cues fire the two events, the slider
