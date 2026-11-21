@@ -41,9 +41,14 @@ import { theme as makeTheme } from './tokens';
 import type { Theme } from './tokens';
 import { ICON_PATHS, BRAND_MARKS, BRAND_MARK_VIEWBOX } from './icons';
 import { applyMask } from './mask';
+import {
+  parseBlocks, serializeBlocks, setBlockKind, setBlockText, toggleBlockDone,
+  insertBlockAfter, removeBlock, moveBlock, toggleInline, inlineActive, parseInline,
+} from './blocks';
+import type { Block, BlockKind } from './blocks';
 import { chartModel } from './chart';
 import type { ChartShape } from './chart';
-import { AVATAR_TONES, AVATAR_TONE_NAMES, COLOR_SWATCHES, HUE_STOPS, SV_BLACK, SV_WHITE, hexToHsv, hsvToHex } from './palette';
+import { AVATAR_TONES, AVATAR_TONE_NAMES, CHECKLIST_COLOR, COLOR_SWATCHES, HUE_STOPS, SV_BLACK, SV_WHITE, hexToHsv, hsvToHex } from './palette';
 import {
   MONTH_SHORT,
   applyWheelValue,
@@ -866,14 +871,74 @@ function buildStyles(t: Theme) {
       fontSize: t.typography.title.fontSize, fontWeight: '600', color: c.text, textAlign: 'center',
     },
     emptyText: { fontSize: t.typography.body.fontSize, color: c.textMuted, textAlign: 'center' },
-    // Editor (Stage 15): a toolbar row over a tall input field.
-    editorToolbar: { flexDirection: 'row', gap: t.spacing.sm, marginBottom: t.spacing.sm },
-    editorTool: {
-      paddingHorizontal: t.spacing.md, minHeight: 36, borderRadius: t.radius.full,
-      borderWidth: 1, borderColor: c.border, alignItems: 'center', justifyContent: 'center',
+    // Editor (Stage 15, rebuilt 0.5.0): one framed unit. The
+    // head inside the frame holds the block style chips and,
+    // right below them, the parameter tools; the blocks live
+    // under the head, inside the same frame.
+    editorFrame: {
+      borderWidth: 1, borderColor: c.border, borderRadius: t.radius.md,
+      overflow: 'hidden', backgroundColor: c.surface,
     },
-    editorToolLabel: { fontSize: t.typography.label.fontSize, color: c.primary, fontWeight: '600' },
-    editorArea: { minHeight: 120, textAlignVertical: 'top' },
+    editorHead: {
+      backgroundColor: c.surfaceVariant, padding: t.spacing.sm, gap: t.spacing.sm,
+      borderBottomWidth: 1, borderBottomColor: c.border,
+    },
+    editorChipsRow: { flexDirection: 'row', gap: t.spacing.xs },
+    editorChip: {
+      paddingHorizontal: t.spacing.sm, paddingVertical: 6, borderRadius: t.radius.sm,
+      borderWidth: 1, borderColor: c.border, backgroundColor: c.surface,
+    },
+    editorChipOn: { backgroundColor: c.primary, borderColor: c.primary },
+    editorChipLabel: { fontSize: 12, color: c.text, fontWeight: '600' },
+    editorChipLabelOn: { color: c.onPrimary },
+    editorToolsRow: { flexDirection: 'row', gap: t.spacing.xs, alignItems: 'center' },
+    editorTool: {
+      minWidth: 36, height: 36, paddingHorizontal: 6, borderRadius: t.radius.sm,
+      borderWidth: 1, borderColor: c.border, backgroundColor: c.surface,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    editorToolOn: { backgroundColor: c.text, borderColor: c.text },
+    editorToolLabel: { fontSize: t.typography.label.fontSize, color: c.text, fontWeight: '600' },
+    editorToolLabelOn: { color: c.surface },
+    editorBoldLabel: { fontWeight: '800' },
+    // The Italic tool's I wears a serif face in italics, the
+    // Times New Roman I Bigyan asked for by name (0.5.0): Times
+    // New Roman on iOS, the platform serif on Android.
+    editorItalicLabel: {
+      fontFamily: Platform.OS === 'ios' ? 'Times New Roman' : 'serif',
+      fontStyle: 'italic', fontWeight: '700', fontSize: 17,
+    },
+    editorUnderlineLabel: { textDecorationLine: 'underline' },
+    editorStrikeLabel: { textDecorationLine: 'line-through' },
+    editorBody: { padding: t.spacing.sm, gap: 2 },
+    edBlockRow: {
+      flexDirection: 'row', alignItems: 'flex-start', gap: t.spacing.sm,
+      paddingVertical: 4, paddingHorizontal: t.spacing.xs, borderRadius: t.radius.sm,
+      borderWidth: 1, borderColor: 'transparent',
+    },
+    edBlockActive: { borderColor: c.primary },
+    edGutter: { width: 22, textAlign: 'center', color: c.textMuted, fontSize: 15, lineHeight: 22 },
+    edCheckRing: {
+      width: 20, height: 20, borderRadius: t.radius.full, borderWidth: 2,
+      borderColor: CHECKLIST_COLOR, alignItems: 'center', justifyContent: 'center', marginTop: 1,
+    },
+    edCheckRingDone: { backgroundColor: CHECKLIST_COLOR },
+    edTextBase: { flex: 1, fontSize: 15, lineHeight: 22, color: c.text },
+    edTitleText: { fontSize: 22, lineHeight: 28, fontWeight: '800' },
+    edHeadingText: { fontSize: 17, lineHeight: 24, fontWeight: '700' },
+    edQuoteBar: { width: 3, alignSelf: 'stretch', backgroundColor: c.primary, borderRadius: 2 },
+    edQuoteText: { fontStyle: 'italic', color: c.textMuted },
+    edDoneText: { color: c.textMuted, textDecorationLine: 'line-through' },
+    edPlaceholderText: { color: c.textMuted },
+    edRunBold: { fontWeight: '700' },
+    edRunItalic: { fontStyle: 'italic' },
+    edRunUnderline: { textDecorationLine: 'underline' },
+    edRunStrike: { textDecorationLine: 'line-through' },
+    edInput: { padding: 0, margin: 0, textAlignVertical: 'top' },
+    edMoveCol: { gap: 2 },
+    edMoveBtn: { width: 28, height: 22, alignItems: 'center', justifyContent: 'center' },
+    edAdd: { paddingVertical: t.spacing.sm, paddingHorizontal: t.spacing.xs },
+    edAddLabel: { color: c.textMuted, fontSize: t.typography.body.fontSize },
     // Lightbox (Stage 15): the photo centred over the scrim,
     // the close button a surface chip at the top end corner.
     lightboxImage: { width: '100%', height: '72%' },
@@ -4458,56 +4523,348 @@ export function RgChart({ type = 'bar', data, width, height, style }: any) {
  * raw today). What it gives an app is one control with the
  * contract every other control has: [value] in, (change) out.
  */
+/**
+ * The block editor (Stage 15, rebuilt 0.5.0 at Bigyan's
+ * direction): `<editor [value] (change)>` edits a note made
+ * of blocks. The value stays one string, one block per line,
+ * and the pure model in blocks.ts reads and writes it: a
+ * line's prefix names its kind and four inline marks style
+ * runs of words inside a block. The editor is one framed
+ * unit: inside the frame, at the top, the block style chips
+ * (Title, Heading, Body, Quote, Checklist, List) and, right
+ * below them, the parameter tools (Aa shows or hides the
+ * style row; Bold, Italic, Underline and Strikethrough act
+ * on the active block's selection and toggle; the checklist,
+ * bullet and numbered tools set the active block's kind; the
+ * grip arms move mode, which steps the block up or down).
+ * The blocks live under the controls. At rest a block renders
+ * styled, bold is bold and a checklist ring taps to tick;
+ * tapping a block's text opens it for editing, and only
+ * there do its marks show. Enter starts the next block; an
+ * empty list item left by Enter becomes a body block; an
+ * empty block removed by Backspace steps back to the block
+ * above.
+ */
 export function RgEditor({ value, label, placeholder, disabled, onChange, style }: any) {
   const t = useRgTheme();
   const styles = stylesFor(t);
-  const editorRef = useRef<any>(null);
   const liftAboveKeyboard = useKeyboardLift();
   const text = value === undefined || value === null ? '' : String(value);
-  const [selection, setSelection] = useState({ start: 0, end: 0 });
-  const clampSel = (): { start: number; end: number } => {
-    const start = Math.min(Math.max(selection.start || 0, 0), text.length);
-    const end = Math.min(Math.max(selection.end || 0, start), text.length);
-    return { start, end };
+  const blocks = parseBlocks(text);
+  const [active, setActive] = useState<number | null>(null);
+  const [sel, setSel] = useState({ start: 0, end: 0 });
+  const [showStyles, setShowStyles] = useState(true);
+  const [moveMode, setMoveMode] = useState(false);
+  const inputRefs = useRef(new Map<number, any>());
+  const pendingActive = useRef<number | null>(null);
+  const clearTimer = useRef<any>(null);
+  const activeBlock: Block | null = active !== null && active < blocks.length ? blocks[active] : null;
+
+  useEffect(() => {
+    if (active === null) return;
+    const input = inputRefs.current.get(active);
+    if (input) input.focus();
+  }, [active]);
+
+  const emit = (next: Block[]): void => {
+    onChange?.(serializeBlocks(next));
   };
-  const wrap = (marker: string): void => {
-    const { start, end } = clampSel();
-    onChange?.(text.slice(0, start) + marker + text.slice(start, end) + marker + text.slice(end));
+
+  // A blur does not close the block at once. On the web a tap
+  // on a tool blurs the field first and presses second, so the
+  // close waits a beat and any editor action cancels it; only
+  // a blur that nothing follows (the keyboard dismissed, the
+  // reader moved on) settles the block back to its styled rest.
+  const cancelClear = (): void => {
+    if (clearTimer.current) {
+      clearTimeout(clearTimer.current);
+      clearTimer.current = null;
+    }
   };
-  const listLine = (): void => {
-    const { start } = clampSel();
-    const lineStart = text.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
-    onChange?.(text.slice(0, lineStart) + '- ' + text.slice(lineStart));
+
+  const openBlock = (i: number): void => {
+    if (disabled) return;
+    cancelClear();
+    pendingActive.current = i;
+    setTimeout(() => {
+      if (pendingActive.current === i) pendingActive.current = null;
+    }, 300);
+    setActive(i);
+    setSel({ start: blocks[i].text.length, end: blocks[i].text.length });
   };
-  const tool = (labelText: string, act: () => void): React.ReactNode => (
-    <Pressable key={labelText} disabled={disabled} onPress={act} style={styles.editorTool} accessibilityRole="button">
-      <Text style={styles.editorToolLabel}>{labelText}</Text>
+
+  const onInputBlur = (i: number): void => {
+    if (pendingActive.current !== null) return;
+    cancelClear();
+    clearTimer.current = setTimeout(() => {
+      clearTimer.current = null;
+      setActive((cur: number | null) => (cur === i ? null : cur));
+      setMoveMode(false);
+    }, 350);
+  };
+
+  const applyChip = (kind: BlockKind): void => {
+    if (active === null || !activeBlock) return;
+    cancelClear();
+    emit(setBlockKind(blocks, active, kind));
+  };
+
+  const applyKindTool = (kind: BlockKind): void => {
+    if (active === null || !activeBlock) return;
+    cancelClear();
+    emit(setBlockKind(blocks, active, activeBlock.kind === kind ? 'body' : kind));
+  };
+
+  const applyMark = (marker: string): void => {
+    if (active === null || !activeBlock) return;
+    cancelClear();
+    const out = toggleInline(activeBlock.text, sel.start, sel.end, marker);
+    if (out.text === activeBlock.text) return;
+    setSel({ start: out.start, end: out.end });
+    emit(setBlockText(blocks, active, out.text));
+  };
+
+  const onBlockText = (i: number, nextText: string): void => {
+    if (nextText.indexOf('\n') === -1) {
+      emit(setBlockText(blocks, i, nextText));
+      return;
+    }
+    const parts = nextText.split('\n');
+    const kind = blocks[i].kind;
+    if (
+      parts.length === 2 && parts[0] === '' && parts[1] === '' &&
+      (kind === 'check' || kind === 'bullet' || kind === 'number')
+    ) {
+      // Enter on an empty list item leaves the list, the way
+      // the notes apps do it.
+      emit(setBlockKind(blocks, i, 'body'));
+      return;
+    }
+    let nextBlocks = setBlockText(blocks, i, parts[0]);
+    let at = i;
+    for (let k = 1; k < parts.length; k += 1) {
+      const here = nextBlocks[at].kind;
+      const follow = here === 'check' || here === 'bullet' || here === 'number' ? here : 'body';
+      nextBlocks = insertBlockAfter(nextBlocks, at, follow);
+      at += 1;
+      nextBlocks = setBlockText(nextBlocks, at, parts[k]);
+    }
+    pendingActive.current = at;
+    setTimeout(() => {
+      if (pendingActive.current === at) pendingActive.current = null;
+    }, 300);
+    setActive(at);
+    const last = parts[parts.length - 1];
+    setSel({ start: last.length, end: last.length });
+    emit(nextBlocks);
+  };
+
+  const onBlockKey = (i: number) => (e: any): void => {
+    if (e?.nativeEvent?.key !== 'Backspace') return;
+    if (blocks[i].text !== '' || blocks.length <= 1) return;
+    const target = Math.max(0, i - 1);
+    pendingActive.current = target;
+    setTimeout(() => {
+      if (pendingActive.current === target) pendingActive.current = null;
+    }, 300);
+    setActive(target);
+    setSel({ start: blocks[target].text.length, end: blocks[target].text.length });
+    emit(removeBlock(blocks, i));
+  };
+
+  const moveActive = (dir: -1 | 1): void => {
+    if (active === null) return;
+    cancelClear();
+    const target = active + dir;
+    if (target < 0 || target >= blocks.length) return;
+    pendingActive.current = target;
+    setTimeout(() => {
+      if (pendingActive.current === target) pendingActive.current = null;
+    }, 300);
+    setActive(target);
+    emit(moveBlock(blocks, active, dir));
+  };
+
+  const addBlock = (): void => {
+    if (disabled) return;
+    cancelClear();
+    const next = insertBlockAfter(blocks, blocks.length - 1, 'body');
+    openBlock(next.length - 1);
+    emit(next);
+  };
+
+  const kindTextStyle = (block: Block): any[] => {
+    if (block.kind === 'title') return [styles.edTextBase, styles.edTitleText];
+    if (block.kind === 'heading') return [styles.edTextBase, styles.edHeadingText];
+    if (block.kind === 'quote') return [styles.edTextBase, styles.edQuoteText];
+    return [styles.edTextBase];
+  };
+
+  const renderRuns = (block: Block): React.ReactNode => {
+    if (block.text === '') {
+      return <Text style={styles.edPlaceholderText}>{placeholder ? String(placeholder) : ' '}</Text>;
+    }
+    const done = block.kind === 'check' && block.done;
+    return parseInline(block.text).map((run, k) => (
+      <Text
+        key={k}
+        style={[
+          done ? styles.edDoneText : null,
+          run.bold ? styles.edRunBold : null,
+          run.italic ? styles.edRunItalic : null,
+          run.underline ? styles.edRunUnderline : null,
+          run.strike ? styles.edRunStrike : null,
+        ]}
+      >
+        {run.text}
+      </Text>
+    ));
+  };
+
+  const chip = (labelText: string, kind: BlockKind): React.ReactNode => {
+    const on = activeBlock?.kind === kind;
+    return (
+      <Pressable
+        key={labelText}
+        disabled={disabled || active === null}
+        onPress={() => applyChip(kind)}
+        style={[styles.editorChip, on ? styles.editorChipOn : null]}
+        accessibilityRole="button"
+      >
+        <Text style={[styles.editorChipLabel, on ? styles.editorChipLabelOn : null]}>{labelText}</Text>
+      </Pressable>
+    );
+  };
+
+  const tool = (
+    key: string,
+    labelText: string,
+    act: () => void,
+    on: boolean,
+    labelStyle?: any,
+  ): React.ReactNode => (
+    <Pressable
+      key={key}
+      disabled={disabled}
+      onPress={act}
+      style={[styles.editorTool, on ? styles.editorToolOn : null]}
+      accessibilityRole="button"
+    >
+      <Text style={[styles.editorToolLabel, labelStyle, on ? styles.editorToolLabelOn : null]}>{labelText}</Text>
     </Pressable>
   );
+
+  let numberRun = 0;
   return (
     <View style={[styles.inputWrap, style]}>
       {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
-      <View style={styles.editorToolbar}>
-        {tool('Bold', () => wrap('**'))}
-        {tool('Italic', () => wrap('*'))}
-        {tool('List', listLine)}
+      <View style={styles.editorFrame}>
+        <View style={styles.editorHead}>
+          {showStyles ? (
+            <View style={styles.editorChipsRow}>
+              {chip('Title', 'title')}
+              {chip('Heading', 'heading')}
+              {chip('Body', 'body')}
+              {chip('Quote', 'quote')}
+              {chip('Checklist', 'check')}
+              {chip('List', 'bullet')}
+            </View>
+          ) : null}
+          <View style={styles.editorToolsRow}>
+            {tool('aa', 'Aa', () => {
+              cancelClear();
+              setShowStyles(!showStyles);
+            }, showStyles)}
+            {tool('bold', 'B', () => applyMark('**'), !!activeBlock && inlineActive(activeBlock.text, sel.start, sel.end, '**'), styles.editorBoldLabel)}
+            {tool('italic', 'I', () => applyMark('*'), !!activeBlock && inlineActive(activeBlock.text, sel.start, sel.end, '*'), styles.editorItalicLabel)}
+            {tool('underline', 'U', () => applyMark('++'), !!activeBlock && inlineActive(activeBlock.text, sel.start, sel.end, '++'), styles.editorUnderlineLabel)}
+            {tool('strike', 'S', () => applyMark('~~'), !!activeBlock && inlineActive(activeBlock.text, sel.start, sel.end, '~~'), styles.editorStrikeLabel)}
+            {tool('check', '☑', () => applyKindTool('check'), activeBlock?.kind === 'check')}
+            {tool('bullet', '•', () => applyKindTool('bullet'), activeBlock?.kind === 'bullet')}
+            {tool('number', '1.', () => applyKindTool('number'), activeBlock?.kind === 'number')}
+            {tool('grip', '⠿', () => {
+              cancelClear();
+              setMoveMode(!moveMode);
+            }, moveMode)}
+          </View>
+        </View>
+        <View style={styles.editorBody}>
+          {blocks.map((block, i) => {
+            if (block.kind === 'number') numberRun += 1;
+            else numberRun = 0;
+            const ordinal = numberRun;
+            const isActive = active === i;
+            const content = isActive ? (
+              <TextInput
+                ref={(node: any) => {
+                  if (node) inputRefs.current.set(i, node);
+                  else inputRefs.current.delete(i);
+                }}
+                style={[kindTextStyle(block), styles.edInput]}
+                value={block.text}
+                onChangeText={(nextText: string) => onBlockText(i, nextText)}
+                onSelectionChange={(e: any) => setSel(e.nativeEvent.selection)}
+                selection={sel}
+                onKeyPress={onBlockKey(i)}
+                onFocus={() => {
+                  cancelClear();
+                  liftAboveKeyboard(inputRefs.current.get(i));
+                }}
+                onBlur={() => onInputBlur(i)}
+                placeholder={placeholder ? String(placeholder) : undefined}
+                placeholderTextColor={t.colors.textMuted}
+                editable={!disabled}
+                multiline
+              />
+            ) : (
+              <Pressable disabled={disabled} onPress={() => openBlock(i)} style={{ flex: 1 }}>
+                <Text style={[kindTextStyle(block), block.kind === 'check' && block.done ? styles.edDoneText : null]}>
+                  {renderRuns(block)}
+                </Text>
+              </Pressable>
+            );
+            return (
+              <View key={i} style={[styles.edBlockRow, isActive ? styles.edBlockActive : null]}>
+                {block.kind === 'check' ? (
+                  <Pressable
+                    disabled={disabled}
+                    onPress={() => {
+                      cancelClear();
+                      emit(toggleBlockDone(blocks, i));
+                    }}
+                  >
+                    <View style={[styles.edCheckRing, block.done ? styles.edCheckRingDone : null]}>
+                      {block.done ? <RgIcon name="check" size={12} color="onPrimary" /> : null}
+                    </View>
+                  </Pressable>
+                ) : null}
+                {block.kind === 'bullet' ? <Text style={styles.edGutter}>•</Text> : null}
+                {block.kind === 'number' ? <Text style={styles.edGutter}>{ordinal}.</Text> : null}
+                {block.kind === 'quote' ? <View style={styles.edQuoteBar} /> : null}
+                {content}
+                {moveMode && isActive ? (
+                  <View style={styles.edMoveCol}>
+                    <Pressable disabled={disabled || i === 0} onPress={() => moveActive(-1)} style={styles.edMoveBtn}>
+                      <RgIcon name="chevron-up" size={16} color="textMuted" />
+                    </Pressable>
+                    <Pressable disabled={disabled || i === blocks.length - 1} onPress={() => moveActive(1)} style={styles.edMoveBtn}>
+                      <RgIcon name="chevron-down" size={16} color="textMuted" />
+                    </Pressable>
+                  </View>
+                ) : null}
+              </View>
+            );
+          })}
+          {!disabled ? (
+            <Pressable onPress={addBlock} style={styles.edAdd}>
+              <Text style={styles.edAddLabel}>+ Tap to add a block</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
-      <TextInput
-        ref={editorRef}
-        style={[styles.inputField, styles.editorArea, disabled ? styles.inputDisabled : null]}
-        value={text}
-        onChangeText={(next: string) => onChange?.(next)}
-        onSelectionChange={(e: any) => setSelection(e.nativeEvent.selection)}
-        onFocus={() => liftAboveKeyboard(editorRef.current)}
-        placeholder={placeholder}
-        placeholderTextColor={t.colors.textMuted}
-        editable={!disabled}
-        multiline
-      />
     </View>
   );
 }
-
 /**
  * An image (Stage 15): `<image src="..." width="320" height="180">`
  * shows a remote or bundled picture at a declared size. Declaring

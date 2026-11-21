@@ -1169,12 +1169,21 @@ built, in three tour examples: `examples/feed/` (Tier 1),
   an error. Scope: one series, no axes, no animation; bar and pie
   read negatives as 0. The app draws with react-native-svg, the
   previews with inline SVG, from the same shape model.
-- **The editor's value is marked-up text.** `<editor>` has a
-  Bold, Italic and List toolbar acting on the selection; bold is
-  double star, italic single star, a list line starts with a dash
-  and a space. Scope limit, plainly: a marked-up text field with
-  helpers, not a WYSIWYG engine; the stored value is the marked
-  text.
+- **The editor is a block editor whose value stays one
+  string.** `<editor [value] (change)>` edits a note of blocks,
+  one block per line: `# ` title, `## ` heading, `> ` quote,
+  `- [ ] ` and `- [x] ` checklist, `- ` bullet, `1. ` numbered,
+  no prefix body. Inside a block, double stars are bold, a
+  single star italic, double plus underline, double tilde
+  strikethrough; marks are flat and do not nest. The editor is
+  one framed unit: the style chips and the parameter tools sit
+  inside the frame, above the blocks. Blocks render styled at
+  rest; tapping a block opens it for editing, and only there do
+  its marks show. Every mark button toggles, the checklist ring
+  taps to tick, Enter starts the next block, and the grip steps
+  the active block up or down. Scope limit, plainly: no tables,
+  no pictures, no nested marks, and the Italic tool's I wears a
+  serif face (Times New Roman on iOS) on purpose.
 - **Image declares its size, and the lightbox is an overlay.**
   `<image src width height resize="cover">`; the doctor enforces
   the declared size (`DOC_IMG_SIZE`). `<lightbox [open] (close)

@@ -13,6 +13,9 @@ import { buildCatalog } from '../packages/compiler/src/catalog';
 import { renderPreview } from '../packages/compiler/src/preview/renderPreview';
 import { buildStyleSnapshot } from '../packages/compiler/src/preview/styleSnapshot';
 import { applyMask, maskLength } from '../packages/ui/src/mask';
+import {
+  parseBlocks, serializeBlocks, toggleInline, parseInline,
+} from '../packages/ui/src/blocks';
 import { chartModel, normalizeChartData } from '../packages/ui/src/chart';
 import { COLOR_SWATCHES } from '../packages/ui/src/palette';
 
@@ -518,7 +521,50 @@ test('preview behaviour: the calendar moves months and a day tap reports the ISO
   assert.ok(app.textContent.includes('Day 2026-12-25'), 'the tap reported the tapped day as ISO');
 });
 
-test('preview behaviour: colour swatches, editor toolbar, lightbox close and crumb clicks', () => {
+test('blocks parity: the page runtime mirrors the TypeScript block model', () => {
+  const sandbox = previewSandboxOf('<screen><p>x</p></screen>', '');
+  const pageParse = sandbox['__edParse'] as (v: string) => unknown;
+  const pageSerialize = sandbox['__edSerialize'] as (b: unknown) => string;
+  const pageToggle = sandbox['__edToggleInline'] as (
+    t: string, s: number, e: number, m: string,
+  ) => { text: string; start: number; end: number };
+  const pageInline = sandbox['__edParseInline'] as (t: string) => unknown;
+  assert.equal(typeof pageParse, 'function');
+  assert.equal(typeof pageSerialize, 'function');
+  assert.equal(typeof pageToggle, 'function');
+  assert.equal(typeof pageInline, 'function');
+  const texts = [
+    '# Morning pages\nSaw the **sunrise** again\n- [x] Done one\n- [ ] Open one\n- Bullet\n2. Numbered\n> Wise\n## Later',
+    '',
+    'plain',
+    '- [ ] only a task',
+  ];
+  for (const t of texts) {
+    assert.deepEqual(JSON.parse(JSON.stringify(pageParse(t))), JSON.parse(JSON.stringify(parseBlocks(t))), `parse parity for ${JSON.stringify(t)}`);
+    assert.equal(pageSerialize(pageParse(t)), serializeBlocks(parseBlocks(t)), 'serialize parity');
+  }
+  const toggles: [string, number, number, string][] = [
+    ['Saw the sunrise again', 8, 15, '**'],
+    ['Saw the **sunrise** again', 10, 17, '**'],
+    ['the air was *clear* today', 15, 15, '*'],
+    ['a **bold** word', 4, 4, '*'],
+    ['quiet ++now++ here', 8, 11, '++'],
+  ];
+  for (const [t, s, e, m] of toggles) {
+    assert.deepEqual(
+      JSON.parse(JSON.stringify(pageToggle(t, s, e, m))),
+      toggleInline(t, s, e, m),
+      `toggle parity for ${m} over ${t}`,
+    );
+  }
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(pageInline('Saw the **sunrise** again, *clear* and ++quiet++'))),
+    JSON.parse(JSON.stringify(parseInline('Saw the **sunrise** again, *clear* and ++quiet++'))),
+    'inline runs parity',
+  );
+});
+
+test('preview behaviour: colour swatches, editor blocks, lightbox close and crumb clicks', () => {
   const colour = previewOf(
     '<screen><color-picker [value]="brand" (change)="onBrand($event)"></color-picker><p>Brand {{ brand }}</p></screen>',
     'brand = "#0b57d0"; onBrand(v: string) { this.brand = v; }',
@@ -533,15 +579,41 @@ test('preview behaviour: colour swatches, editor toolbar, lightbox close and cru
 
   const editor = previewOf(
     '<screen><editor [value]="notes" (change)="onNotes($event)"></editor><p>Notes: {{ notes }}</p></screen>',
-    'notes = "hello"; onNotes(v: string) { this.notes = v; }',
+    'notes = "# Morning pages\\nSaw the **sunrise** again\\n- [ ] Took photos"; onNotes(v: string) { this.notes = v; }',
   );
-  const area = findAll(editor, (e) => hasClass(e, 'editor-area'))[0] as unknown as {
+  const edBlocks = () => findAll(editor, (e) => hasClass(e, 'ed-block'));
+  assert.equal(edBlocks().length, 3, 'the value renders as three blocks');
+  assert.ok(hasClass(edBlocks()[0], 'ed-title'), 'the first block is the title');
+  assert.ok(
+    findAll(editor, (e) => e.textContent === 'sunrise').length >= 1,
+    'the bold word renders as its own styled run',
+  );
+  const bodyText = findAll(editor, (e) => hasClass(e, 'ed-text')).find((e) => e.textContent.includes('Saw the'))!;
+  bodyText.click();
+  const area = findAll(editor, (e) => hasClass(e, 'ed-input'))[0] as unknown as {
     value: string; selectionStart?: number; selectionEnd?: number;
   };
-  area.selectionStart = 0;
-  area.selectionEnd = 5;
-  findAll(editor, (e) => hasClass(e, 'editor-tool') && e.textContent === 'Bold')[0].click();
-  assert.ok(editor.textContent.includes('Notes: **hello**'), 'the Bold tool wrapped the selection in markers');
+  assert.ok(area, 'tapping a block opens it for editing');
+  assert.ok(area.value.includes('**sunrise**'), 'the editing block shows its marks');
+  area.selectionStart = 10;
+  area.selectionEnd = 17;
+  findAll(editor, (e) => hasClass(e, 'editor-tool') && e.textContent === 'B')[0].click();
+  assert.ok(editor.textContent.includes('Saw the sunrise again'), 'one Bold press unwraps the marks');
+  assert.ok(!editor.textContent.includes('**sunrise**'), 'no doubled stars after the toggle');
+  const area2 = findAll(editor, (e) => hasClass(e, 'ed-input'))[0] as unknown as {
+    value: string; selectionStart?: number; selectionEnd?: number;
+  };
+  assert.ok(area2, 'the block stays open for editing after a tool press');
+  area2.selectionStart = 8;
+  area2.selectionEnd = 15;
+  findAll(editor, (e) => hasClass(e, 'editor-tool') && e.textContent === 'B')[0].click();
+  assert.ok(editor.textContent.includes('Saw the **sunrise** again'), 'the next Bold press wraps again');
+  findAll(editor, (e) => hasClass(e, 'ed-ring'))[0].click();
+  assert.ok(editor.textContent.includes('- [x] Took photos'), 'the checklist ring ticked the item');
+  const titleText = findAll(editor, (e) => hasClass(e, 'ed-text')).find((e) => e.textContent.includes('Morning pages'))!;
+  titleText.click();
+  findAll(editor, (e) => hasClass(e, 'editor-chip') && e.textContent === 'Body')[0].click();
+  assert.ok(editor.textContent.includes('Notes: Morning pages'), 'the Body chip dropped the title prefix');
 
   const light = previewOf(
     '<screen><lightbox [open]="open" (close)="shut()" src="a.jpg"><p>Cap</p></lightbox><p *ngIf="!open">Closed</p></screen>',
