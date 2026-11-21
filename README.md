@@ -540,8 +540,10 @@ One more example:
   primary colour role, a small search icon, a large heart in the
   error role.
 
-**Icons.** `<icon name="search">` draws one of 27 curated Material
-style icons, stored as SVG path data in `packages/ui/src/icons.ts`.
+**Icons.** `<icon name="search">` draws one of 78 Material
+Symbols glyphs (rounded, filled, weight 400; the icon standard
+since 2026-11-21), stored as SVG path data in
+`packages/ui/src/icons.ts`.
 `size` is 20, 24 or 28 (default 24) and `color` names a theme colour
 role; with no color the icon takes the theme text colour. The
 generated app draws the paths through `RgIcon` with

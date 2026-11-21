@@ -218,7 +218,7 @@ applications already use. The source stays in Angular style:
 ## Icons (Stage 7)
 
 One icon block, in the shape of Angular Material's `mat-icon`, drawing
-from one curated set of Material style icons:
+from the framework's one icon set:
 
 ```html
 <icon name="search"></icon>
@@ -226,12 +226,22 @@ from one curated set of Material style icons:
 <icon [name]="currentIcon"></icon>
 ```
 
-- **The set.** 27 names: menu, search, close, check, chevron-left,
-  chevron-right, arrow-left, arrow-right, plus, minus, bell, heart,
-  star, settings, home, person, calendar, alarm, play, pause, edit,
-  delete, share, info, warning, mail, sun. The set lives as SVG path
-  data (24 by 24 viewBox) in `packages/ui/src/icons.ts`, and the
-  catalog's Icons section is generated from that same file.
+- **The set (the icon standard, set 2026-11-21).** The drawings are
+  Google Material Symbols, one fixed hand for the whole set: the
+  rounded style, filled, at weight 400, taken from Google's files
+  (the @material-symbols/svg-400 package, Apache License 2.0) and
+  transformed from the Symbols 960 grid onto the 24 by 24 viewBox
+  the set has always used. 78 glyphs plus the logo brand mark:
+  alarm, arrow-down, arrow-left, arrow-right, arrow-up, bell, bookmark, bookmark-outline, calendar, camera, chart, chat, check, check-circle, chevron-down, chevron-left, chevron-right, chevron-up, close, code, copy, dark-mode, delete, download, edit, error, file, filter, folder, group, heart, heart-outline, help, history, home, image, info, language, link, location, lock, login, logo, logout, mail, menu, mic, minus, more-horiz, more-vert, pause, person, play, plus, print, redo, refresh, save, schedule, school, search, send, settings, share, sort, star, star-outline, sun, thumb-up, timer, tune, undo, upload, visibility, visibility-off, volume, warning, wifi, work.
+  Two rules hold the standard: never substitute a near glyph for
+  the right word (under the old set History wore a calendar,
+  because the set had no history glyph), and never hand-draw a
+  shape (the old menu dots were built from circles). If a glyph
+  is missing, add the official Symbols drawing in the same hand.
+  The set lives as SVG path data in `packages/ui/src/icons.ts`,
+  and the catalog's Icons section is generated from that same
+  file. Before 2026-11-21 the set held 31 drawings from the
+  frozen Material Icons set, gathered one feature at a time.
 - **Props.** `name` only, plus optional `size` (20, 24 or 28, default
   24) and `color` (a theme colour role name; default is the theme text
   colour, the onSurface role). `[name]`, `[size]` and `[color]`
@@ -252,7 +262,7 @@ from one curated set of Material style icons:
   and the checkbox tick are set icons now (menu, check), not font
   characters.
 - **Not in this stage.** Custom project icons (registering your own
-  path data) come later. Today the curated set is the whole set. See
+  path data) come later. Today the framework set is the whole set. See
   `examples/icons/` and its recipe card.
 
 ## Forms (Stage 8)
