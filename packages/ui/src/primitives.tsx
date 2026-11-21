@@ -2054,11 +2054,15 @@ function fireSelectionHaptic(): void {
   }
 }
 
-export function RgSwitch({ checked, disabled, haptic, onChange, children, style }: any) {
+export function RgSwitch({ checked, disabled, haptic, color, onChange, children, style }: any) {
   const t = useRgTheme();
   const c = t.colors;
   const styles = stylesFor(t);
   const isOn = !!checked;
+  // The colour role names the on colour, never a paint: primary
+  // is the theme primary, success the theme success green. Off
+  // is the surface variant grey either way.
+  const onColor = color === 'success' ? c.success : c.primary;
   const progress = useRef(new Animated.Value(isOn ? 1 : 0)).current;
 
   // Motion rule: the knob only ever moves toward its target. A plain
@@ -2076,7 +2080,7 @@ export function RgSwitch({ checked, disabled, haptic, onChange, children, style 
 
   const trackColor = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [c.surfaceVariant, c.primary],
+    outputRange: [c.surfaceVariant, onColor],
   });
   const knobShift = progress.interpolate({
     inputRange: [0, 1],
@@ -2094,7 +2098,7 @@ export function RgSwitch({ checked, disabled, haptic, onChange, children, style 
       <Animated.View
         style={[
           styles.switchTrack,
-          { backgroundColor: trackColor, borderColor: isOn ? c.primary : c.outline },
+          { backgroundColor: trackColor, borderColor: isOn ? onColor : c.outline },
         ]}
       >
         <Animated.View
