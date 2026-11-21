@@ -1,0 +1,28 @@
+<screen>
+  <appbar title="Dressed"></appbar>
+  <gradient>
+    <p class="band-title">Living room</p>
+    <p class="band-sub">The default dress, from the tokens up.</p>
+  </gradient>
+  <card>
+    <section class="row">
+      <section class="ic"><icon name="home" color="primary"></icon></section>
+      <section class="grow">
+        <h3>Ceiling light</h3>
+        <p class="muted">On · Living room</p>
+      </section>
+      <section class="pill"><p class="pill-text">3 devices</p></section>
+    </section>
+    <section class="row">
+      <section class="chk"><icon name="check" color="onPrimary"></icon></section>
+      <p class="grow">Water the plants</p>
+      <switch color="success" [checked]="lightOn" (change)="onLight($event)"></switch>
+    </section>
+    <chips>
+      <chip icon="check">Done</chip>
+      <chip>Active</chip>
+    </chips>
+    <button (click)="start()">Get started</button>
+    <p *ngIf="taps > 0">Started {{ taps }} times</p>
+  </card>
+</screen>
