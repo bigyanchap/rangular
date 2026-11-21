@@ -882,14 +882,18 @@ function buildStyles(t: Theme) {
       backgroundColor: c.surface, borderRadius: t.radius.full, padding: t.spacing.sm,
     },
     lightboxCaption: { paddingHorizontal: t.spacing.lg, paddingTop: t.spacing.md, alignItems: 'center' },
-    // Colour picker (Stage 15): a swatch chip in the field and a
-    // grid of swatches in the sheet.
+    // Colour picker (Stage 15): a swatch chip in the field and
+    // the palette on a colour wheel in the sheet.
     colorSwatchChip: {
       width: 24, height: 24, borderRadius: t.radius.sm,
       borderWidth: 1, borderColor: c.border,
     },
-    swatchGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm, paddingVertical: t.spacing.sm },
-    swatch: { width: 44, height: 44, borderRadius: t.radius.md, borderWidth: 1, borderColor: c.border },
+    swatchWheel: { width: 264, height: 264, alignSelf: 'center', position: 'relative', marginVertical: t.spacing.sm },
+    swatchCenter: {
+      position: 'absolute', left: 86, top: 86, width: 92, height: 92,
+      borderRadius: t.radius.full, borderWidth: 1, borderColor: c.border,
+    },
+    swatch: { position: 'absolute', width: 46, height: 46, borderRadius: t.radius.full, borderWidth: 1, borderColor: c.border },
     swatchSelected: { borderColor: c.primary, borderWidth: 3 },
     // Breadcrumbs (Stage 15): a wrapping row of links joined by
     // chevrons; the last crumb is the current page, plain text.
@@ -4554,10 +4558,11 @@ export function RgLightbox({ open, onClose, src, children, style }: any) {
  * from the shared palette (or any six digit hex) and `(change)`
  * emits the picked hex, the controls contract. The field shows a
  * swatch of the current colour; a tap
- * opens a bottom sheet with the shared data palette as a swatch
- * grid, plus one custom row where any six digit hex can be typed
- * and applied. The palette is data (./palette), the same in both
- * themes.
+ * opens a bottom sheet with the shared data palette arranged on
+ * a colour wheel, the twelve swatches on a ring around a centre
+ * disc that shows the current colour, plus one custom row where
+ * any six digit hex can be typed and applied. The palette is
+ * data (./palette), the same in both themes.
  */
 export function RgColorPicker({ value, label, placeholder, disabled, onChange, style }: any) {
   const styles = stylesFor(useRgTheme());
@@ -4590,14 +4595,18 @@ export function RgColorPicker({ value, label, placeholder, disabled, onChange, s
         </View>
       </Pressable>
       <RgSheet open={open} onClose={() => setOpen(false)}>
-        <View style={styles.swatchGrid}>
-          {COLOR_SWATCHES.map((hex) => {
+        <View style={styles.swatchWheel}>
+          <View style={[styles.swatchCenter, current ? { backgroundColor: current } : null]} />
+          {COLOR_SWATCHES.map((hex, i) => {
             const selected = hex.toLowerCase() === current.toLowerCase();
+            const a = ((i * 30 - 90) * Math.PI) / 180;
+            const left = 132 + 102 * Math.cos(a) - 23;
+            const top = 132 + 102 * Math.sin(a) - 23;
             return (
               <Pressable
                 key={hex}
                 onPress={() => pick(hex)}
-                style={[styles.swatch, { backgroundColor: hex }, selected && styles.swatchSelected]}
+                style={[styles.swatch, { backgroundColor: hex, left, top }, selected && styles.swatchSelected]}
                 accessibilityRole="button"
                 accessibilityLabel={hex}
               />

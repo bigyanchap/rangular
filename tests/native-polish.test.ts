@@ -249,3 +249,26 @@ test('calendar cells hold one fixed height, so the selected row never sits lower
     previewSrc.includes('.calendar-cell { width: 14.2857%; display: flex; align-items: center; justify-content: center; height: 44px; }'),
     'the preview cell carries the same fixed height');
 });
+
+test('the colour picker offers its palette on a wheel, in the runtime and the preview', () => {
+  assert.ok(
+    primitivesSrc.includes('swatchWheel'),
+    'the sheet lays the palette out as a wheel');
+  assert.ok(
+    primitivesSrc.includes('((i * 30 - 90) * Math.PI) / 180'),
+    'the twelve swatches sit on a ring, one every thirty degrees from the top');
+  assert.ok(
+    primitivesSrc.includes('swatchCenter'),
+    'the current colour sits as a disc in the middle of the wheel');
+  assert.ok(
+    !primitivesSrc.includes('swatchGrid'),
+    'the old swatch grid is gone');
+  const previewSrc = fs.readFileSync(
+    path.join(ROOT, 'packages', 'compiler', 'src', 'preview', 'renderPreview.ts'), 'utf8');
+  assert.ok(
+    previewSrc.includes('.swatch-wheel'),
+    'the preview wheel carries the same layout');
+  assert.ok(
+    !previewSrc.includes('swatch-grid'),
+    'the preview grid is gone too');
+});

@@ -3,7 +3,7 @@
  *
  * These are not theme colours and they are not design tokens: they
  * are the fixed categorical palette that charts colour their series
- * with and the colour picker offers as its swatch grid. Data colours
+ * with and the colour picker offers on its colour wheel. Data colours
  * behave like brand colours (the dinacharya gold is the in-repo
  * precedent): they stay the same in light and dark themes, because a
  * chart series or a picked colour must not change identity when the
