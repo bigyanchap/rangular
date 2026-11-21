@@ -285,6 +285,7 @@ test('the editor is a framed block editor with its controls inside (0.5.0)', () 
   assert.ok(editorFn.includes('toggleBlockDone'), 'the checklist ring ticks through the model');
   assert.ok(editorFn.includes('Tap to add a block'), 'the add row lives inside the frame');
   assert.ok(editorFn.includes('clearTimer'), 'a blur closes the block only after a beat, so a tool tap never closes it first');
+  assert.ok(editorFn.includes('from?: Block[]') && editorFn.includes('if (!target) return'), 'openBlock reads the list it is given and refuses a missing block, so the add row can open the block it just created');
   assert.ok(!editorFn.includes("tool('Bold'"), 'the old marks toolbar is gone');
   assert.ok(
     primitivesSrc.includes("fontFamily: Platform.OS === 'ios' ? 'Times New Roman' : 'serif'"),

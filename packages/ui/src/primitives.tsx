@@ -4582,15 +4582,18 @@ export function RgEditor({ value, label, placeholder, disabled, onChange, style 
     }
   };
 
-  const openBlock = (i: number): void => {
+  const openBlock = (i: number, from?: Block[]): void => {
     if (disabled) return;
+    const list = from ?? blocks;
+    const target = list[i];
+    if (!target) return;
     cancelClear();
     pendingActive.current = i;
     setTimeout(() => {
       if (pendingActive.current === i) pendingActive.current = null;
     }, 300);
     setActive(i);
-    setSel({ start: blocks[i].text.length, end: blocks[i].text.length });
+    setSel({ start: target.text.length, end: target.text.length });
   };
 
   const onInputBlur = (i: number): void => {
@@ -4689,8 +4692,8 @@ export function RgEditor({ value, label, placeholder, disabled, onChange, style 
     if (disabled) return;
     cancelClear();
     const next = insertBlockAfter(blocks, blocks.length - 1, 'body');
-    openBlock(next.length - 1);
     emit(next);
+    openBlock(next.length - 1, next);
   };
 
   const kindTextStyle = (block: Block): any[] => {
