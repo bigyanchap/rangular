@@ -177,3 +177,47 @@ test('the bottom bar carries no shadow and the screen paints under it', () => {
     primitivesSrc.includes('styles.bottomNav.backgroundColor'),
     'the screen paints the safe area strip in the bar colour');
 });
+
+test('the drawer panel top padding clears the status bar zone', () => {
+  const body = primitivesSrc.split('drawerPanel: {')[1].split('},')[0];
+  assert.ok(
+    body.includes('paddingTop: t.spacing.xxxl + t.spacing.lg'),
+    'the drawer starts below the clock, not at the screen top');
+});
+
+test('pickers dismiss the keyboard as they open', () => {
+  const selectFn = primitivesSrc.slice(
+    primitivesSrc.indexOf('export function RgSelect'),
+    primitivesSrc.indexOf('export function RgStep'));
+  assert.ok(selectFn.includes('Keyboard.dismiss()'), 'the select dismisses');
+  const pickerFn = primitivesSrc.slice(
+    primitivesSrc.indexOf('export function RgDateTimePicker'),
+    primitivesSrc.indexOf('export function RgTabs'));
+  assert.ok(pickerFn.includes('Keyboard.dismiss()'), 'the datetime picker dismisses');
+});
+
+test('a masked field caps its length at the pattern length', () => {
+  assert.ok(
+    primitivesSrc.includes('maxLength={mask ? String(mask).length : undefined}'),
+    'the extra character is refused, never flashed and trimmed');
+});
+
+test('the list scroller nests and its refresh spinner wears the theme colour', () => {
+  const listFn = primitivesSrc.slice(
+    primitivesSrc.indexOf('export function RgList'),
+    primitivesSrc.indexOf('export function RgRowAction'));
+  assert.ok(listFn.includes('nestedScrollEnabled'), 'the list can own its drags inside a screen');
+  assert.ok(listFn.includes('tintColor={tint} colors={[tint]}'), 'the spinner is themed');
+});
+
+test('the tooltip bubble is measured and clamped on screen, never centred', () => {
+  const tipFn = primitivesSrc.slice(
+    primitivesSrc.indexOf('function useTooltipBubble'),
+    primitivesSrc.indexOf('export function RgButton'));
+  assert.ok(tipFn.includes('measureInWindow'), 'the host is measured on show');
+  assert.ok(tipFn.includes('screenW - 8 - bubbleW.current'), 'the bubble clamps to the right edge');
+  assert.ok(tipFn.includes('opacity: placed ? 1 : 0'), 'the bubble waits for its offset before painting');
+  assert.ok(tipFn.includes('width: bubbleWidth'), 'the bubble carries an explicit width, never capped by its host');
+  const bubbleStyle = primitivesSrc.split('tooltipBubble: {')[1].split('},')[0];
+  assert.ok(!bubbleStyle.includes("alignSelf: 'center'"), 'the bubble no longer centres on its host');
+});

@@ -1562,7 +1562,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .menu-item { display: flex; align-items: center; gap: ${t.spacing.md}px; min-height: 48px; padding: 0 ${t.spacing.lg}px; font-size: ${t.typography.body.fontSize}px; color: var(--text); cursor: pointer; }
   .menu-item:hover { background: var(--surface-variant); }
   .overlay-left { align-items: stretch; justify-content: flex-start; }
-  .drawer { display: flex; flex-direction: column; gap: ${t.spacing.md}px; position: relative; width: 280px; max-width: 85%; background: var(--role-surface); padding: ${t.spacing.xxl}px ${t.spacing.lg}px ${t.spacing.lg}px; box-shadow: 4px 0 18px rgba(0,0,0,.18); animation: drawer-in .22s linear; overflow-y: auto; }
+  .drawer { display: flex; flex-direction: column; gap: ${t.spacing.md}px; position: relative; width: 280px; max-width: 85%; background: var(--role-surface); padding: ${t.spacing.xxxl + t.spacing.lg}px ${t.spacing.lg}px ${t.spacing.lg}px; box-shadow: 4px 0 18px rgba(0,0,0,.18); animation: drawer-in .22s linear; overflow-y: auto; }
   @keyframes drawer-in { from { transform: translateX(-40px); } to { transform: translateX(0); } }
   .select-options { display: block; }
   .select-option { display: flex; align-items: center; gap: ${t.spacing.md}px; min-height: 48px; padding: 0 ${t.spacing.sm}px; font-size: ${t.typography.bodyLarge.fontSize}px; color: var(--text); cursor: pointer; }
