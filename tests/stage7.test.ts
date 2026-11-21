@@ -76,12 +76,9 @@ const projectWith = (template: string, fields = ''): CompileResult => compilePro
 // --- A: the set and the registrations ------------------------------------------------
 
 test('Stage 7: the icon set is exactly the curated list, every name has path data', () => {
-  const expected = ['menu', 'search', 'close', 'check', 'chevron-left', 'chevron-right',
-    'arrow-left', 'arrow-right', 'plus', 'minus', 'bell', 'heart', 'star', 'settings',
-    'home', 'person', 'calendar', 'alarm', 'play', 'pause', 'edit', 'delete', 'share',
-    'info', 'warning', 'mail', 'sun', 'code', 'chart', 'bookmark', 'bookmark-outline', 'logo'];
+  const expected = ['alarm', 'arrow-down', 'arrow-left', 'arrow-right', 'arrow-up', 'bell', 'bookmark', 'bookmark-outline', 'calendar', 'camera', 'chart', 'chat', 'check', 'check-circle', 'chevron-down', 'chevron-left', 'chevron-right', 'chevron-up', 'close', 'code', 'copy', 'dark-mode', 'delete', 'download', 'edit', 'error', 'file', 'filter', 'folder', 'group', 'heart', 'heart-outline', 'help', 'history', 'home', 'image', 'info', 'language', 'link', 'location', 'lock', 'login', 'logo', 'logout', 'mail', 'menu', 'mic', 'minus', 'more-horiz', 'more-vert', 'pause', 'person', 'play', 'plus', 'print', 'redo', 'refresh', 'save', 'schedule', 'school', 'search', 'send', 'settings', 'share', 'sort', 'star', 'star-outline', 'sun', 'thumb-up', 'timer', 'tune', 'undo', 'upload', 'visibility', 'visibility-off', 'volume', 'warning', 'wifi', 'work'];
   assert.deepEqual(ICON_NAMES, [...expected].sort());
-  assert.equal(ICON_NAMES.length, 32);
+  assert.equal(ICON_NAMES.length, 79);
   for (const name of Object.keys(ICON_PATHS)) {
     assert.ok(Array.isArray(ICON_PATHS[name]) && ICON_PATHS[name].length >= 1, `${name} has no path data`);
     for (const d of ICON_PATHS[name]) assert.ok(d.startsWith('M'), `${name} path does not start with M`);
@@ -258,11 +255,11 @@ test('icons preview: server paint draws every icon with its label, coloured by r
     children: result.children,
     services: result.services,
   });
-  // 32 set icons (31 glyphs + the logo brand mark) + 4 usage icons +
+  // 79 set icons (78 glyphs + the logo brand mark) + 4 usage icons +
   // 3 icon buttons, in the server paint (everything before the page
   // script). The appbar draws no menu: it has no menu handler, and a
   // dead control is not drawn.
-  assert.equal((html.split('<script>')[0].match(/<svg /g) ?? []).length, 39);
+  assert.equal((html.split('<script>')[0].match(/<svg /g) ?? []).length, 86);
   for (const name of ICON_NAMES) {
     if (ICON_PATHS[name]) {
       assert.ok(html.includes(`<path d="${ICON_PATHS[name][0]}"`), `preview missing path for ${name}`);
@@ -344,7 +341,7 @@ test('icons preview behaviour: the page runtime draws the same paths as the serv
   const app = loadPreview(html);
   const iconEls = findAll(app, (e) => e.className === 'icon');
   // The *ngFor set + 4 usage icons + 3 icon buttons, at runtime.
-  assert.equal(iconEls.length, 39);
+  assert.equal(iconEls.length, 86);
   const runtimeMarkup = iconEls.map((e) => e.markup).join('\n');
   for (const name of ICON_NAMES) {
     // Parity: the identical path data the server painted and RgIcon ships.
