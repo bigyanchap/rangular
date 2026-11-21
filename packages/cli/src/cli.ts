@@ -183,15 +183,30 @@ function cliVersion(root: string, checkout: boolean): string {
   return '0.3.1';
 }
 
-const STARTER_TS = `import { Component } from '@angular/core';
+const STARTER_TS = `import { Component } from \'@angular/core\';
 
 @Component({
-  selector: 'app-root',
-  templateUrl: './app.component.html',
+  selector: \'app-root\',
+  templateUrl: \'./app.component.html\',
+  styles: [\`,
+    .band-title { font-size: 20px; font-weight: 700; color: #ffffff; }
+    .band-sub { font-size: 14px; color: #d3e3fd; }
+    .row { flex-direction: row; align-items: center; gap: 12px; }
+    .ic { width: 44px; height: 44px; border-radius: 9999px; background-color: #e8f0fe; align-items: center; justify-content: center; }
+    .grow { flex: 1; }
+    .muted { font-size: 14px; color: #5f6368; }
+    .pill { background-color: #e8f0fe; border-radius: 9999px; padding: 8px; }
+    .pill-text { font-size: 12px; font-weight: 700; color: #0b57d0; }
+  \`],
 })
 export class AppComponent {
-  title = 'Welcome to Rangular';
+  title = \'Welcome to Rangular\';
+  lightOn = true;
   taps = 0;
+
+  onLight(value: boolean) {
+    this.lightOn = value;
+  }
 
   start() {
     this.taps++;
@@ -201,10 +216,23 @@ export class AppComponent {
 
 const STARTER_HTML = `<screen>
   <appbar title="Rangular"></appbar>
-  <h1>{{ title }}</h1>
+  <gradient>
+    <p class="band-title">{{ title }}</p>
+    <p class="band-sub">You wrote Angular. This screen is React Native.</p>
+  </gradient>
   <card>
-    <h3>Your first screen</h3>
-    <p>You wrote Angular. This screen is React Native.</p>
+    <section class="row">
+      <section class="ic"><icon name="home" color="primary"></icon></section>
+      <section class="grow">
+        <h3>Your first screen</h3>
+        <p class="muted">It opens dressed. Make it yours.</p>
+      </section>
+      <section class="pill"><p class="pill-text">1 screen</p></section>
+    </section>
+    <section class="row">
+      <p class="grow">Ceiling light</p>
+      <switch color="success" [checked]="lightOn" (change)="onLight($event)"></switch>
+    </section>
     <button (click)="start()">Get started</button>
     <p *ngIf="taps > 0">Started {{ taps }} times</p>
   </card>
@@ -546,10 +574,25 @@ function initProject(dirArg: string): void {
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
+  styles: [\`,
+    .band-title { font-size: 20px; font-weight: 700; color: #ffffff; }
+    .band-sub { font-size: 14px; color: #d3e3fd; }
+    .row { flex-direction: row; align-items: center; gap: 12px; }
+    .ic { width: 44px; height: 44px; border-radius: 9999px; background-color: #e8f0fe; align-items: center; justify-content: center; }
+    .grow { flex: 1; }
+    .muted { font-size: 14px; color: #5f6368; }
+    .pill { background-color: #e8f0fe; border-radius: 9999px; padding: 8px; }
+    .pill-text { font-size: 12px; font-weight: 700; color: #0b57d0; }
+  \`],
 })
 export class AppComponent {
   title = 'Welcome to Rangular';
+  lightOn = true;
   taps = 0;
+
+  onLight(value: boolean) {
+    this.lightOn = value;
+  }
 
   start() {
     this.taps++;
@@ -557,13 +600,26 @@ export class AppComponent {
 }
 `);
   fs.writeFileSync(path.join(srcDir, 'app.component.html'), `<screen>
-  <appbar title="Rangular"></appbar>
-  <h1>{{ title }}</h1>
+  <appbar title=\"Rangular\"></appbar>
+  <gradient>
+    <p class=\"band-title\">{{ title }}</p>
+    <p class=\"band-sub\">You wrote Angular. This screen is React Native.</p>
+  </gradient>
   <card>
-    <h3>Your first screen</h3>
-    <p>You wrote Angular. This screen is React Native.</p>
-    <button (click)="start()">Get started</button>
-    <p *ngIf="taps > 0">Started {{ taps }} times</p>
+    <section class=\"row\">
+      <section class=\"ic\"><icon name=\"home\" color=\"primary\"></icon></section>
+      <section class=\"grow\">
+        <h3>Your first screen</h3>
+        <p class=\"muted\">It opens dressed. Make it yours.</p>
+      </section>
+      <section class=\"pill\"><p class=\"pill-text\">1 screen</p></section>
+    </section>
+    <section class=\"row\">
+      <p class=\"grow\">Ceiling light</p>
+      <switch color=\"success\" [checked]=\"lightOn\" (change)=\"onLight($event)\"></switch>
+    </section>
+    <button (click)=\"start()\">Get started</button>
+    <p *ngIf=\"taps > 0\">Started {{ taps }} times</p>
   </card>
 </screen>
 `);

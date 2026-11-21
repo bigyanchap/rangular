@@ -84,7 +84,11 @@ export interface ColourRoles {
   // stops of the one brand gradient, drawn by RgGradient and the
   // gradient app bar. The same stops in both modes on purpose: a
   // brand band does not change with the theme, the way the code
-  // surface does not.
+  // surface does not. The stops were purple until the dressed
+  // round (2026-11-21), when the framework's default dress became
+  // the tutorial samples' language at his pick: the gradient is
+  // blue now, the container is the samples' light tint, and the
+  // success role is the Gmail green the samples check with.
   gradientFrom: string;
   gradientVia: string;
   gradientTo: string;
@@ -104,7 +108,7 @@ export const colours: Record<'light' | 'dark', ColourRoles> = {
   light: {
     primary: '#0b57d0',
     onPrimary: '#ffffff',
-    primaryContainer: '#d3e3fd',
+    primaryContainer: '#e8f0fe',
     onPrimaryContainer: '#041e49',
     secondary: '#00639b',
     secondaryContainer: '#cde6ff',
@@ -120,7 +124,7 @@ export const colours: Record<'light' | 'dark', ColourRoles> = {
     error: '#b3261e',
     onError: '#ffffff',
     danger: '#b3261e',
-    success: '#1e8e3e',
+    success: '#34a853',
     border: '#dadce0',
     outline: '#747775',
     scrim: '#000000',
@@ -131,9 +135,9 @@ export const colours: Record<'light' | 'dark', ColourRoles> = {
     toastSurface: '#000000d9',
     toastText: '#f1f3f4',
     toastAction: '#a8c7fa',
-    gradientFrom: '#3b0764',
-    gradientVia: '#7c3aed',
-    gradientTo: '#db2777',
+    gradientFrom: '#0849ad',
+    gradientVia: '#0b57d0',
+    gradientTo: '#4285f4',
     washFrom: '#dde7f5',
     washVia: '#e9eff8',
     washTo: '#fbfcfe',
@@ -169,9 +173,9 @@ export const colours: Record<'light' | 'dark', ColourRoles> = {
     toastSurface: '#000000d9',
     toastText: '#f1f3f4',
     toastAction: '#a8c7fa',
-    gradientFrom: '#3b0764',
-    gradientVia: '#7c3aed',
-    gradientTo: '#db2777',
+    gradientFrom: '#0849ad',
+    gradientVia: '#0b57d0',
+    gradientTo: '#4285f4',
     washFrom: '#262c38',
     washVia: '#1e242e',
     washTo: '#14161a',

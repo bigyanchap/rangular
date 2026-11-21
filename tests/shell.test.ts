@@ -43,10 +43,10 @@ test('bookmark icons ship filled and outline paths', () => {
 });
 
 test('brand gradient tokens carry the three stops in both themes', () => {
-  const froms = tokensSrc.match(/gradientFrom: '#3b0764'/g) ?? [];
+  const froms = tokensSrc.match(/gradientFrom: '#0849ad'/g) ?? [];
   assert.equal(froms.length, 2);
-  assert.ok(tokensSrc.includes("gradientVia: '#7c3aed'"));
-  assert.ok(tokensSrc.includes("gradientTo: '#db2777'"));
+  assert.ok(tokensSrc.includes("gradientVia: '#0b57d0'"));
+  assert.ok(tokensSrc.includes("gradientTo: '#4285f4'"));
 });
 
 test('<gradient> compiles to RgGradient with its children', () => {
@@ -65,7 +65,7 @@ test('RgGradient fills with the shared gradient and lightens text roles', () => 
 test('preview paints the gradient surface and its CSS', () => {
   const html = previewOf('<gradient><h2>Hi</h2></gradient>');
   assert.match(html, /class="gradient"/);
-  assert.ok(html.includes('linear-gradient(115deg, #3b0764, #7c3aed 52%, #db2777)'));
+  assert.ok(html.includes('linear-gradient(115deg, #0849ad, #0b57d0 52%, #4285f4)'));
 });
 
 test('gradient pinned app bar compiles tone, pin and the projected search input', () => {
