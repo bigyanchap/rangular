@@ -250,25 +250,23 @@ test('calendar cells hold one fixed height, so the selected row never sits lower
     'the preview cell carries the same fixed height');
 });
 
-test('the colour picker offers its palette on a wheel, in the runtime and the preview', () => {
-  assert.ok(
-    primitivesSrc.includes('swatchWheel'),
-    'the sheet lays the palette out as a wheel');
-  assert.ok(
-    primitivesSrc.includes('((i * 30 - 90) * Math.PI) / 180'),
-    'the twelve swatches sit on a ring, one every thirty degrees from the top');
-  assert.ok(
-    primitivesSrc.includes('swatchCenter'),
-    'the current colour sits as a disc in the middle of the wheel');
-  assert.ok(
-    !primitivesSrc.includes('swatchGrid'),
-    'the old swatch grid is gone');
+test('the colour picker builds any colour: swatches, a saturation square and a hue bar', () => {
+  const paletteSrc = fs.readFileSync(
+    path.join(ROOT, 'packages', 'ui', 'src', 'palette.ts'), 'utf8');
+  assert.ok(paletteSrc.includes('export function hexToHsv'), 'the palette owns the hex to hsv conversion');
+  assert.ok(paletteSrc.includes('export function hsvToHex'), 'the palette owns the hsv to hex conversion');
+  assert.ok(paletteSrc.includes('HUE_STOPS'), 'the rainbow bar stops live with the data colours');
+  assert.ok(primitivesSrc.includes('svSquare'), 'the sheet holds a saturation and value square');
+  assert.ok(primitivesSrc.includes('hueBar'), 'the sheet holds a hue bar beside the square');
+  assert.ok(primitivesSrc.includes('swatchRow'), 'the preset swatches sit in a row over the square');
+  const pickerFn = primitivesSrc.slice(
+    primitivesSrc.indexOf('export function RgColorPicker'),
+    primitivesSrc.indexOf('export function RgCrumb'));
+  assert.ok(pickerFn.includes('PanResponder'), 'the square and the bar are dragged, not just tapped');
+  assert.ok(pickerFn.includes('hexToHsv') && pickerFn.includes('hsvToHex'), 'the picker drafts in hsv and commits a hex');
+  assert.ok(!primitivesSrc.includes('swatchWheel'), 'the colour wheel is gone');
   const previewSrc = fs.readFileSync(
     path.join(ROOT, 'packages', 'compiler', 'src', 'preview', 'renderPreview.ts'), 'utf8');
-  assert.ok(
-    previewSrc.includes('.swatch-wheel'),
-    'the preview wheel carries the same layout');
-  assert.ok(
-    !previewSrc.includes('swatch-grid'),
-    'the preview grid is gone too');
+  assert.ok(previewSrc.includes('.sv-square') && previewSrc.includes('.hue-bar'), 'the preview sheet carries the same square and bar');
+  assert.ok(!previewSrc.includes('swatch-wheel'), 'the preview wheel is gone too');
 });

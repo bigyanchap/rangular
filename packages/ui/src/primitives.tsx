@@ -43,7 +43,7 @@ import { ICON_PATHS, BRAND_MARKS, BRAND_MARK_VIEWBOX } from './icons';
 import { applyMask } from './mask';
 import { chartModel } from './chart';
 import type { ChartShape } from './chart';
-import { AVATAR_TONES, AVATAR_TONE_NAMES, COLOR_SWATCHES } from './palette';
+import { AVATAR_TONES, AVATAR_TONE_NAMES, COLOR_SWATCHES, HUE_STOPS, SV_BLACK, SV_WHITE, hexToHsv, hsvToHex } from './palette';
 import {
   MONTH_SHORT,
   applyWheelValue,
@@ -882,19 +882,41 @@ function buildStyles(t: Theme) {
       backgroundColor: c.surface, borderRadius: t.radius.full, padding: t.spacing.sm,
     },
     lightboxCaption: { paddingHorizontal: t.spacing.lg, paddingTop: t.spacing.md, alignItems: 'center' },
-    // Colour picker (Stage 15): a swatch chip in the field and
-    // the palette on a colour wheel in the sheet.
+    // Colour picker (Stage 15): a swatch chip in the field; in
+    // the sheet, a row of preset swatches, a saturation and
+    // value square beside a hue bar, and the hex row's disc.
     colorSwatchChip: {
       width: 24, height: 24, borderRadius: t.radius.sm,
       borderWidth: 1, borderColor: c.border,
     },
-    swatchWheel: { width: 264, height: 264, alignSelf: 'center', position: 'relative', marginVertical: t.spacing.sm },
-    swatchCenter: {
-      position: 'absolute', left: 86, top: 86, width: 92, height: 92,
-      borderRadius: t.radius.full, borderWidth: 1, borderColor: c.border,
-    },
-    swatch: { position: 'absolute', width: 46, height: 46, borderRadius: t.radius.full, borderWidth: 1, borderColor: c.border },
+    swatchRow: { flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm, paddingVertical: t.spacing.sm },
+    swatchDot: { width: 26, height: 26, borderRadius: t.radius.full, borderWidth: 1, borderColor: c.border },
     swatchSelected: { borderColor: c.primary, borderWidth: 3 },
+    colorStage: { flexDirection: 'row', gap: t.spacing.md, paddingVertical: t.spacing.sm },
+    svSquare: { flex: 1, height: 216, position: 'relative' },
+    svClip: {
+      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+      borderRadius: t.radius.md, overflow: 'hidden',
+    },
+    svCursor: {
+      position: 'absolute', width: 20, height: 20, marginLeft: -10, marginTop: -10,
+      borderRadius: t.radius.full, borderWidth: 3, borderColor: c.surface,
+      shadowColor: SV_BLACK, shadowOpacity: 0.35, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 2,
+    },
+    hueBar: { width: 30, height: 216, position: 'relative' },
+    hueClip: {
+      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+      borderRadius: t.radius.full, overflow: 'hidden',
+    },
+    hueThumb: {
+      position: 'absolute', left: -4, width: 38, height: 14, marginTop: -7,
+      borderRadius: t.radius.full, backgroundColor: c.surface, borderWidth: 1, borderColor: c.border,
+    },
+    colorHexRow: { flexDirection: 'row', alignItems: 'flex-end', gap: t.spacing.md },
+    colorDot: {
+      width: 36, height: 36, borderRadius: t.radius.full, borderWidth: 1, borderColor: c.border,
+      marginBottom: t.spacing.sm,
+    },
     // Breadcrumbs (Stage 15): a wrapping row of links joined by
     // chevrons; the last crumb is the current page, plain text.
     breadcrumbs: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: t.spacing.xs },
@@ -4557,32 +4579,89 @@ export function RgLightbox({ open, onClose, src, children, style }: any) {
  * The colour picker (Stage 15): `[value]` holds a hex string
  * from the shared palette (or any six digit hex) and `(change)`
  * emits the picked hex, the controls contract. The field shows a
- * swatch of the current colour; a tap
- * opens a bottom sheet with the shared data palette arranged on
- * a colour wheel, the twelve swatches on a ring around a centre
- * disc that shows the current colour, plus one custom row where
- * any six digit hex can be typed and applied. The palette is
- * data (./palette), the same in both themes.
+ * swatch of the current colour; a tap opens a bottom sheet in
+ * the classic picker's shape: a row of preset swatches from the
+ * shared data palette, then a big saturation and value square
+ * beside a rainbow hue bar, dragged to build any colour at all,
+ * and a hex row that shows the colour being built beside a
+ * preview disc. A swatch tap picks at once; the square, the bar
+ * and the hex row draft one colour together, and the sheet's
+ * button commits it. The palette is data (./palette), the same
+ * in both themes.
  */
 export function RgColorPicker({ value, label, placeholder, disabled, onChange, style }: any) {
   const styles = stylesFor(useRgTheme());
   const [open, setOpen] = useState(false);
   const [custom, setCustom] = useState('');
+  const [draft, setDraft] = useState({ h: 4, s: 0.83, v: 0.85 });
   const current = value === undefined || value === null ? '' : String(value);
+  const draftHex = hsvToHex(draft.h, draft.s, draft.v);
+  const rawId = React.useId();
+  const gid = 'rgcp' + rawId.replace(/[^a-zA-Z0-9]/g, '');
   const pick = (hex: string): void => {
     setOpen(false);
     onChange?.(hex);
   };
-  const applyCustom = (): void => {
-    const m = /^#?([0-9a-fA-F]{6})$/.exec(custom.trim());
-    if (m) pick(`#${m[1].toLowerCase()}`);
+  const openSheet = (): void => {
+    const start = hexToHsv(current) ?? { h: 4, s: 0.83, v: 0.85 };
+    setDraft(start);
+    setCustom(hsvToHex(start.h, start.s, start.v).slice(1));
+    setOpen(true);
   };
+  const applyDraft = (next: { h: number; s: number; v: number }): void => {
+    setDraft(next);
+    setCustom(hsvToHex(next.h, next.s, next.v).slice(1));
+  };
+  const onCustom = (text: string): void => {
+    setCustom(text);
+    const hsv = hexToHsv(text);
+    if (hsv) setDraft(hsv);
+  };
+  const commit = (): void => {
+    const typed = hexToHsv(custom);
+    pick(typed ? hsvToHex(typed.h, typed.s, typed.v) : draftHex);
+  };
+  // The square and the bar are dragged with the slider's
+  // responder shape: each measures its box in the window and
+  // reads the finger's page position against it. Drags move
+  // the draft only; the commit button above emits.
+  const squareBox = useRef({ x: 0, y: 0, width: 0, height: 0 });
+  const squareRef = useRef<any>(null);
+  const barBox = useRef({ x: 0, y: 0, width: 0, height: 0 });
+  const barRef = useRef<any>(null);
+  const live = useRef({ draft });
+  live.current = { draft };
+  const squareFromPage = (pageX: number, pageY: number): void => {
+    const b = squareBox.current;
+    if (b.width <= 0 || b.height <= 0) return;
+    const sv = Math.min(1, Math.max(0, (pageX - b.x) / b.width));
+    const vv = 1 - Math.min(1, Math.max(0, (pageY - b.y) / b.height));
+    applyDraft({ h: live.current.draft.h, s: sv, v: vv });
+  };
+  const barFromPage = (pageY: number): void => {
+    const b = barBox.current;
+    if (b.height <= 0) return;
+    const ratio = Math.min(1, Math.max(0, (pageY - b.y) / b.height));
+    applyDraft({ h: ratio * 360, s: live.current.draft.s, v: live.current.draft.v });
+  };
+  const squareResponder = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (e) => { squareFromPage(e.nativeEvent.pageX, e.nativeEvent.pageY); },
+    onPanResponderMove: (e) => { squareFromPage(e.nativeEvent.pageX, e.nativeEvent.pageY); },
+  })).current;
+  const barResponder = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (e) => { barFromPage(e.nativeEvent.pageY); },
+    onPanResponderMove: (e) => { barFromPage(e.nativeEvent.pageY); },
+  })).current;
   return (
     <View style={[styles.inputWrap, style]}>
       {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
       <Pressable
         disabled={disabled}
-        onPress={() => setOpen(true)}
+        onPress={openSheet}
         style={[styles.pickerBox, disabled ? styles.inputDisabled : null]}
         accessibilityRole="button"
       >
@@ -4595,31 +4674,89 @@ export function RgColorPicker({ value, label, placeholder, disabled, onChange, s
         </View>
       </Pressable>
       <RgSheet open={open} onClose={() => setOpen(false)}>
-        <View style={styles.swatchWheel}>
-          <View style={[styles.swatchCenter, current ? { backgroundColor: current } : null]} />
-          {COLOR_SWATCHES.map((hex, i) => {
-            const selected = hex.toLowerCase() === current.toLowerCase();
-            const a = ((i * 30 - 90) * Math.PI) / 180;
-            const left = 132 + 102 * Math.cos(a) - 23;
-            const top = 132 + 102 * Math.sin(a) - 23;
+        <Text style={styles.inputLabel}>Pick a swatch</Text>
+        <View style={styles.swatchRow}>
+          {COLOR_SWATCHES.map((hex) => {
+            const selected = hex.toLowerCase() === draftHex.toLowerCase();
             return (
               <Pressable
                 key={hex}
                 onPress={() => pick(hex)}
-                style={[styles.swatch, { backgroundColor: hex, left, top }, selected && styles.swatchSelected]}
+                style={[styles.swatchDot, { backgroundColor: hex }, selected && styles.swatchSelected]}
                 accessibilityRole="button"
                 accessibilityLabel={hex}
               />
             );
           })}
         </View>
-        <RgInput
-          label="Custom hex"
-          placeholder="d93025"
-          value={custom}
-          onChangeText={setCustom}
-        />
-        <RgButton variant="text" onPress={applyCustom}>Use this colour</RgButton>
+        <View style={styles.colorStage}>
+          <View
+            ref={squareRef}
+            {...squareResponder.panHandlers}
+            onLayout={() => {
+              squareRef.current?.measureInWindow?.((x: number, y: number, w: number, h: number) => {
+                squareBox.current = { x, y, width: w, height: h };
+              });
+            }}
+            style={styles.svSquare}
+            accessibilityRole="adjustable"
+          >
+            <View style={styles.svClip} pointerEvents="none">
+              <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <Defs>
+                  <LinearGradient id={`${gid}s`} x1="0" y1="0" x2="1" y2="0">
+                    <Stop offset="0" stopColor={SV_WHITE} />
+                    <Stop offset="1" stopColor={hsvToHex(draft.h, 1, 1)} />
+                  </LinearGradient>
+                  <LinearGradient id={`${gid}v`} x1="0" y1="0" x2="0" y2="1">
+                    <Stop offset="0" stopColor={SV_BLACK} stopOpacity="0" />
+                    <Stop offset="1" stopColor={SV_BLACK} stopOpacity="1" />
+                  </LinearGradient>
+                </Defs>
+                <Rect x="0" y="0" width="100" height="100" fill={`url(#${gid}s)`} />
+                <Rect x="0" y="0" width="100" height="100" fill={`url(#${gid}v)`} />
+              </Svg>
+            </View>
+            <View style={[styles.svCursor, { left: `${draft.s * 100}%`, top: `${(1 - draft.v) * 100}%` }]} pointerEvents="none" />
+          </View>
+          <View
+            ref={barRef}
+            {...barResponder.panHandlers}
+            onLayout={() => {
+              barRef.current?.measureInWindow?.((x: number, y: number, w: number, h: number) => {
+                barBox.current = { x, y, width: w, height: h };
+              });
+            }}
+            style={styles.hueBar}
+            accessibilityRole="adjustable"
+          >
+            <View style={styles.hueClip} pointerEvents="none">
+              <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <Defs>
+                  <LinearGradient id={`${gid}h`} x1="0" y1="0" x2="0" y2="1">
+                    {HUE_STOPS.map((hex, i) => (
+                      <Stop key={hex + i} offset={String(i / (HUE_STOPS.length - 1))} stopColor={hex} />
+                    ))}
+                  </LinearGradient>
+                </Defs>
+                <Rect x="0" y="0" width="100" height="100" fill={`url(#${gid}h)`} />
+              </Svg>
+            </View>
+            <View style={[styles.hueThumb, { top: `${(draft.h / 360) * 100}%` }]} pointerEvents="none" />
+          </View>
+        </View>
+        <View style={styles.colorHexRow}>
+          <View style={{ flex: 1 }}>
+            <RgInput
+              label="Custom hex"
+              placeholder="d93025"
+              value={custom}
+              onChangeText={onCustom}
+            />
+          </View>
+          <View style={[styles.colorDot, { backgroundColor: draftHex }]} />
+        </View>
+        <RgButton variant="text" onPress={commit}>Use this colour</RgButton>
       </RgSheet>
     </View>
   );
