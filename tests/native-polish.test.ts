@@ -29,6 +29,21 @@ test('the scroll fade veil is one SVG gradient, never strips', () => {
   assert.ok(primitivesSrc.includes('stopOpacity={0.96}'), 'the veil fades from near solid');
 });
 
+test('the menu backdrop fades to the shared scrim opacity, never solid black', () => {
+  const menuFn = primitivesSrc.slice(
+    primitivesSrc.indexOf('export function RgMenu('),
+    primitivesSrc.indexOf('export function RgMenuItem'));
+  assert.ok(
+    menuFn.includes('outputRange: [0, 0.32]'),
+    'the menu backdrop interpolates to the shared 0.32 dim');
+  assert.ok(
+    menuFn.includes('Animated.View style={[styles.overlayBackdrop, { opacity: backdropOpacity }]}'),
+    'the menu backdrop is the animated dimmed backdrop');
+  assert.ok(
+    !menuFn.includes('<View style={styles.overlayBackdrop}>'),
+    'no plain opaque backdrop remains in RgMenu');
+});
+
 test('the search pill is one tap target that focuses its field', () => {
   assert.ok(primitivesSrc.includes('pillRef'), 'the pill keeps a field ref');
   assert.ok(

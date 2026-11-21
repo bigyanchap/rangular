@@ -3270,15 +3270,31 @@ const RgMenuContext = createContext<{ close?: () => void }>({});
 export function RgMenu({ open, onClose, children, style }: any) {
   const styles = stylesFor(useRgTheme());
   const isOpen = open === undefined ? true : open === 'false' ? false : !!open;
+  // The backdrop is the shared dimmed scrim, fading to the same
+  // 0.32 the sheet, dialog and drawer use. This menu once drew
+  // the backdrop as a plain view with no opacity at all, the
+  // full black scrim role, so on a phone the page behind the
+  // menu vanished into solid black (his report, 2026-11-21);
+  // the preview had promised 0.32 all along.
+  const progress = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (isOpen) {
+      progress.setValue(0);
+      Animated.timing(progress, {
+        toValue: 1, duration: 220, easing: Easing.out(Easing.quad), useNativeDriver: true,
+      }).start();
+    }
+  }, [isOpen, progress]);
+  const backdropOpacity = progress.interpolate({ inputRange: [0, 1], outputRange: [0, 0.32] });
   if (!isOpen) return null;
   return (
     <View style={styles.overlayRootTop}>
-      <View style={styles.overlayBackdrop}>
+      <Animated.View style={[styles.overlayBackdrop, { opacity: backdropOpacity }]}>
         <Pressable style={styles.overlayFill} onPress={onClose} accessibilityLabel="Close" />
-      </View>
-      <View style={[styles.menuPanel, style]}>
+      </Animated.View>
+      <Animated.View style={[styles.menuPanel, { opacity: progress }, style]}>
         <RgMenuContext.Provider value={{ close: onClose }}>{children}</RgMenuContext.Provider>
-      </View>
+      </Animated.View>
     </View>
   );
 }
