@@ -235,3 +235,17 @@ test('a refreshing list lends its pull to the screen that owns the gesture', () 
   assert.ok(screenFn.includes('refreshMirrorTimer'), 'the registration mirror is coalesced per tick, so it cannot feed a render loop');
   assert.ok(screenFn.includes('Math.abs(y - scrollYRef.current) >= 1'), 'the veil state only moves on a real scroll change');
 });
+
+test('calendar cells hold one fixed height, so the selected row never sits lower', () => {
+  assert.ok(
+    primitivesSrc.includes("calendarCell: { width: '14.2857%', height: 44, alignItems: 'center', justifyContent: 'center' }"),
+    'the calendar cell height is stated, never derived');
+  assert.ok(
+    !primitivesSrc.includes("calendarCell: { width: '14.2857%', aspectRatio"),
+    'no aspectRatio cell remains to stretch with the selected disc');
+  const previewSrc = fs.readFileSync(
+    path.join(ROOT, 'packages', 'compiler', 'src', 'preview', 'renderPreview.ts'), 'utf8');
+  assert.ok(
+    previewSrc.includes('.calendar-cell { width: 14.2857%; display: flex; align-items: center; justify-content: center; height: 44px; }'),
+    'the preview cell carries the same fixed height');
+});

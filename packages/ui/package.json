@@ -4,7 +4,7 @@
   "main": "src/primitives.tsx",
   "name": "@rangular-framework/ui",
   "types": "src/primitives.tsx",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "files": [
     "src"
   ],

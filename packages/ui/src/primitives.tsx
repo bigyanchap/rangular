@@ -835,7 +835,13 @@ function buildStyles(t: Theme) {
       fontWeight: '600', color: c.textMuted, paddingVertical: t.spacing.xs,
     },
     calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-    calendarCell: { width: '14.2857%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
+    // Fixed height, never aspectRatio: on iOS the aspectRatio
+    // cell let the selected day's taller content (the 36px
+    // disc) stretch its whole week row, so the row under the
+    // selection sat lower than every other row (lesson 90,
+    // his phone 2026-11-21). A stated height keeps every week
+    // row at one pitch, selected or not.
+    calendarCell: { width: '14.2857%', height: 44, alignItems: 'center', justifyContent: 'center' },
     calendarDay: { fontSize: t.typography.body.fontSize, color: c.text },
     calendarDayToday: { color: c.primary, fontWeight: '700' },
     calendarDaySelected: {
