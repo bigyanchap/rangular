@@ -39,7 +39,7 @@ function previewOf(template: string, classBody = '') {
 test('bookmark icons ship filled and outline paths', () => {
   assert.ok(ICON_PATHS['bookmark'], 'filled bookmark');
   assert.ok(ICON_PATHS['bookmark-outline'], 'outline bookmark');
-  assert.ok(ICON_PATHS['bookmark'][0].includes('M17 3H7'));
+  assert.ok(ICON_PATHS['bookmark'][0].includes('T5 18.73L5 4.38'));
 });
 
 test('brand gradient tokens carry the three stops in both themes', () => {
@@ -107,7 +107,7 @@ test('app bar back and action compile to known event props', () => {
 test('preview paints the app bar back chevron and action icon', () => {
   const html = previewOf('<appbar title="Lesson 4" back actionIcon="bookmark-outline"></appbar>');
   assert.match(html, /appbar-action/);
-  assert.ok(html.includes('M17 3H7'), 'bookmark path paints');
+  assert.ok(html.includes('Q5 19.54 5 18.73'), 'bookmark path paints');
 });
 
 test('search pill input paints in the preview with the search icon', () => {
@@ -133,7 +133,7 @@ test('preview paints the row number tile and bookmark button', () => {
   const html = previewOf(tpl, 'toggle() {}');
   assert.match(html, />41<\/span>/);
   assert.match(html, /row-action/);
-  assert.ok(html.includes('M17 3H7'), 'bookmark path paints');
+  assert.ok(html.includes('Q5 19.54 5 18.73'), 'bookmark path paints');
   assert.match(primitivesSrc, /styles\.rowAction/);
   assert.match(primitivesSrc, /avatarLabel/);
 });
