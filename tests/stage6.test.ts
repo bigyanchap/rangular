@@ -267,17 +267,25 @@ test('settings preview behaviour: every control changes the state driven content
   const app = loadPreview(html);
 
   assert.ok(app.textContent.includes('Wi-Fi is on'));
+  assert.ok(app.textContent.includes('Mobile data is off'));
   assert.ok(app.textContent.includes('Notifications are off'));
   assert.ok(app.textContent.includes('List panel'));
   assert.ok(!app.textContent.includes('Statistics panel'));
   assert.ok(app.textContent.includes('Chosen size: m'));
 
   const switches = findAll(app, (e) => hasClass(e, 'switch'));
-  assert.equal(switches.length, 1);
+  assert.equal(switches.length, 2);
   assert.ok(hasClass(switches[0], 'on'));
+  assert.ok(hasClass(switches[1], 'success'));
+  assert.ok(!hasClass(switches[1], 'on'));
   switches[0].click();
   assert.ok(app.textContent.includes('Wi-Fi is off'));
   assert.ok(!hasClass(findAll(app, (e) => hasClass(e, 'switch'))[0], 'on'));
+  findAll(app, (e) => hasClass(e, 'switch'))[1].click();
+  assert.ok(app.textContent.includes('Mobile data is on'));
+  const switchesAfter = findAll(app, (e) => hasClass(e, 'switch'));
+  assert.ok(hasClass(switchesAfter[1], 'on'));
+  assert.ok(hasClass(switchesAfter[1], 'success'));
 
   const checkboxes = findAll(app, (e) => hasClass(e, 'checkbox'));
   assert.equal(checkboxes.length, 1);
