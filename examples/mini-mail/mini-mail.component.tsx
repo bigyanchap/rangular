@@ -54,14 +54,14 @@ export function MailDetail() {
   }, []);
   return (
     <RgSection>
-      {mail && (
+      {!!(mail) && (
         <RgCard>
           <RgText variant="title">{mail.subject}</RgText>
           <RgText variant="bodyLarge">From {mail.from}, {mail.time}</RgText>
           <RgText variant="bodyLarge">{mail.body}</RgText>
         </RgCard>
       )}
-      {!mail && (
+      {!!(!mail) && (
         <RgText variant="bodyLarge">This mail could not be found.</RgText>
       )}
       <RgButton onPress={() => backToInbox()}>Back to inbox</RgButton>

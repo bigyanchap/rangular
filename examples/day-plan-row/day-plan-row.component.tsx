@@ -21,12 +21,12 @@ export default function DayPlanRow() {
       <RgList>
         <RgRow title={featured.title} subtitle={featured.time} detail={featured.pieces} onPress={() => toggleRun()}>
           <RgSection style={styles.checkCell}>
-            {runDone && (
+            {!!(runDone) && (
               <RgSection style={styles.checkOn}>
                 <Text style={styles.checkMark}>✓</Text>
               </RgSection>
             )}
-            {!runDone && (
+            {!!(!runDone) && (
               <RgSection style={styles.checkOff} />
             )}
           </RgSection>
@@ -34,19 +34,19 @@ export default function DayPlanRow() {
         {blocks.map((b, i) => (
           <RgRow key={b?.id ?? i} title={b.title} subtitle={b.time} detail={b.pieces}>
             <RgSection style={styles.checkCell}>
-              {b.done && (
+              {!!(b.done) && (
                 <RgSection style={styles.checkOn}>
                   <Text style={styles.checkMark}>✓</Text>
                 </RgSection>
               )}
-              {!b.done && (
+              {!!(!b.done) && (
                 <RgSection style={styles.checkOff} />
               )}
             </RgSection>
           </RgRow>
         ))}
       </RgList>
-      {runDone && (
+      {!!(runDone) && (
         <RgText variant="bodyLarge">Morning Run is done. The day is already won.</RgText>
       )}
     </RgScreen>

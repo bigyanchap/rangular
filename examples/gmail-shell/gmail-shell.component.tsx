@@ -37,7 +37,7 @@ export default function GmailShell() {
         <RgSwitch haptic checked={wifi} onChange={($event) => flipWifi($event)}>Wi-Fi, with haptic</RgSwitch>
         <RgSwitch checked={wifi} onChange={($event) => flipWifi($event)}>Wi-Fi, silent</RgSwitch>
       </RgSection>
-      {q && (
+      {!!(q) && (
         <RgText variant="bodyLarge">Searching for: {q}</RgText>
       )}
     </RgScreen>

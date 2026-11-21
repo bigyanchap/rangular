@@ -45,7 +45,7 @@ export default function AppShell() {
         <RgDivider />
         <RgMenuItem icon="delete" onPress={() => act('Delete')}>Delete</RgMenuItem>
       </RgMenu>
-      {lastAction && (
+      {!!(lastAction) && (
         <RgText variant="bodyLarge">Last action: {lastAction}</RgText>
       )}
       <RgDivider />

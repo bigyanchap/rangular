@@ -63,7 +63,7 @@ export default function Explorer() {
         <RgColumn name="age" header="Age" />
       </RgTable>
       <RgButton tooltip="Saves the current list" onPress={() => save()}>Save the list</RgButton>
-      {saved && (
+      {!!(saved) && (
         <RgText variant="bodyLarge">Saved.</RgText>
       )}
     </RgScreen>

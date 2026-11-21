@@ -75,7 +75,7 @@ export default function MailboxPro() {
       </RgChips>
       <RgText variant="label">Move to folder</RgText>
       <RgInput placeholder="Type a folder name" value={moveTo} onChangeText={($event) => setMoveTo($event)} onOptionSelected={($event) => onMove($event)} options={folderNames} />
-      {movedTo && (
+      {!!(movedTo) && (
         <RgText variant="bodyLarge">Moved to {movedTo}</RgText>
       )}
       <RgText variant="label">Reading</RgText>

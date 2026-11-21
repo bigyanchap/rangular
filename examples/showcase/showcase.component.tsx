@@ -28,7 +28,7 @@ export default function Showcase() {
         <RgText variant="bodyLarge" style={styles.cardNote}>A card note: body step, muted colour, from a .class rule in the component styles.</RgText>
         <RgButton onPress={() => primaryTap()}>Primary action</RgButton>
         <RgButton disabled={true}>Disabled action</RgButton>
-        {(taps > 0) && (
+        {!!((taps > 0)) && (
           <RgText variant="bodyLarge">Primary tapped {taps} times</RgText>
         )}
       </RgCard>

@@ -43,14 +43,14 @@ export default function Feed() {
       <RgAppbar title="Feed" />
       <RgText variant="bodyLarge">Pull to refresh and infinite scroll live on the screen here: (refresh) reloads, (endReached) appends the older posts, and [refreshing] drives the native spinner while the class works. In this demo the data is local, so the reload lands at once; in a real app the flag stays up while the fetch runs.</RgText>
       <RgButton variant="text" onPress={() => toggleLoading()}>Preview the loading skeleton</RgButton>
-      {loading && (
+      {!!(loading) && (
         <RgCard>
           <RgSkeleton shape="line" width="180" />
           <RgSkeleton shape="line" />
           <RgSkeleton shape="block" height="72" />
         </RgCard>
       )}
-      {!loading && (
+      {!!(!loading) && (
         <RgList>
           {posts.map((m, index) => (
             <RgRow key={m?.id ?? index} avatar title={m.from} subtitle={m.subject} detail={m.snippet} time={m.time}>
@@ -60,7 +60,7 @@ export default function Feed() {
           ))}
         </RgList>
       )}
-      {lastAction && (
+      {!!(lastAction) && (
         <RgText variant="bodyLarge">{lastAction}</RgText>
       )}
       <RgBottomNav index={tab} onChange={($event) => onTab($event)}>

@@ -40,12 +40,12 @@ export default function Settings() {
         <RgOption value="list">List</RgOption>
         <RgOption value="stats">Statistics</RgOption>
       </RgSwitcher>
-      {(view === 'list') && (
+      {!!((view === 'list')) && (
         <RgSection>
           <RgText variant="bodyLarge">List panel: Morning run, Team standup, Deep work.</RgText>
         </RgSection>
       )}
-      {(view === 'stats') && (
+      {!!((view === 'stats')) && (
         <RgSection>
           <RgText variant="bodyLarge">Statistics panel: 3 blocks done this week.</RgText>
         </RgSection>
@@ -57,13 +57,13 @@ export default function Settings() {
         <RgRadio value="l">Large</RgRadio>
       </RgRadioGroup>
       <RgText variant="bodyLarge">Chosen size: {size}</RgText>
-      {(size === 's') && (
+      {!!((size === 's')) && (
         <RgText variant="bodyLarge" style={styles.sampleS}>A line of text at the chosen size.</RgText>
       )}
-      {(size === 'm') && (
+      {!!((size === 'm')) && (
         <RgText variant="bodyLarge" style={styles.sampleM}>A line of text at the chosen size.</RgText>
       )}
-      {(size === 'l') && (
+      {!!((size === 'l')) && (
         <RgText variant="bodyLarge" style={styles.sampleL}>A line of text at the chosen size.</RgText>
       )}
     </RgScreen>

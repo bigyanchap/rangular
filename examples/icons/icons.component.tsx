@@ -43,7 +43,7 @@ export default function Icons() {
         <RgIconButton name="settings" onPress={() => tapIcon('settings')} />
         <RgIconButton name="share" onPress={() => tapIcon('share')} />
       </RgSection>
-      {lastTap && (
+      {!!(lastTap) && (
         <RgText variant="bodyLarge">Last tapped: {lastTap}</RgText>
       )}
     </RgScreen>

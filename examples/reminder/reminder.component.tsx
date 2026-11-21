@@ -60,10 +60,10 @@ export default function Reminder() {
         </RgSection>
         <RgButton onPress={() => openSheet()}>Repeat options</RgButton>
         <RgButton onPress={() => openConfirm()}>Delete</RgButton>
-        {deleted && (
+        {!!(deleted) && (
           <RgText variant="bodyLarge">This reminder was deleted.</RgText>
         )}
-        {restored && (
+        {!!(restored) && (
           <RgText variant="bodyLarge">Delete undone. The reminder is back.</RgText>
         )}
         <RgSheet open={sheetOpen} onClose={() => closeSheet()}>

@@ -173,9 +173,31 @@ test('*ngIf first: the condition is kept, the *ngFor drops with a warning and a 
     'mails = []; ready = true;',
   );
   assert.ok(diagnostics.some((d) => d.code === 'TPL_STRUCTURAL_MULTIPLE'), JSON.stringify(diagnostics));
-  assert.match(code, /\{ready && \(/);
+  assert.match(code, /\{!!\(ready\) && \(/);
   assert.match(code, /TODO: \*ngFor="let m of mails" dropped, one structural directive per element, see TPL_STRUCTURAL_MULTIPLE/);
   assert.ok(!code.includes('.map('), code);
+});
+
+// --- *ngIf conditions are coerced to boolean --------------------------------
+// A bare {score && (...)} leaks the number 0 into the tree when
+// the score is 0, and React Native throws "Text strings must be
+// rendered within a <Text> component" for the stray child (lesson
+// 86, his phone 2026-11-21). Same for a string condition at ''.
+
+test('*ngIf on a number field emits a coerced condition, never the bare value', () => {
+  const { code } = compileSnippet(
+    '<p *ngIf="score">Rated {{ score }}</p>', 'score = 0;',
+  );
+  assert.ok(code.includes('{!!(score) && ('), code);
+  assert.ok(!code.includes('{score && ('), code);
+});
+
+test('*ngIf on a string field emits a coerced condition, never the bare value', () => {
+  const { code } = compileSnippet(
+    '<p *ngIf="savedLine">Saved: {{ savedLine }}</p>', "savedLine = '';",
+  );
+  assert.ok(code.includes('{!!(savedLine) && ('), code);
+  assert.ok(!code.includes('{savedLine && ('), code);
 });
 
 // --- No false positives -------------------------------------------------------

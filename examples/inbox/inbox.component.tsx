@@ -18,7 +18,7 @@ export default function Inbox() {
           <RgRow key={m?.id ?? i} avatar title={m.from} subtitle={m.subject} detail={m.snippet} time={m.time} />
         ))}
       </RgList>
-      {(mails.length === 0) && (
+      {!!((mails.length === 0)) && (
         <RgText variant="bodyLarge">No mail. Enjoy the quiet.</RgText>
       )}
     </RgScreen>

@@ -3066,8 +3066,14 @@ class Generator {
           ];
         }
         const inner = renderCore(stripped, depth + 1, [], formCtx);
+        // The condition is coerced with !! on purpose: emitted
+        // bare, a numeric or string condition leaks its falsy
+        // value (0 or '') into the tree as a child, and React
+        // Native throws "Text strings must be rendered within a
+        // <Text> component" for it (lesson 86's rating demo,
+        // his phone 2026-11-21: *ngIf="score" with score 0).
         return [
-          `${indent}{${codeExpr(parts.condition)} && (`,
+          `${indent}{!!(${codeExpr(parts.condition)}) && (`,
           ...inner,
           `${indent})}`,
         ];

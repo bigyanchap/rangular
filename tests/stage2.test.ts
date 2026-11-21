@@ -53,7 +53,7 @@ test('(click) on a row emits onPress too', () => {
 
 test('*ngIf wraps the element in a conditional', () => {
   const { code } = compileSnippet('<p *ngIf="count >= 5">Past five</p>', 'count = 0;');
-  assert.match(code, /\{\(count >= 5\) && \(/);
+  assert.match(code, /\{!!\(\(count >= 5\)\) && \(/);
   assert.match(code, /<RgText variant="bodyLarge">Past five<\/RgText>/);
 });
 

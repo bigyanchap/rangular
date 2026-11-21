@@ -33,11 +33,11 @@ export default function BuilderForm() {
       <RgCard>
         <RgSection>
           <RgInput label="Name" placeholder="Your name" value={signupFormRef.current.get('name').value} onChangeText={($event) => signupFormRef.current.get('name').setValue($event)} onBlur={() => { signupFormRef.current.get('name').markAsTouched(); setFormVersion((v) => v + 1); }} />
-          {(signupFormRef.current.get('name').invalid && signupFormRef.current.get('name').touched) && (
+          {!!((signupFormRef.current.get('name').invalid && signupFormRef.current.get('name').touched)) && (
             <RgText variant="bodyLarge">Name is required.</RgText>
           )}
           <RgInput label="Email" placeholder="you@example.com" value={signupFormRef.current.get('email').value} onChangeText={($event) => signupFormRef.current.get('email').setValue($event)} onBlur={() => { signupFormRef.current.get('email').markAsTouched(); setFormVersion((v) => v + 1); }} />
-          {(signupFormRef.current.get('email').invalid && signupFormRef.current.get('email').touched) && (
+          {!!((signupFormRef.current.get('email').invalid && signupFormRef.current.get('email').touched)) && (
             <RgText variant="bodyLarge">Enter a valid email address.</RgText>
           )}
           <RgInput label="City" placeholder="Your city" value={signupFormRef.current.get('city').value} onChangeText={($event) => signupFormRef.current.get('city').setValue($event)} onBlur={() => { signupFormRef.current.get('city').markAsTouched(); setFormVersion((v) => v + 1); }} />
@@ -50,7 +50,7 @@ export default function BuilderForm() {
           </RgSection>
           <RgButton disabled={signupFormRef.current.invalid} onPress={() => { signupFormRef.current.markAllAsTouched(); setFormVersion((v) => v + 1); save(); }}>Create account</RgButton>
         </RgSection>
-        {summary && (
+        {!!(summary) && (
           <RgText variant="bodyLarge">Saved: {summary}</RgText>
         )}
       </RgCard>

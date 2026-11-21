@@ -31,12 +31,12 @@ export default function FormsPlus() {
       <RgText variant="bodyLarge">Phone so far: {phone}</RgText>
       <RgText variant="label">How was the session?</RgText>
       <RgRating value={score} onChange={($event) => onScore($event)} />
-      {score && (
+      {!!(score) && (
         <RgText variant="bodyLarge">You rated it {score} of 5.</RgText>
       )}
       <RgText variant="label">Enter the six digit code</RgText>
       <RgOtp length="6" value={code} onChange={($event) => onCode($event)} />
-      {(code.length === 6) && (
+      {!!((code.length === 6)) && (
         <RgText variant="bodyLarge">Code complete: {code}</RgText>
       )}
       <RgCarousel index={page} onChange={($event) => onPage($event)}>
@@ -54,7 +54,7 @@ export default function FormsPlus() {
         </RgCard>
       </RgCarousel>
       <RgFilePicker label="Attach a photo" kind="image" onChange={($event) => onFiles($event)}>Choose a photo</RgFilePicker>
-      {picked && (
+      {!!(picked) && (
         <RgText variant="bodyLarge">Picked: {picked}</RgText>
       )}
     </RgScreen>

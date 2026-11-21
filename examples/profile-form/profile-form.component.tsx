@@ -25,16 +25,16 @@ export default function ProfileForm() {
       <RgCard>
         <RgSection>
           <RgInput label="Name" placeholder="Your name" value={profileFormRef.current.get('name').value} onChangeText={($event) => profileFormRef.current.get('name').setValue($event)} onBlur={() => { profileFormRef.current.get('name').markAsTouched(); setFormVersion((v) => v + 1); }} />
-          {(profileFormRef.current.get('name').invalid && profileFormRef.current.get('name').touched) && (
+          {!!((profileFormRef.current.get('name').invalid && profileFormRef.current.get('name').touched)) && (
             <RgText variant="bodyLarge">Name is required.</RgText>
           )}
           <RgInput label="Email" placeholder="you@example.com" value={profileFormRef.current.get('email').value} onChangeText={($event) => profileFormRef.current.get('email').setValue($event)} onBlur={() => { profileFormRef.current.get('email').markAsTouched(); setFormVersion((v) => v + 1); }} />
-          {(profileFormRef.current.get('email').invalid && profileFormRef.current.get('email').touched) && (
+          {!!((profileFormRef.current.get('email').invalid && profileFormRef.current.get('email').touched)) && (
             <RgText variant="bodyLarge">Enter a valid email address.</RgText>
           )}
           <RgButton disabled={profileFormRef.current.invalid} onPress={() => { profileFormRef.current.markAllAsTouched(); setFormVersion((v) => v + 1); save(); }}>Save profile</RgButton>
         </RgSection>
-        {summary && (
+        {!!(summary) && (
           <RgText variant="bodyLarge">Saved: {summary}</RgText>
         )}
       </RgCard>

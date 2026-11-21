@@ -44,7 +44,7 @@ export default function Dressed() {
           <RgChip>Active</RgChip>
         </RgChips>
         <RgButton onPress={() => start()}>Get started</RgButton>
-        {(taps > 0) && (
+        {!!((taps > 0)) && (
           <RgText variant="bodyLarge">Started {taps} times</RgText>
         )}
       </RgCard>

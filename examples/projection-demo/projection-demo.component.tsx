@@ -24,7 +24,7 @@ export default function ProjectionDemo() {
         <RgText variant="bodyLarge">This content was written in the parent and projected into the child's card.</RgText>
         <RgButton onPress={() => note()}>Note it</RgButton>
       </Panel>
-      {(noted > 0) && (
+      {!!((noted > 0)) && (
         <RgText variant="bodyLarge">Noted {noted} times</RgText>
       )}
     </RgScreen>

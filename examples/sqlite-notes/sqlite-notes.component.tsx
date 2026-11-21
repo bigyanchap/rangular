@@ -74,12 +74,12 @@ export default function SqliteNotes() {
   return (
     <RgScreen>
       <RgAppbar title="Notes" />
-      {!db.ready && (
+      {!!(!db.ready) && (
         <RgText variant="bodyLarge">Opening the database...</RgText>
       )}
       <RgInput placeholder="Write a note" value={draft} onChangeText={($event) => setDraft($event)} />
       <RgButton onPress={() => addNote()}>Add note</RgButton>
-      {(db.ready && (db.notes.length === 0)) && (
+      {!!((db.ready && (db.notes.length === 0))) && (
         <RgText variant="bodyLarge">No notes yet. Add your first note above.</RgText>
       )}
       {db.notes.map((n, index) => (

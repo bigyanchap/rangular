@@ -17,7 +17,7 @@ export default function Counter() {
     <RgScreen>
       <RgAppbar title="Counter" />
       <RgText variant="display">{count}</RgText>
-      {(count >= 5) && (
+      {!!((count >= 5)) && (
         <RgText variant="bodyLarge">Past five. Keep going</RgText>
       )}
       <RgButton onPress={() => increment()}>Increment</RgButton>

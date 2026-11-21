@@ -34,14 +34,14 @@ export default function TeamForm() {
       <RgCard>
         <RgSection>
           <RgInput label="Team name" placeholder="Red Tigers" value={teamFormRef.current.get('team').value} onChangeText={($event) => teamFormRef.current.get('team').setValue($event)} onBlur={() => { teamFormRef.current.get('team').markAsTouched(); setFormVersion((v) => v + 1); }} />
-          {(teamFormRef.current.get('team').invalid && teamFormRef.current.get('team').touched) && (
+          {!!((teamFormRef.current.get('team').invalid && teamFormRef.current.get('team').touched)) && (
             <RgText variant="bodyLarge">Team name is required.</RgText>
           )}
           <RgSection>
             {teamFormRef.current.get('members').controls.map((m, i) => (
               <RgSection key={m?.id ?? i}>
                 <RgInput label="Member" placeholder="Member name" value={teamFormRef.current.get('members').at(i).value} onChangeText={($event) => teamFormRef.current.get('members').at(i).setValue($event)} onBlur={() => { teamFormRef.current.get('members').at(i).markAsTouched?.(); setFormVersion((v) => v + 1); }} />
-                {(teamFormRef.current.get('members').at(i).invalid && teamFormRef.current.get('members').at(i).touched) && (
+                {!!((teamFormRef.current.get('members').at(i).invalid && teamFormRef.current.get('members').at(i).touched)) && (
                   <RgText variant="bodyLarge">Member name is required.</RgText>
                 )}
                 <RgButton onPress={() => removeMember(i)}>Remove</RgButton>
@@ -51,7 +51,7 @@ export default function TeamForm() {
           <RgButton onPress={() => addMember()}>Add member</RgButton>
           <RgButton disabled={teamFormRef.current.invalid} onPress={() => { teamFormRef.current.markAllAsTouched(); setFormVersion((v) => v + 1); save(); }}>Save team</RgButton>
         </RgSection>
-        {summary && (
+        {!!(summary) && (
           <RgText variant="bodyLarge">Saved: {summary}</RgText>
         )}
       </RgCard>

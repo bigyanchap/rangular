@@ -33,7 +33,7 @@ export default function GradientShell() {
         <RgRow avatarText="4" title="Buttons and events" subtitle="Tap, count, toast" avatar actionIcon={(savedFirst ? 'bookmark' : 'bookmark-outline')} onAction={() => toggleFirst()} />
         <RgRow avatarText="41" title="Forms" subtitle="Inputs, validation, submit" avatar actionIcon={(savedSecond ? 'bookmark' : 'bookmark-outline')} onAction={() => toggleSecond()} />
       </RgSection>
-      {q && (
+      {!!(q) && (
         <RgText variant="bodyLarge">Searching for: {q}</RgText>
       )}
     </RgScreen>

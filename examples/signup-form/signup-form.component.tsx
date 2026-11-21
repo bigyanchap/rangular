@@ -30,21 +30,21 @@ export default function SignupForm() {
       <RgCard>
         <RgSection>
           <RgInput label="Full name" placeholder="e.g. Alex Carter" value={name} onChangeText={($event) => setName($event)} onBlur={() => setNameTouched(true)} />
-          {(nameModel.invalid && nameModel.touched) && (
+          {!!((nameModel.invalid && nameModel.touched)) && (
             <RgText variant="bodyLarge">Name is required and needs at least 3 characters.</RgText>
           )}
           <RgInput keyboardType="email-address" label="Email" placeholder="you@example.com" value={email} onChangeText={($event) => setEmail($event)} onBlur={() => setEmailTouched(true)} />
-          {(emailModel.invalid && emailModel.touched) && (
+          {!!((emailModel.invalid && emailModel.touched)) && (
             <RgText variant="bodyLarge">Enter a valid email address.</RgText>
           )}
           <RgInput secure label="Password" placeholder="At least 6 characters" value={password} onChangeText={($event) => setPassword($event)} onBlur={() => setPasswordTouched(true)} />
-          {(passwordModel.invalid && passwordModel.touched) && (
+          {!!((passwordModel.invalid && passwordModel.touched)) && (
             <RgText variant="bodyLarge">Password is required and needs at least 6 characters.</RgText>
           )}
           <RgCheckbox checked={terms} onChange={($event) => onTerms($event)}>I accept the terms</RgCheckbox>
           <RgButton disabled={(((nameModel.invalid || emailModel.invalid) || passwordModel.invalid) || !terms)} onPress={() => { setNameTouched(true); setEmailTouched(true); setPasswordTouched(true); save(); }}>Create account</RgButton>
         </RgSection>
-        {submitted && (
+        {!!(submitted) && (
           <RgText variant="bodyLarge">Welcome aboard. Your account was created.</RgText>
         )}
       </RgCard>

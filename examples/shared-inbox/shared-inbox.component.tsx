@@ -37,7 +37,7 @@ export function UnreadBadge() {
   }, []);
   return (
     <>
-      {loaded && (
+      {!!(loaded) && (
         <RgText variant="bodyLarge">{mail.unreadCount()} unread</RgText>
       )}
     </>
@@ -58,7 +58,7 @@ export default function SharedInbox() {
       <RgList>
         {mail.mails.map((m, i) => (
           <RgRow key={m?.id ?? i} avatar title={m.from} subtitle={m.subject} detail={m.snippet} time={m.time}>
-            {m.unread && (
+            {!!(m.unread) && (
               <Text>●</Text>
             )}
           </RgRow>
