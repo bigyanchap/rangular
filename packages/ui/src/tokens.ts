@@ -58,6 +58,11 @@ export interface ColourRoles {
   error: string;
   onError: string;
   danger: string;
+  // Success (switch colour round, 2026-11-21): the green a
+  // switch paints when on with color="success". The dark
+  // theme lifts it the way the error role lifts, so the on
+  // state reads on a dark surface too.
+  success: string;
   border: string;
   outline: string;
   scrim: string;
@@ -115,6 +120,7 @@ export const colours: Record<'light' | 'dark', ColourRoles> = {
     error: '#b3261e',
     onError: '#ffffff',
     danger: '#b3261e',
+    success: '#1e8e3e',
     border: '#dadce0',
     outline: '#747775',
     scrim: '#000000',
@@ -152,6 +158,7 @@ export const colours: Record<'light' | 'dark', ColourRoles> = {
     error: '#f2b8b5',
     onError: '#601410',
     danger: '#f2b8b5',
+    success: '#81c995',
     border: '#444746',
     outline: '#8e918f',
     scrim: '#000000',

@@ -1251,7 +1251,8 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
       case 'switch': {
         const checked = truthy(rawBound(el, 'checked', scope));
         const disabled = truthy(rawBound(el, 'disabled', scope));
-        return `<button type="button" class="switch${checked ? ' on' : ''}" ${disabled ? 'disabled' : ''}><span class="switch-track"><span class="switch-knob"></span></span><span class="control-label">${inner}</span></button>`;
+        const success = el.attrs['color'] === 'success' ? ' success' : '';
+        return `<button type="button" class="switch${checked ? ' on' : ''}${success}" ${disabled ? 'disabled' : ''}><span class="switch-track"><span class="switch-knob"></span></span><span class="control-label">${inner}</span></button>`;
       }
       case 'checkbox': {
         const checked = truthy(rawBound(el, 'checked', scope));
@@ -1461,6 +1462,7 @@ export function renderPreview(component: ComponentInfo, ast: TemplateRoot, data:
   .switch[disabled], .checkbox[disabled], .switcher-option[disabled], .radio-option[disabled] { opacity: .38; cursor: default; }
   .switch-track { position: relative; width: 52px; height: 32px; flex: 0 0 52px; border: 2px solid var(--border); border-radius: ${t.radius.full}px; background: var(--surface-variant); transition: background-color .16s linear, border-color .16s linear; }
   .switch.on .switch-track { background: var(--primary); border-color: var(--primary); }
+  .switch.on.success .switch-track { background: var(--role-success); border-color: var(--role-success); }
   .switch-knob { position: absolute; top: 2px; left: 2px; width: 24px; height: 24px; border-radius: 50%; background: var(--text-muted); transition: left .16s linear, background-color .16s linear; }
   .switch.on .switch-knob { left: 22px; background: var(--on-primary); }
   .control-label { flex: 1; font-size: ${t.typography.body.fontSize}px; }
@@ -5093,7 +5095,7 @@ function __buildCore(el, scope, path, form) {
       var switchChecked = __truthy(__controlValue(el, 'checked', scope));
       var sw = document.createElement('button');
       sw.type = 'button';
-      sw.className = 'switch' + (switchChecked ? ' on' : '');
+      sw.className = 'switch' + (switchChecked ? ' on' : '') + (el.attrs && el.attrs['color'] === 'success' ? ' success' : '');
       var swTrack = document.createElement('span');
       swTrack.className = 'switch-track';
       var swKnob = document.createElement('span');

@@ -1,6 +1,6 @@
 {
   "name": "rangular-framework",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "tags": [
     {
       "tag": "div",
@@ -849,6 +849,10 @@
         },
         {
           "name": "haptic",
+          "type": "any"
+        },
+        {
+          "name": "color",
           "type": "any"
         },
         {
@@ -2247,6 +2251,7 @@
         "error": "#b3261e",
         "onError": "#ffffff",
         "danger": "#b3261e",
+        "success": "#1e8e3e",
         "border": "#dadce0",
         "outline": "#747775",
         "scrim": "#000000",
@@ -2284,6 +2289,7 @@
         "error": "#f2b8b5",
         "onError": "#601410",
         "danger": "#f2b8b5",
+        "success": "#81c995",
         "border": "#444746",
         "outline": "#8e918f",
         "scrim": "#000000",
@@ -2410,6 +2416,7 @@
           "error": "#b3261e",
           "onError": "#ffffff",
           "danger": "#b3261e",
+          "success": "#1e8e3e",
           "border": "#dadce0",
           "outline": "#747775",
           "scrim": "#000000",
@@ -2535,6 +2542,7 @@
           "error": "#f2b8b5",
           "onError": "#601410",
           "danger": "#f2b8b5",
+          "success": "#81c995",
           "border": "#444746",
           "outline": "#8e918f",
           "scrim": "#000000",
@@ -2748,6 +2756,10 @@
     {
       "code": "GEN_BUTTON_COLOR",
       "meaning": "A <button> color is not one of the three colour roles (primary, danger, neutral); the button keeps the primary colour."
+    },
+    {
+      "code": "GEN_SWITCH_COLOR",
+      "meaning": "A <switch> color is not one of the two colour roles (primary, success); the switch keeps the primary colour."
     },
     {
       "code": "GEN_CHART_TYPE",
