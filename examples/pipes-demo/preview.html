@@ -285,9 +285,34 @@
   .empty-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--surface-variant); display: inline-flex; align-items: center; justify-content: center; }
   .empty-title { font-size: 20px; font-weight: 600; color: var(--text); }
   .empty-text { font-size: 14px; color: var(--text-muted); }
-  .editor-toolbar { display: flex; gap: 4px; margin-bottom: 4px; }
-  .editor-tool { border: 1px solid var(--border); background: var(--role-surface); color: var(--text); border-radius: 8px; padding: 6px 12px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
-  .editor-area { min-height: 96px; resize: vertical; }
+  .editor-frame { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--role-surface); }
+  .editor-head { background: var(--role-surface-variant); padding: 8px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+  .editor-chips { display: flex; gap: 4px; }
+  .editor-chip { border: 1px solid var(--border); background: var(--role-surface); color: var(--text); border-radius: 8px; padding: 6px 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .editor-chip.on { background: var(--role-primary); border-color: var(--role-primary); color: var(--role-on-primary); }
+  .editor-tools { display: flex; gap: 4px; align-items: center; }
+  .editor-tool { min-width: 36px; height: 36px; padding: 0 6px; border: 1px solid var(--border); background: var(--role-surface); color: var(--text); border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; }
+  .editor-tool.on { background: var(--text); border-color: var(--text); color: var(--role-surface); }
+  .editor-tool .ed-b { font-weight: 800; }
+  .editor-tool .ed-i { font-family: 'Times New Roman', Times, serif; font-style: italic; font-weight: 700; font-size: 17px; }
+  .editor-tool .ed-u { text-decoration: underline; }
+  .editor-tool .ed-s { text-decoration: line-through; }
+  .editor-blocks { padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+  .ed-block { display: flex; gap: 8px; align-items: flex-start; padding: 4px 4px; border: 1px solid transparent; border-radius: 8px; font-size: 15px; line-height: 22px; color: var(--text); }
+  .ed-block.active { border-color: var(--role-primary); }
+  .ed-block .ed-text { flex: 1; white-space: pre-wrap; cursor: text; }
+  .ed-title { font-size: 22px; line-height: 28px; font-weight: 800; }
+  .ed-heading { font-size: 17px; line-height: 24px; font-weight: 700; }
+  .ed-quote { font-style: italic; color: var(--text-muted); }
+  .ed-quote-bar { width: 3px; align-self: stretch; background: var(--role-primary); border-radius: 2px; flex: 0 0 3px; }
+  .ed-gutter { width: 22px; text-align: center; color: var(--text-muted); flex: 0 0 22px; }
+  .ed-ring { width: 20px; height: 20px; border-radius: 9999px; border: 2px solid #f9ab00; flex: 0 0 20px; margin-top: 1px; display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 12px; cursor: pointer; box-sizing: border-box; }
+  .ed-ring.done { background: #f9ab00; }
+  .ed-done { color: var(--text-muted); text-decoration: line-through; }
+  .ed-input { flex: 1; font: inherit; color: inherit; background: transparent; border: none; outline: none; resize: none; padding: 0; margin: 0; line-height: inherit; }
+  .ed-add { padding: 8px 4px; color: var(--text-muted); font-size: 14px; cursor: pointer; }
+  .ed-move { display: flex; flex-direction: column; gap: 2px; }
+  .ed-move button { width: 28px; height: 22px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; font-size: 12px; font-family: inherit; }
   .rg-image { display: block; border-radius: 12px; }
   .overlay-backdrop.dark { background: rgba(0,0,0,.92); }
   .lightbox-image { max-width: 100%; max-height: 80%; object-fit: contain; position: relative; z-index: 1; }
@@ -3020,6 +3045,196 @@ function __buildChart(el, scope) {
   wrap.innerHTML = __chartSvg(model);
   return wrap;
 }
+var __editorStates = {};
+function __edParse(value) {
+  var text = value === undefined || value === null ? '' : String(value);
+  return text.split('\n').map(function (line) {
+    if (line.indexOf('## ') === 0) return { kind: 'heading', text: line.slice(3), done: false };
+    if (line.indexOf('# ') === 0) return { kind: 'title', text: line.slice(2), done: false };
+    if (line.indexOf('> ') === 0) return { kind: 'quote', text: line.slice(2), done: false };
+    if (line.indexOf('- [ ] ') === 0) return { kind: 'check', text: line.slice(6), done: false };
+    if (line.indexOf('- [x] ') === 0 || line.indexOf('- [X] ') === 0) return { kind: 'check', text: line.slice(6), done: true };
+    if (line.indexOf('- ') === 0) return { kind: 'bullet', text: line.slice(2), done: false };
+    var numbered = /^\d+\. /.exec(line);
+    if (numbered) return { kind: 'number', text: line.slice(numbered[0].length), done: false };
+    return { kind: 'body', text: line, done: false };
+  });
+}
+function __edSerialize(blocks) {
+  var run = 0;
+  return blocks.map(function (b) {
+    if (b.kind === 'number') { run += 1; return run + '. ' + b.text; }
+    run = 0;
+    if (b.kind === 'title') return '# ' + b.text;
+    if (b.kind === 'heading') return '## ' + b.text;
+    if (b.kind === 'quote') return '> ' + b.text;
+    if (b.kind === 'check') return (b.done ? '- [x] ' : '- [ ] ') + b.text;
+    if (b.kind === 'bullet') return '- ' + b.text;
+    return b.text;
+  }).join('\n');
+}
+function __edSetKind(blocks, index, kind) {
+  return blocks.map(function (b, i) {
+    return i === index ? { kind: kind, text: b.text, done: kind === 'check' ? b.done : false } : b;
+  });
+}
+function __edSpans(text, marker) {
+  var spans = [];
+  var m = marker.length;
+  var i = 0;
+  while (i < text.length) {
+    if (marker === '*' && text.indexOf('**', i) === i) { i += 2; continue; }
+    if (text.indexOf(marker, i) === i) {
+      var close = text.indexOf(marker, i + m);
+      if (close > i + m) {
+        spans.push({ outerStart: i, contentStart: i + m, contentEnd: close, outerEnd: close + m });
+        i = close + m;
+        continue;
+      }
+    }
+    i += 1;
+  }
+  return spans;
+}
+function __edMarksOutside(text, s, e, marker) {
+  var m = marker.length;
+  if (s < m || text.slice(s - m, s) !== marker || text.slice(e, e + m) !== marker) return false;
+  if (marker === '*') {
+    if (text[s - 2] === '*') return false;
+    if (text[e + 1] === '*') return false;
+  }
+  return true;
+}
+function __edMarksInside(inner, marker) {
+  if (inner.length <= 2 * marker.length) return false;
+  if (inner.indexOf(marker) !== 0 || inner.slice(inner.length - marker.length) !== marker) return false;
+  if (marker === '*' && inner.indexOf('**') === 0) return false;
+  return true;
+}
+function __edToggleInline(text, start, end, marker) {
+  var m = marker.length;
+  var s = Math.max(0, Math.min(start, text.length));
+  var e = Math.max(s, Math.min(end, text.length));
+  if (s < e) {
+    if (__edMarksOutside(text, s, e, marker)) {
+      return { text: text.slice(0, s - m) + text.slice(s, e) + text.slice(e + m), start: s - m, end: e - m };
+    }
+    var inner = text.slice(s, e);
+    if (__edMarksInside(inner, marker)) {
+      return { text: text.slice(0, s) + inner.slice(m, inner.length - m) + text.slice(e), start: s, end: e - 2 * m };
+    }
+    return { text: text.slice(0, s) + marker + inner + marker + text.slice(e), start: s + m, end: e + m };
+  }
+  var spans = __edSpans(text, marker);
+  for (var k = 0; k < spans.length; k++) {
+    var sp = spans[k];
+    if (s >= sp.outerStart && s <= sp.outerEnd) {
+      var caret = Math.max(sp.contentStart - m, Math.min(s - m, sp.contentEnd - m));
+      return { text: text.slice(0, sp.outerStart) + text.slice(sp.contentStart, sp.contentEnd) + text.slice(sp.outerEnd), start: caret, end: caret };
+    }
+  }
+  return { text: text, start: s, end: e };
+}
+function __edInlineActive(text, start, end, marker) {
+  var s = Math.max(0, Math.min(start, text.length));
+  var e = Math.max(s, Math.min(end, text.length));
+  if (s < e) {
+    if (__edMarksOutside(text, s, e, marker)) return true;
+    return __edMarksInside(text.slice(s, e), marker);
+  }
+  var spans = __edSpans(text, marker);
+  for (var k = 0; k < spans.length; k++) {
+    if (s >= spans[k].contentStart && s <= spans[k].contentEnd) return true;
+  }
+  return false;
+}
+var __ED_MARKS = [
+  { marker: '**', key: 'bold' },
+  { marker: '~~', key: 'strike' },
+  { marker: '++', key: 'underline' },
+  { marker: '*', key: 'italic' },
+];
+function __edParseInline(text) {
+  var runs = [];
+  var plain = '';
+  function flush() {
+    if (plain) {
+      runs.push({ text: plain, bold: false, italic: false, underline: false, strike: false });
+      plain = '';
+    }
+  }
+  var i = 0;
+  while (i < text.length) {
+    var hit = null;
+    for (var j = 0; j < __ED_MARKS.length; j++) {
+      if (text.indexOf(__ED_MARKS[j].marker, i) === i) { hit = __ED_MARKS[j]; break; }
+    }
+    if (hit) {
+      var close = text.indexOf(hit.marker, i + hit.marker.length);
+      if (close > i + hit.marker.length) {
+        flush();
+        var run = { text: text.slice(i + hit.marker.length, close), bold: false, italic: false, underline: false, strike: false };
+        run[hit.key] = true;
+        runs.push(run);
+        i = close + hit.marker.length;
+        continue;
+      }
+    }
+    plain += text[i];
+    i += 1;
+  }
+  flush();
+  return runs;
+}
+function __edEditBlocks(blocks, i, newText, caret) {
+  if (newText.indexOf('\n') === -1) {
+    return {
+      blocks: blocks.map(function (b, j) { return j === i ? { kind: b.kind, text: newText, done: b.done } : b; }),
+      active: i, caret: caret,
+    };
+  }
+  var parts = newText.split('\n');
+  var kind = blocks[i].kind;
+  if (parts.length === 2 && parts[0] === '' && parts[1] === '' && (kind === 'check' || kind === 'bullet' || kind === 'number')) {
+    return { blocks: __edSetKind(blocks, i, 'body'), active: i, caret: 0 };
+  }
+  var active = i;
+  var c = caret;
+  var off = 0;
+  for (var k = 0; k < parts.length; k++) {
+    if (c <= off + parts[k].length) { active = i + k; c = c - off; break; }
+    off += parts[k].length + 1;
+    if (k === parts.length - 1) { active = i + k; c = parts[k].length; }
+  }
+  var next = blocks.map(function (b, j) { return j === i ? { kind: b.kind, text: parts[0], done: b.done } : b; });
+  var at = i;
+  for (var k2 = 1; k2 < parts.length; k2++) {
+    var here = next[at].kind;
+    var follow = (here === 'check' || here === 'bullet' || here === 'number') ? here : 'body';
+    next = next.slice(0, at + 1).concat([{ kind: follow, text: parts[k2], done: false }], next.slice(at + 1));
+    at += 1;
+  }
+  return { blocks: next, active: active, caret: c };
+}
+function __edKindClass(kind) {
+  if (kind === 'title') return ' ed-title';
+  if (kind === 'heading') return ' ed-heading';
+  if (kind === 'quote') return ' ed-quote';
+  return '';
+}
+function __edRunNode(run) {
+  var node = document.createTextNode(run.text);
+  function wrapIt(tag) {
+    var el = document.createElement(tag);
+    el.appendChild(node);
+    node = el;
+  }
+  if (run.strike) wrapIt('s');
+  if (run.underline) wrapIt('u');
+  if (run.italic) wrapIt('em');
+  if (run.bold) wrapIt('strong');
+  return node;
+}
 function __buildEditor(el, scope, form, path) {
   var wrap = document.createElement('div');
   wrap.className = 'field';
@@ -3030,43 +3245,244 @@ function __buildEditor(el, scope, form, path) {
     ls.textContent = String(labelText);
     wrap.appendChild(ls);
   }
-  var area = document.createElement('textarea');
-  area.className = 'field-input editor-area';
-  area.setAttribute('rows', '4');
-  var ph = __attr(el, 'placeholder', scope);
-  if (ph) area.setAttribute('placeholder', String(ph));
+  var disabled = __truthy(__controlValue(el, 'disabled', scope));
   var current = __controlValue(el, 'value', scope);
-  area.value = current === undefined || current === null ? '' : String(current);
-  if (__truthy(__controlValue(el, 'disabled', scope))) area.disabled = true;
-  var toolbar = document.createElement('div');
-  toolbar.className = 'editor-toolbar';
-  function applyEdit(next) { __runChange(el, scope, next); }
-  function tool(label, act) {
+  var text = current === undefined || current === null ? '' : String(current);
+  var blocks = __edParse(text);
+  var st = __editorStates[path];
+  if (!st) st = __editorStates[path] = { active: null, styles: true, move: false, focus: false, selStart: 0, selEnd: 0 };
+  if (st.active !== null && st.active >= blocks.length) st.active = blocks.length - 1;
+  if (st.active === null) st.area = null;
+  var frame = document.createElement('div');
+  frame.className = 'editor-frame';
+  function commit(nextBlocks, focusSel) {
+    if (focusSel) {
+      st.focus = true;
+      st.selStart = focusSel.start;
+      st.selEnd = focusSel.end;
+    }
+    __runChange(el, scope, __edSerialize(nextBlocks));
+  }
+  function liveSelection() {
+    if (st.area && typeof st.area.selectionStart === 'number') {
+      return { start: st.area.selectionStart, end: st.area.selectionEnd };
+    }
+    return { start: st.selStart, end: st.selEnd };
+  }
+  var head = document.createElement('div');
+  head.className = 'editor-head';
+  if (st.styles) {
+    var chips = document.createElement('div');
+    chips.className = 'editor-chips';
+    [['Title', 'title'], ['Heading', 'heading'], ['Body', 'body'], ['Quote', 'quote'], ['Checklist', 'check'], ['List', 'bullet']].forEach(function (pair) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'editor-chip' + (st.active !== null && blocks[st.active].kind === pair[1] ? ' on' : '');
+      b.textContent = pair[0];
+      b.disabled = disabled || st.active === null;
+      b.addEventListener('click', function () {
+        if (st.active === null) return;
+        commit(__edSetKind(blocks, st.active, pair[1]), liveSelection());
+      });
+      chips.appendChild(b);
+    });
+    head.appendChild(chips);
+  }
+  var tools = document.createElement('div');
+  tools.className = 'editor-tools';
+  function tool(label, cls, on, act) {
     var b = document.createElement('button');
     b.type = 'button';
-    b.className = 'editor-tool';
-    b.textContent = label;
-    b.addEventListener('click', function () {
-      var text = area.value;
-      var start = typeof area.selectionStart === 'number' ? area.selectionStart : text.length;
-      var end = typeof area.selectionEnd === 'number' ? area.selectionEnd : start;
-      act(text, start, end);
-    });
+    b.className = 'editor-tool' + (on ? ' on' : '');
+    if (cls) {
+      var sp = document.createElement('span');
+      sp.className = cls;
+      sp.textContent = label;
+      b.appendChild(sp);
+    } else {
+      b.textContent = label;
+    }
+    b.disabled = disabled;
+    b.addEventListener('click', act);
+    tools.appendChild(b);
     return b;
   }
-  toolbar.appendChild(tool('Bold', function (text, start, end) {
-    applyEdit(text.slice(0, start) + '**' + text.slice(start, end) + '**' + text.slice(end));
-  }));
-  toolbar.appendChild(tool('Italic', function (text, start, end) {
-    applyEdit(text.slice(0, start) + '*' + text.slice(start, end) + '*' + text.slice(end));
-  }));
-  toolbar.appendChild(tool('List', function (text, start) {
-    var lineStart = text.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
-    applyEdit(text.slice(0, lineStart) + '- ' + text.slice(lineStart));
-  }));
-  wrap.appendChild(toolbar);
-  area.addEventListener('input', function () { __runChange(el, scope, area.value); });
-  wrap.appendChild(area);
+  tool('Aa', null, st.styles, function () {
+    st.styles = !st.styles;
+    __render();
+  });
+  function markTool(label, cls, marker) {
+    var on = st.active !== null && __edInlineActive(blocks[st.active].text, st.selStart, st.selEnd, marker);
+    tool(label, cls, on, function () {
+      if (st.active === null) return;
+      var blk = blocks[st.active];
+      var selNow = liveSelection();
+      var out = __edToggleInline(blk.text, selNow.start, selNow.end, marker);
+      if (out.text === blk.text) return;
+      var next = blocks.map(function (b, i) { return i === st.active ? { kind: b.kind, text: out.text, done: b.done } : b; });
+      commit(next, { start: out.start, end: out.end });
+    });
+  }
+  markTool('B', 'ed-b', '**');
+  markTool('I', 'ed-i', '*');
+  markTool('U', 'ed-u', '++');
+  markTool('S', 'ed-s', '~~');
+  function kindTool(label, kind) {
+    tool(label, null, st.active !== null && blocks[st.active].kind === kind, function () {
+      if (st.active === null) return;
+      var target = blocks[st.active].kind === kind ? 'body' : kind;
+      commit(__edSetKind(blocks, st.active, target), liveSelection());
+    });
+  }
+  kindTool('☑', 'check');
+  kindTool('•', 'bullet');
+  kindTool('1.', 'number');
+  tool('⠿', null, st.move, function () {
+    st.move = !st.move;
+    __render();
+  });
+  head.appendChild(tools);
+  frame.appendChild(head);
+  var body = document.createElement('div');
+  body.className = 'editor-blocks';
+  var numRun = 0;
+  blocks.forEach(function (blk, i) {
+    if (blk.kind === 'number') numRun += 1;
+    else numRun = 0;
+    var ordinal = numRun;
+    var row = document.createElement('div');
+    row.className = 'ed-block' + __edKindClass(blk.kind) + (st.active === i ? ' active' : '');
+    if (blk.kind === 'check') {
+      var ring = document.createElement('span');
+      ring.className = 'ed-ring' + (blk.done ? ' done' : '');
+      ring.textContent = blk.done ? '✓' : '';
+      ring.addEventListener('click', function (ev) {
+        if (ev && ev.stopPropagation) ev.stopPropagation();
+        if (disabled) return;
+        var next = blocks.map(function (b, j) { return j === i ? { kind: b.kind, text: b.text, done: !b.done } : b; });
+        st.focus = false;
+        __runChange(el, scope, __edSerialize(next));
+      });
+      row.appendChild(ring);
+    }
+    if (blk.kind === 'bullet') {
+      var gut = document.createElement('span');
+      gut.className = 'ed-gutter';
+      gut.textContent = '•';
+      row.appendChild(gut);
+    }
+    if (blk.kind === 'number') {
+      var gutN = document.createElement('span');
+      gutN.className = 'ed-gutter';
+      gutN.textContent = ordinal + '.';
+      row.appendChild(gutN);
+    }
+    if (blk.kind === 'quote') {
+      var bar = document.createElement('span');
+      bar.className = 'ed-quote-bar';
+      row.appendChild(bar);
+    }
+    if (st.active === i) {
+      var area = document.createElement('textarea');
+      st.area = area;
+      area.className = 'ed-input';
+      area.setAttribute('rows', String(Math.max(1, Math.ceil(blk.text.length / 42))));
+      area.value = blk.text;
+      var ph = __attr(el, 'placeholder', scope);
+      if (ph) area.setAttribute('placeholder', String(ph));
+      if (disabled) area.disabled = true;
+      area.addEventListener('select', function () {
+        if (typeof area.selectionStart === 'number') {
+          st.selStart = area.selectionStart;
+          st.selEnd = area.selectionEnd;
+        }
+      });
+      area.addEventListener('input', function () {
+        var v = area.value;
+        var caret = typeof area.selectionStart === 'number' ? area.selectionStart : v.length;
+        var res = __edEditBlocks(blocks, i, v, caret);
+        st.active = res.active;
+        commit(res.blocks, { start: res.caret, end: res.caret });
+      });
+      area.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Backspace' && blk.text === '' && blocks.length > 1) {
+          if (ev.preventDefault) ev.preventDefault();
+          var target = Math.max(0, i - 1);
+          var next = blocks.filter(function (_, j) { return j !== i; });
+          st.active = target;
+          commit(next, { start: blocks[target].text.length, end: blocks[target].text.length });
+        }
+      });
+      row.appendChild(area);
+      if (st.focus) {
+        st.focus = false;
+        var wantStart = st.selStart;
+        var wantEnd = st.selEnd;
+        if (typeof setTimeout === 'function') {
+          setTimeout(function () {
+            if (area.focus) area.focus();
+            if (area.setSelectionRange) {
+              try { area.setSelectionRange(wantStart, wantEnd); } catch (err) { /* the shim has no selection */ }
+            }
+          }, 0);
+        }
+      }
+    } else {
+      var txt = document.createElement('span');
+      txt.className = 'ed-text' + (blk.kind === 'check' && blk.done ? ' ed-done' : '');
+      if (blk.text === '') {
+        txt.innerHTML = '&nbsp;';
+      } else {
+        __edParseInline(blk.text).forEach(function (run) {
+          txt.appendChild(__edRunNode(run));
+        });
+      }
+      txt.addEventListener('click', function () {
+        if (disabled) return;
+        st.active = i;
+        st.focus = true;
+        st.selStart = st.selEnd = blk.text.length;
+        __render();
+      });
+      row.appendChild(txt);
+    }
+    if (st.move && st.active === i) {
+      var moveCol = document.createElement('span');
+      moveCol.className = 'ed-move';
+      [['▲', -1], ['▼', 1]].forEach(function (step) {
+        var mb = document.createElement('button');
+        mb.type = 'button';
+        mb.textContent = step[0];
+        mb.disabled = disabled || (step[1] < 0 && i === 0) || (step[1] > 0 && i === blocks.length - 1);
+        mb.addEventListener('click', function () {
+          var target = i + step[1];
+          if (target < 0 || target >= blocks.length) return;
+          var next = blocks.slice();
+          var held = next[i];
+          next[i] = next[target];
+          next[target] = held;
+          st.active = target;
+          commit(next, liveSelection());
+        });
+        moveCol.appendChild(mb);
+      });
+      row.appendChild(moveCol);
+    }
+    body.appendChild(row);
+  });
+  if (!disabled) {
+    var add = document.createElement('div');
+    add.className = 'ed-add';
+    add.textContent = '+ Tap to add a block';
+    add.addEventListener('click', function () {
+      var next = blocks.concat([{ kind: 'body', text: '', done: false }]);
+      st.active = next.length - 1;
+      commit(next, { start: 0, end: 0 });
+    });
+    body.appendChild(add);
+  }
+  frame.appendChild(body);
+  wrap.appendChild(frame);
   return wrap;
 }
 function __buildColorPicker(el, scope, path, form) {
