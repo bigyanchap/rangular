@@ -2847,6 +2847,22 @@ class Generator {
           ));
         }
       }
+      // A switch's color role (primary by default, success for a
+      // green on state) is the same small validated surface: a
+      // static value outside the two is a GEN_SWITCH_COLOR error,
+      // a [color] binding passes through.
+      const isSwitchEl = el.tag.toLowerCase() === 'switch';
+      if (isSwitchEl && el.attrs['color'] !== undefined) {
+        const color = el.attrs['color'];
+        if (color !== 'primary' && color !== 'success') {
+          diagnostics.push(error(
+            'GEN_SWITCH_COLOR',
+            `<switch> color '${color}' is not a switch colour role; the switch keeps the primary colour`,
+            el.pos.line, el.pos.column,
+            'Use color="primary" (the default), or color="success" for a green on state',
+          ));
+        }
+      }
       for (const [name, value] of Object.entries(el.attrs)) {
         if (name === 'class') continue;
         // A static style attribute is diagnosed by the binding scan
