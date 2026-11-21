@@ -232,4 +232,6 @@ test('a refreshing list lends its pull to the screen that owns the gesture', () 
     primitivesSrc.indexOf('export function RgAppbar'));
   assert.ok(screenFn.includes('listRefresh'), 'the screen holds the registered pull');
   assert.ok(screenFn.includes('listRefreshRef.current?.fire?.()'), 'the screen control fires the freshest handler');
+  assert.ok(screenFn.includes('refreshMirrorTimer'), 'the registration mirror is coalesced per tick, so it cannot feed a render loop');
+  assert.ok(screenFn.includes('Math.abs(y - scrollYRef.current) >= 1'), 'the veil state only moves on a real scroll change');
 });

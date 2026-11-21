@@ -1276,13 +1276,21 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
     if (lastScrollKey.current !== scrollKey) {
       lastScrollKey.current = scrollKey;
       scrollRef.current?.scrollTo({ y: 0, animated: false });
+      scrollYRef.current = 0;
       setScrollY(0);
     }
   });
+  const scrollYRef = useRef(0);
   const handleScroll = (e: any) => {
     offsetRef.current = e?.nativeEvent?.contentOffset?.y ?? offsetRef.current;
     if (onEndReached) onScroll(e);
-    if (fade) setScrollY(e?.nativeEvent?.contentOffset?.y ?? 0);
+    if (fade) {
+      const y = e?.nativeEvent?.contentOffset?.y ?? 0;
+      if (Math.abs(y - scrollYRef.current) >= 1) {
+        scrollYRef.current = y;
+        setScrollY(y);
+      }
+    }
   };
   const veilFactor = fade ? Math.min(1, Math.max(0, scrollY / 24)) : 0;
   // Keyboard lift (lessons QA round 2, 2026-11-19): the screen
@@ -1343,6 +1351,7 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
   // the refreshing flag), so registration churn cannot loop.
   const [listRefresh, setListRefresh] = useState<any>(null);
   const listRefreshRef = useRef<any>(null);
+  const refreshMirrorTimer = useRef<any>(null);
   const scrollControl = useRef({
     requestLift: (node: any) => {
       focusedNodeRef.current = node;
@@ -1352,11 +1361,23 @@ export function RgScreen({ children, style, theme: mode, refreshing, onRefresh, 
       if (focusedNodeRef.current === node) focusedNodeRef.current = null;
     },
     registerRefresh: (entry: any) => {
-      const prev = listRefreshRef.current;
+      // The ref takes the entry at once; the state mirror
+      // follows once per tick with the latest entry, and
+      // only when the spinner's facts truly changed. A
+      // registration that is withdrawn inside the same tick
+      // (an effect re-run in the mount cascade) never
+      // reaches state at all, so this channel cannot feed
+      // a render loop (lesson 80 crash, 2026-11-21).
       listRefreshRef.current = entry;
-      const changed = !!prev !== !!entry
-        || (prev && entry && prev.refreshing !== entry.refreshing);
-      if (changed) setListRefresh(entry);
+      if (refreshMirrorTimer.current) clearTimeout(refreshMirrorTimer.current);
+      refreshMirrorTimer.current = setTimeout(() => {
+        refreshMirrorTimer.current = null;
+        setListRefresh((prev: any) => {
+          const next = listRefreshRef.current;
+          if (!!prev === !!next && (!prev || !next || prev.refreshing === next.refreshing)) return prev;
+          return next;
+        });
+      }, 0);
     },
   }).current;
   // The overlay twin of the lift above: same measured facts,
