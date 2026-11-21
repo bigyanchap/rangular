@@ -1,4 +1,4 @@
-# Recipe: Icons, the curated Material style set
+# Recipe: Icons, the Material Symbols set
 
 **Intent**: A screen that shows the whole Rangular icon set with a name label under each icon, plus a short usage strip: icons sitting in lines of content, in the sizes and theme colours a real screen uses.
 
@@ -18,7 +18,7 @@ import { Component } from '@angular/core';
   `],
 })
 export class IconsComponent {
-  names = ['menu', 'search', 'close', 'check', 'chevron-left', 'chevron-right', 'arrow-left', 'arrow-right', 'plus', 'minus', 'bell', 'heart', 'star', 'settings', 'home', 'person', 'calendar', 'alarm', 'play', 'pause', 'edit', 'delete', 'share', 'info', 'warning', 'mail', 'sun'];
+  names = ['alarm', 'arrow-down', 'arrow-left', 'arrow-right', 'arrow-up', 'bell', 'bookmark', 'bookmark-outline', 'calendar', 'camera', 'chart', 'chat', 'check', 'check-circle', 'chevron-down', 'chevron-left', 'chevron-right', 'chevron-up', 'close', 'code', 'copy', 'dark-mode', 'delete', 'download', 'edit', 'error', 'file', 'filter', 'folder', 'group', 'heart', 'heart-outline', 'help', 'history', 'home', 'image', 'info', 'language', 'link', 'location', 'lock', 'login', 'logo', 'logout', 'mail', 'menu', 'mic', 'minus', 'more-horiz', 'more-vert', 'pause', 'person', 'play', 'plus', 'print', 'redo', 'refresh', 'save', 'schedule', 'school', 'search', 'send', 'settings', 'share', 'sort', 'star', 'star-outline', 'sun', 'thumb-up', 'timer', 'tune', 'undo', 'upload', 'visibility', 'visibility-off', 'volume', 'warning', 'wifi', 'work'];
 }
 ```
 
@@ -78,7 +78,7 @@ import { RgAppbar, RgIcon, RgScreen } from '@rangular-framework/ui';
 
 **Rules used**
 
-- **The set is fixed and listed.** The valid names are: menu, search, close, check, chevron-left, chevron-right, arrow-left, arrow-right, plus, minus, bell, heart, star, settings, home, person, calendar, alarm, play, pause, edit, delete, share, info, warning, mail, sun, code, chart, bookmark, bookmark-outline, logo. The same list is generated into catalog.md under Icons, from the same file the compiler validates against, so the docs cannot drift from the code.
+- **The set is fixed and listed.** The drawings are Google Material Symbols in one fixed hand, the rounded style, filled, at weight 400 (the icon standard, set 2026-11-21; before that the set held 31 drawings from the frozen Material Icons set). Two rules hold it: never substitute a near glyph for the right word, and never hand-draw a shape; if a glyph is missing, add the official Symbols drawing in the same hand. The valid names are: alarm, arrow-down, arrow-left, arrow-right, arrow-up, bell, bookmark, bookmark-outline, calendar, camera, chart, chat, check, check-circle, chevron-down, chevron-left, chevron-right, chevron-up, close, code, copy, dark-mode, delete, download, edit, error, file, filter, folder, group, heart, heart-outline, help, history, home, image, info, language, link, location, lock, login, logo, logout, mail, menu, mic, minus, more-horiz, more-vert, pause, person, play, plus, print, redo, refresh, save, schedule, school, search, send, settings, share, sort, star, star-outline, sun, thumb-up, timer, tune, undo, upload, visibility, visibility-off, volume, warning, wifi, work. The same list is generated into catalog.md under Icons, from the same file the compiler validates against, so the docs cannot drift from the code.
 - **Three props only.** `name` (a static attribute, or `[name]` bound to a field), `size` (20, 24 or 28, default 24), and `color` (the name of a theme colour role such as `primary`, `error` or `textMuted`; with no color, the icon takes the theme text colour, the onSurface role). `[size]` and `[color]` bindings work too.
 - **Unknown names are compile errors, not blank spaces.** A static name outside the set is a `GEN_ICON_UNKNOWN` error. Its fix line points at the Icons list in catalog.md, and the JSON form of the diagnostic carries the whole valid list in a `validIcons` field, so an AI or a tool can pick a valid name without parsing prose. A missing name is a `GEN_ICON_NAME` error. A `[name]` binding is not checked, its value is only known when the app runs, and an unmatched value at runtime draws nothing.
 - **One brand mark.** `logo` is not a glyph: it is the framework's own Split Shield, drawn in its own colours (the `color` attribute does not recolour it), and any size passes through unsnapped, because a brand mark is a picture, sized like an image. It sits in the same name list so validation, the catalog and both preview layers treat it as one set.
