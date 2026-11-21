@@ -44,6 +44,23 @@ test('the menu backdrop fades to the shared scrim opacity, never solid black', (
     'no plain opaque backdrop remains in RgMenu');
 });
 
+test('the menu hangs beside the press that opened it', () => {
+  assert.ok(primitivesSrc.includes('lastPressPoint'), 'presses leave a point for the menu');
+  assert.ok(
+    primitivesSrc.includes('notePressPoint(e); onPress(e)'),
+    'sections and cards note the point as they fire');
+  assert.ok(
+    primitivesSrc.includes('notePressPoint(e); onPress?.(e)'),
+    'buttons note the point as they fire');
+  const menuFn = primitivesSrc.slice(
+    primitivesSrc.indexOf('export function RgMenu('),
+    primitivesSrc.indexOf('export function RgMenuItem'));
+  assert.ok(menuFn.includes('measureInWindow'), 'the menu measures its root to place the panel');
+  assert.ok(
+    menuFn.includes("position: 'absolute', right: place.right, top: placedTop"),
+    'the panel is placed at the noted press point');
+});
+
 test('the search pill is one tap target that focuses its field', () => {
   assert.ok(primitivesSrc.includes('pillRef'), 'the pill keeps a field ref');
   assert.ok(
@@ -128,7 +145,7 @@ test('a button sized exactly by its caller gets compact padding and a centred la
 
 test('a section with a click is a pressable, never a silent drop', () => {
   assert.ok(primitivesSrc.includes('export function RgSection({ children, style, label, meta, icon, plain, onPress }: any)'), 'the section takes onPress');
-  assert.ok(primitivesSrc.includes('<Pressable onPress={onPress} style={({ pressed }) => [styles.section, style, pressed && styles.buttonPressed]}>'), 'the section renders a pressable when it carries a click');
+  assert.ok(primitivesSrc.includes('<Pressable onPress={(e: any) => { notePressPoint(e); onPress(e); }} style={({ pressed }) => [styles.section, style, pressed && styles.buttonPressed]}>'), 'the section renders a pressable when it carries a click');
 });
 
 test('the wheel follows iOS gesture rules: rest-only commits, no self-repositioning, fast deceleration', () => {

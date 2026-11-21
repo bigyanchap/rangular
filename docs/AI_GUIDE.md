@@ -1029,8 +1029,12 @@ recipe cards.
 - **Menu and drawer are overlays.** `<menu [open]="x" (close)="m()">`
   and `<drawer [open]="x" (close)="m()">` follow the Stage 10 sheet
   and dialog contract exactly, including the `GEN_OVERLAY_OPEN`
-  warning when `[open]` is not bound. The menu panel hangs at the
-  top right and holds only `<menu-item>` rows and `<divider>`s; an
+  warning when `[open]` is not bound. The menu panel opens beside
+  the thing that was pressed to open it, to the left of the press
+  point and level with it, clamped to the screen (sections, cards
+  and buttons note the window point of a press for it); a menu
+  opened from code, with no press behind it, hangs at the top
+  right. The panel holds only `<menu-item>` rows and `<divider>`s; an
   item takes an optional `icon="..."` and a `(click)`, and choosing
   it runs the handler and then the menu's `(close)`. The drawer is
   a full height panel from the left (MatSidenav's over mode; a

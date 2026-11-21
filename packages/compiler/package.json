@@ -7,7 +7,7 @@
   "main": "dist/compiler/src/index.js",
   "name": "@rangular-framework/compiler",
   "types": "dist/compiler/src/index.d.ts",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "files": [
     "dist"
   ],

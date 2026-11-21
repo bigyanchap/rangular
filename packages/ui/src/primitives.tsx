@@ -1746,7 +1746,7 @@ export function RgSection({ children, style, label, meta, icon, plain, onPress }
   // that press, built on this.
   if (onPress) {
     return (
-      <Pressable onPress={onPress} style={({ pressed }) => [styles.section, style, pressed && styles.buttonPressed]}>
+      <Pressable onPress={(e: any) => { notePressPoint(e); onPress(e); }} style={({ pressed }) => [styles.section, style, pressed && styles.buttonPressed]}>
         {head}
         {children}
       </Pressable>
@@ -1767,7 +1767,7 @@ export function RgCard({ children, style, onPress }: any) {
   // Material card behaves; without one it stays a plain surface.
   if (onPress) {
     return (
-      <Pressable onPress={onPress} style={({ pressed }) => [styles.card, style, pressed && styles.buttonPressed]}>
+      <Pressable onPress={(e: any) => { notePressPoint(e); onPress(e); }} style={({ pressed }) => [styles.card, style, pressed && styles.buttonPressed]}>
         {children}
       </Pressable>
     );
@@ -1856,7 +1856,7 @@ export function RgButton({ children, disabled, onPress, badge, style, variant, t
     <View style={styles.tooltipWrap}>
       <Pressable
         disabled={disabled}
-        onPress={onPress}
+        onPress={(e: any) => { notePressPoint(e); onPress?.(e); }}
         onLongPress={tip.show}
         style={({ pressed }) => [
           text ? styles.buttonText : styles.button,
@@ -3256,11 +3256,27 @@ export function RgDivider({ style }: any) {
   return <View style={[styles.divider, style]} />;
 }
 
+// Menu anchoring (his word, 2026-11-21): a menu belongs beside
+// the thing that was pressed to open it, not at the top right of
+// the screen. Sections, cards and buttons note the window point
+// of every press here as they fire; RgMenu reads the note when
+// it opens and hangs its panel beside that point. A menu opened
+// without a press behind it (shown from code, or long after
+// one) finds no fresh note and keeps the old top right hang.
+let lastPressPoint: { x: number; y: number; at: number } | null = null;
+function notePressPoint(e: any): void {
+  const ne = e && e.nativeEvent ? e.nativeEvent : null;
+  if (ne && typeof ne.pageX === 'number' && typeof ne.pageY === 'number') {
+    lastPressPoint = { x: ne.pageX, y: ne.pageY, at: Date.now() };
+  }
+}
+
 const RgMenuContext = createContext<{ close?: () => void }>({});
 
 /**
  * The menu (MatMenu): `<menu [open]="menuOpen" (close)="closeMenu()">`
- * renders a floating panel of <menu-item> rows at the top right over
+ * renders a floating panel of <menu-item> rows beside the press
+ * that opened it (at the top right when no press opened it) over
  * a dimmed backdrop, the sheet and dialog contract with a menu's
  * shape. A backdrop tap calls onClose; choosing an item runs the
  * item's own handler and then closes the menu through the context,
@@ -3286,13 +3302,44 @@ export function RgMenu({ open, onClose, children, style }: any) {
     }
   }, [isOpen, progress]);
   const backdropOpacity = progress.interpolate({ inputRange: [0, 1], outputRange: [0, 0.32] });
+  // Anchoring: the root measures itself in the window and the
+  // noted press point is placed inside that frame, the panel's
+  // right edge to the left of the point and its top level with
+  // it, clamped to the root with a small margin on every side.
+  // The panel's own height, once it is laid out, clamps the top
+  // again, so a menu opened low on the screen still fits whole.
+  const rootRef = useRef<any>(null);
+  const [place, setPlace] = useState<any>(null);
+  const [panelH, setPanelH] = useState(0);
+  useEffect(() => {
+    if (!isOpen) {
+      setPlace(null);
+      setPanelH(0);
+      return;
+    }
+    const p = lastPressPoint;
+    if (!p || Date.now() - p.at > 1500) return;
+    const node = rootRef.current;
+    if (!node || !node.measureInWindow) return;
+    node.measureInWindow((rx: number, ry: number, rw: number, rh: number) => {
+      const ax = p.x - rx;
+      const ay = p.y - ry;
+      const right = Math.max(8, Math.min(rw - ax + 22, rw - 208));
+      const top = Math.max(8, ay - 22);
+      setPlace({ right, top, rootH: rh });
+    });
+  }, [isOpen]);
   if (!isOpen) return null;
+  const placedTop = place ? Math.max(8, Math.min(place.top, place.rootH - panelH - 8)) : 0;
   return (
-    <View style={styles.overlayRootTop}>
+    <View ref={rootRef} style={styles.overlayRootTop}>
       <Animated.View style={[styles.overlayBackdrop, { opacity: backdropOpacity }]}>
         <Pressable style={styles.overlayFill} onPress={onClose} accessibilityLabel="Close" />
       </Animated.View>
-      <Animated.View style={[styles.menuPanel, { opacity: progress }, style]}>
+      <Animated.View
+        onLayout={(e: any) => { if (place) setPanelH(e.nativeEvent.layout.height); }}
+        style={[styles.menuPanel, { opacity: progress }, place ? { position: 'absolute', right: place.right, top: placedTop } : null, style]}
+      >
         <RgMenuContext.Provider value={{ close: onClose }}>{children}</RgMenuContext.Provider>
       </Animated.View>
     </View>
