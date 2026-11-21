@@ -1147,8 +1147,9 @@ built, in three tour examples: `examples/feed/` (Tier 1),
   stars. OTP: one digit string across `length` boxes, 4 to 8
   (a static length outside warns `GEN_OTP_LENGTH`); the class
   checks completeness by length. Colour picker: a hex string in
-  and out, the shared data palette arranged on a colour wheel
-  in its sheet, plus one custom hex row.
+  and out, a sheet with the shared data palette as preset
+  swatches, a saturation and value square and a hue bar that
+  build any colour, plus one custom hex row.
 - **Carousel is the stepper contract as pages.** Projected
   children are pages, `[index]` in, `(change)` out, dots under.
   In the preview, dots and chevrons page it.
