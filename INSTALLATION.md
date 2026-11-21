@@ -111,8 +111,8 @@ npx expo start
 The clone form differs only in the command prefix: `init <name>
 --app` is today's `new`, a bare name lands in the checkout's `apps/`
 folder, and there is no single `serve` command yet, so Expo is
-started directly and components are recompiled with the build
-command spelled out in the created app's own README.
+started directly. Components are recompiled with `rg build` in
+the app folder, as the created app's own README spells out.
 
 ## What the created app carries
 

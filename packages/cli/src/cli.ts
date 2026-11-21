@@ -113,7 +113,7 @@ function printJson(payload: Record<string, unknown>): void {
 
 const USAGE = [
   'Usage:',
-  '  rg build <component.ts> --out <file.tsx> [--json] [--source-map] [--routes <file>]',
+  '  rg build [<component.ts>] [--out <file.tsx>] [--json] [--source-map] [--routes <file>]',
   '  rg ast <template.html>',
   '  rg preview <component.ts> --out <file.html> [--json] [--routes <file>]',
   '  rg catalog [--out <dir>]',
@@ -404,6 +404,10 @@ path in the command is relative to that folder):
 
     node dist/packages/cli/src/cli.js build ${path.relative(repoRoot, entryAbs).split(path.sep).join('/')} --out ${path.relative(repoRoot, path.join(srcDir, 'AppRoot.tsx')).split(path.sep).join('/')}
 
+If the CLI is on your PATH, the same compile from this app folder is
+just \`rg build\`: with no arguments it compiles
+\`src/app.component.ts\` into \`src/AppRoot.tsx\`.
+
 Or run the same command with \`watch\` instead of \`build\` and it
 recompiles on every save.
 
@@ -420,7 +424,13 @@ the generated app behaves.` : `## Recompile after editing the component
 
 Run this from the app folder:
 
-    rg build src/app.component.ts --out src/AppRoot.tsx
+    rg build
+
+With no arguments, the build compiles \`src/app.component.ts\` and
+writes \`src/AppRoot.tsx\`, the one shape every Rangular app follows.
+The same compile spelled out is \`rg build src/app.component.ts
+--out src/AppRoot.tsx\`; pass the entry and \`--out\` yourself only
+when an app steps outside that shape.
 
 Or run the same command with \`watch\` instead of \`build\` and it
 recompiles on every save.
@@ -690,8 +700,26 @@ function main(): void {
     return;
   }
 
-  const target = args[1];
-  const rest = args.slice(2);
+  let target = args[1];
+  let rest = args.slice(2);
+  // `rg build` on its own is the app-folder form (2026-11-21):
+  // no entry means src/app.component.ts, and the build branch
+  // defaults --out to AppRoot.tsx beside the entry. Every app
+  // follows that one shape, so the common case needs no
+  // arguments at all. An explicit entry and --out still win.
+  if (command === 'build') {
+    if (target && target.startsWith('--')) {
+      rest = args.slice(1);
+      target = '';
+    }
+    if (!target) {
+      const fallback = path.join('src', 'app.component.ts');
+      if (!fs.existsSync(path.resolve(fallback))) {
+        fail('no entry file given and src/app.component.ts was not found here. Run the build from your app folder, or pass the entry file: rg build <entry> --out <file>');
+      }
+      target = fallback;
+    }
+  }
   if (!command || !target) {
     console.log(USAGE);
     process.exit(command ? 2 : 0);
@@ -745,7 +773,10 @@ function main(): void {
   }
 
   if (command === 'build' || command === 'preview') {
-    const out = option(rest, '--out');
+    let out = option(rest, '--out');
+    if (!out && command === 'build') {
+      out = path.join(path.dirname(path.resolve(target)), 'AppRoot.tsx');
+    }
     if (!out) fail(`--out <file> is required for '${command}'`);
     const { tsSource, resolveFile, resolveImport, absPath, rootDir } = readComponent(target);
     const routesSpecifier = routesSpecifierFor(absPath, option(rest, '--routes'));

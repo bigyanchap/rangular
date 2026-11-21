@@ -135,7 +135,8 @@ is used as given. The app depends on `@rangular-framework/ui` and
 checkout, carries the Expo SDK 58 pin set, and its starter component
 (`src/app.component.ts`) is already compiled into `src/AppRoot.tsx`
 by the real compiler. Edit the component, recompile it with
-`rangular build` as the app README spells out, and Expo reloads.
+`rg build` from the app folder as the app README spells out,
+and Expo reloads.
 
 What the scaffold installs for you, in full: the created app's
 `package.json` carries `@rangular-framework/ui` and `@rangular-framework/runtime`

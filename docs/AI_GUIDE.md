@@ -998,8 +998,7 @@ See `examples/mailbox-pro/` and its recipe card.
   is the real compiler output for it, generated during `init`, not a
   stored sample. `App.tsx` renders `AppRoot`. After editing the
   component, recompile it with `rg build` (or `watch`) from the
-  repo root, pointed at the app's `src/AppRoot.tsx`, as the app
-  README spells out.
+  app folder, as the app README spells out.
 - **Run it**: `cd apps/<name>`, `npm install`, `npx expo start`, scan
   the QR code in Expo Go.
 - **Back behaviour, stated plainly**: with routing, in-app navigation
@@ -1667,7 +1666,7 @@ The CLI is complete in v1. One line per command:
 
 | Command | What it does |
 |---|---|
-| `rg build <component.ts> --out <file.tsx> [--json] [--source-map]` | Compile one component to React Native TSX |
+| `rg build [<component.ts>] [--out <file.tsx>] [--json] [--source-map]` | Compile one component to React Native TSX; with no arguments, compile the app in the current folder: `src/app.component.ts` to `src/AppRoot.tsx` |
 | `rg ast <template.html>` | Print a template AST |
 | `rg preview <component.ts> --out <file.html> [--json]` | Render the interactive dev preview |
 | `rg catalog [--out <dir>]` | Regenerate catalog.json and catalog.md from the code |
