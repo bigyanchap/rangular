@@ -59,6 +59,12 @@ test('the menu hangs beside the press that opened it', () => {
   assert.ok(
     menuFn.includes("position: 'absolute', right: place.right, top: placedTop"),
     'the panel is placed at the noted press point');
+  assert.ok(
+    menuFn.includes('opacity: reveal ? progress : 0'),
+    'the panel stays transparent until its position is final, so it never flashes in the wrong place');
+  assert.ok(
+    menuFn.includes('setTimeout(() => setReveal(true), 160)'),
+    'a menu whose measure never answers is still shown');
 });
 
 test('the search pill is one tap target that focuses its field', () => {

@@ -3293,14 +3293,6 @@ export function RgMenu({ open, onClose, children, style }: any) {
   // menu vanished into solid black (his report, 2026-11-21);
   // the preview had promised 0.32 all along.
   const progress = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (isOpen) {
-      progress.setValue(0);
-      Animated.timing(progress, {
-        toValue: 1, duration: 220, easing: Easing.out(Easing.quad), useNativeDriver: true,
-      }).start();
-    }
-  }, [isOpen, progress]);
   const backdropOpacity = progress.interpolate({ inputRange: [0, 1], outputRange: [0, 0.32] });
   // Anchoring: the root measures itself in the window and the
   // noted press point is placed inside that frame, the panel's
@@ -3308,19 +3300,37 @@ export function RgMenu({ open, onClose, children, style }: any) {
   // it, clamped to the root with a small margin on every side.
   // The panel's own height, once it is laid out, clamps the top
   // again, so a menu opened low on the screen still fits whole.
+  // The measure is asynchronous, and the first version painted
+  // the panel in the top corner while it was still unplaced,
+  // then jumped it beside the dots a few milliseconds later
+  // (his report, 2026-11-21). So the panel now renders
+  // transparent until its position is final, and the fade
+  // starts at that reveal: it is never painted anywhere but
+  // where it belongs.
   const rootRef = useRef<any>(null);
   const [place, setPlace] = useState<any>(null);
   const [panelH, setPanelH] = useState(0);
+  const [reveal, setReveal] = useState(false);
   useEffect(() => {
     if (!isOpen) {
       setPlace(null);
       setPanelH(0);
+      setReveal(false);
       return;
     }
     const p = lastPressPoint;
-    if (!p || Date.now() - p.at > 1500) return;
+    if (!p || Date.now() - p.at > 1500) {
+      // No press behind this open: the panel hangs at the top
+      // right, a position known at the first frame, so it may
+      // be painted at once.
+      setReveal(true);
+      return;
+    }
     const node = rootRef.current;
-    if (!node || !node.measureInWindow) return;
+    if (!node || !node.measureInWindow) {
+      setReveal(true);
+      return;
+    }
     node.measureInWindow((rx: number, ry: number, rw: number, rh: number) => {
       const ax = p.x - rx;
       const ay = p.y - ry;
@@ -3328,7 +3338,22 @@ export function RgMenu({ open, onClose, children, style }: any) {
       const top = Math.max(8, ay - 22);
       setPlace({ right, top, rootH: rh });
     });
+    // If measuring somehow never answers, show the menu
+    // anyway rather than leave an invisible one hanging.
+    const t = setTimeout(() => setReveal(true), 160);
+    return () => clearTimeout(t);
   }, [isOpen]);
+  useEffect(() => {
+    if (isOpen && place && panelH > 0) setReveal(true);
+  }, [isOpen, place, panelH]);
+  useEffect(() => {
+    if (isOpen && reveal) {
+      progress.setValue(0);
+      Animated.timing(progress, {
+        toValue: 1, duration: 220, easing: Easing.out(Easing.quad), useNativeDriver: true,
+      }).start();
+    }
+  }, [isOpen, reveal, progress]);
   if (!isOpen) return null;
   const placedTop = place ? Math.max(8, Math.min(place.top, place.rootH - panelH - 8)) : 0;
   return (
@@ -3337,8 +3362,8 @@ export function RgMenu({ open, onClose, children, style }: any) {
         <Pressable style={styles.overlayFill} onPress={onClose} accessibilityLabel="Close" />
       </Animated.View>
       <Animated.View
-        onLayout={(e: any) => { if (place) setPanelH(e.nativeEvent.layout.height); }}
-        style={[styles.menuPanel, { opacity: progress }, place ? { position: 'absolute', right: place.right, top: placedTop } : null, style]}
+        onLayout={(e: any) => setPanelH(e.nativeEvent.layout.height)}
+        style={[styles.menuPanel, { opacity: reveal ? progress : 0 }, place ? { position: 'absolute', right: place.right, top: placedTop } : null, style]}
       >
         <RgMenuContext.Provider value={{ close: onClose }}>{children}</RgMenuContext.Provider>
       </Animated.View>
