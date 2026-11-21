@@ -40,7 +40,7 @@
         "stepper": {
           "activeBackground": "#0b57d0",
           "activeColor": "#ffffff",
-          "doneBackground": "#d3e3fd",
+          "doneBackground": "#e8f0fe",
           "borderColor": "#747775"
         },
         "textBody": {

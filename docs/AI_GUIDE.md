@@ -974,6 +974,17 @@ See `examples/mailbox-pro/` and its recipe card.
 ## The Expo app scaffold (Stage 12)
 
 - **`rg init <dir>` is unchanged** (a loose starter component).
+- **The default dress (2026-11-21).** The framework tokens carry
+  the design language the tutorial samples were dressed in, so a
+  new app opens in it from the first run: primary is the app blue
+  `#0b57d0`, `primaryContainer` is the light tint `#e8f0fe`,
+  `success` is the Gmail green `#34a853`, and the brand gradient
+  stops are blue (`#0849ad`, `#0b57d0`, `#4285f4`) in both themes.
+  The starter component is composed in the language (a gradient
+  band, a tint icon circle, a count pill, a success switch), and
+  `examples/dressed/` is the language recipe card: the patterns
+  are composition, plain sections and styles over the tokens, not
+  new primitives.
   **`rg init <name> --app`** scaffolds a real Expo app. A bare
   name (no path separators) creates the app at
   `<repoRoot>/apps/<name>` inside the Rangular checkout the CLI
