@@ -172,6 +172,7 @@ function isTemplateDriven(code: string): boolean {
     || code === 'GEN_PICKER_MODE'
     || code === 'GEN_PICKER_PRESENTATION'
     || code === 'GEN_BUTTON_COLOR'
+    || code === 'GEN_SWITCH_COLOR'
     || code === 'GEN_PICKER_INTERVAL'
     || code === 'GEN_OVERLAY_OPEN'
     || code === 'GEN_EVENT_ASSIGNMENT'

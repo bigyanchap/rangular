@@ -4,6 +4,8 @@
   <label>Connection</label>
   <switch [checked]="wifiOn" (change)="onWifi($event)">Wi-Fi</switch>
   <p>Wi-Fi is {{ wifiOn ? 'on' : 'off' }}</p>
+  <switch color="success" [checked]="dataOn" (change)="onData($event)">Mobile data</switch>
+  <p>Mobile data is {{ dataOn ? 'on' : 'off' }}</p>
 
   <label>Preferences</label>
   <checkbox [checked]="notifications" (change)="onNotifications($event)">Notifications</checkbox>

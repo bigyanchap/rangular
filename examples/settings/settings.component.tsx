@@ -5,11 +5,15 @@ import { RgAppbar, RgCheckbox, RgOption, RgRadio, RgRadioGroup, RgScreen, RgSect
 
 export default function Settings() {
   const [wifiOn, setWifiOn] = useState(true);
+  const [dataOn, setDataOn] = useState(false);
   const [notifications, setNotifications] = useState(false);
   const [view, setView] = useState('list');
   const [size, setSize] = useState('m');
   const onWifi = (value: boolean) => {
     setWifiOn(value);
+  };
+  const onData = (value: boolean) => {
+    setDataOn(value);
   };
   const onNotifications = (value: boolean) => {
     setNotifications(value);
@@ -26,6 +30,8 @@ export default function Settings() {
       <RgText variant="label">Connection</RgText>
       <RgSwitch checked={wifiOn} onChange={($event) => onWifi($event)}>Wi-Fi</RgSwitch>
       <RgText variant="bodyLarge">Wi-Fi is {(wifiOn ? 'on' : 'off')}</RgText>
+      <RgSwitch color="success" checked={dataOn} onChange={($event) => onData($event)}>Mobile data</RgSwitch>
+      <RgText variant="bodyLarge">Mobile data is {(dataOn ? 'on' : 'off')}</RgText>
       <RgText variant="label">Preferences</RgText>
       <RgCheckbox checked={notifications} onChange={($event) => onNotifications($event)}>Notifications</RgCheckbox>
       <RgText variant="bodyLarge">Notifications are {(notifications ? 'on' : 'off')}</RgText>

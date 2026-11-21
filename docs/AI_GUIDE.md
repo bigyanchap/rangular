@@ -200,6 +200,11 @@ applications already use. The source stays in Angular style:
   earns a `GEN_CONTROL_NESTING` warning with a fix line.
 - **Disabled:** `switch` and `checkbox` accept `[disabled]`; a
   disabled control keeps its value and emits nothing.
+- **Switch colour:** a switch's `color` names a role, never a
+  paint: `primary` is the default blue on state, and `success`
+  paints the on state the theme success green. Off is the
+  surface variant grey either way. A static colour outside
+  the two is a `GEN_SWITCH_COLOR` error.
 - **Switcher means view state, not routing.** It changes a field on
   the same screen, and panels below it switch with `*ngIf` on that
   field. Real navigation between screens is routing (Stage 9, see the

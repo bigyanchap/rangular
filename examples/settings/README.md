@@ -20,12 +20,17 @@ import { Component } from '@angular/core';
 })
 export class SettingsComponent {
   wifiOn = true;
+  dataOn = false;
   notifications = false;
   view = 'list';
   size = 'm';
 
   onWifi(value: boolean) {
     this.wifiOn = value;
+  }
+
+  onData(value: boolean) {
+    this.dataOn = value;
   }
 
   onNotifications(value: boolean) {
@@ -51,6 +56,8 @@ export class SettingsComponent {
   <label>Connection</label>
   <switch [checked]="wifiOn" (change)="onWifi($event)">Wi-Fi</switch>
   <p>Wi-Fi is {{ wifiOn ? 'on' : 'off' }}</p>
+  <switch color="success" [checked]="dataOn" (change)="onData($event)">Mobile data</switch>
+  <p>Mobile data is {{ dataOn ? 'on' : 'off' }}</p>
 
   <label>Preferences</label>
   <checkbox [checked]="notifications" (change)="onNotifications($event)">Notifications</checkbox>
@@ -87,11 +94,13 @@ Key lines of the generated `settings.component.tsx`:
 
 ```tsx
 const [wifiOn, setWifiOn] = useState(true);
+const [dataOn, setDataOn] = useState(false);
 const onWifi = (value: boolean) => {
   setWifiOn(value);
 };
 
 <RgSwitch checked={wifiOn} onChange={($event) => onWifi($event)}>Wi-Fi</RgSwitch>
+<RgSwitch color="success" checked={dataOn} onChange={($event) => onData($event)}>Mobile data</RgSwitch>
 <RgCheckbox checked={notifications} onChange={($event) => onNotifications($event)}>Notifications</RgCheckbox>
 <RgSwitcher value={view} onChange={($event) => onView($event)}>
   <RgOption value="list">List</RgOption>
