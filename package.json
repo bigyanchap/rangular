@@ -13,7 +13,7 @@
     "test": "npm run build && npm run build:packages && node --test dist/tests/*.test.js",
     "build:packages": "npm run build --workspaces --if-present"
   },
-  "version": "0.4.8",
+  "version": "0.5.0",
   "workspaces": [
     "packages/*"
   ]

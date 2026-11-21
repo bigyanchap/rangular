@@ -176,7 +176,7 @@ the app's layout for that part of the screen.
 | Video | `expo-video` | First-party Expo module, works in Expo Go, supports web, no key. The lightest heavy case |
 | WebView | `react-native-webview` | Works in Expo Go. On web it renders an unsupported-platform message while the export still succeeds, so a green web export does not prove the page works |
 | Camera | `expo-camera` | First-party Expo module, works in Expo Go, includes barcode scanning. Permission wording applies in a real build |
-| Rich text editor | `@10play/tentap-editor`, `react-native-pell-rich-editor` | Both are editors inside a WebView, with the weight that carries. Wrap one by Path 2 if your app needs it. The built-in `<editor>` covers light marked-up text and stays the default answer |
+| Rich text editor | `@10play/tentap-editor`, `react-native-pell-rich-editor` | Both are editors inside a WebView, with the weight that carries. Wrap one by Path 2 if your app needs it. The built-in `<editor>` covers block notes with light marks and stays the default answer |
 
 ## What is not supported
 

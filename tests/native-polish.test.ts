@@ -270,3 +270,30 @@ test('the colour picker builds any colour: swatches, a saturation square and a h
   assert.ok(previewSrc.includes('.sv-square') && previewSrc.includes('.hue-bar'), 'the preview sheet carries the same square and bar');
   assert.ok(!previewSrc.includes('swatch-wheel'), 'the preview wheel is gone too');
 });
+
+test('the editor is a framed block editor with its controls inside (0.5.0)', () => {
+  assert.ok(primitivesSrc.includes("from './blocks'"), 'the editor reads the pure block model');
+  assert.ok(primitivesSrc.includes('CHECKLIST_COLOR'), 'the checklist amber comes from the palette');
+  const editorFn = primitivesSrc.slice(
+    primitivesSrc.indexOf('export function RgEditor'),
+    primitivesSrc.indexOf('export function RgImage'));
+  assert.ok(editorFn.includes('editorFrame'), 'the editor renders inside one frame');
+  assert.ok(editorFn.includes('editorChipsRow'), 'the style chips sit inside the frame head');
+  assert.ok(editorFn.includes('editorToolsRow'), 'the parameter tools sit right below the chips');
+  assert.ok(editorFn.includes('parseBlocks') && editorFn.includes('serializeBlocks'), 'the value stays one string through the model');
+  assert.ok(editorFn.includes('toggleInline'), 'the mark buttons toggle through the model');
+  assert.ok(editorFn.includes('toggleBlockDone'), 'the checklist ring ticks through the model');
+  assert.ok(editorFn.includes('Tap to add a block'), 'the add row lives inside the frame');
+  assert.ok(editorFn.includes('clearTimer'), 'a blur closes the block only after a beat, so a tool tap never closes it first');
+  assert.ok(!editorFn.includes("tool('Bold'"), 'the old marks toolbar is gone');
+  assert.ok(
+    primitivesSrc.includes("fontFamily: Platform.OS === 'ios' ? 'Times New Roman' : 'serif'"),
+    'the Italic tool wears the Times serif face');
+  assert.ok(primitivesSrc.includes("fontStyle: 'italic', fontWeight: '700', fontSize: 17"), 'the Times I is italic');
+  const previewSrc = fs.readFileSync(
+    path.join(ROOT, 'packages', 'compiler', 'src', 'preview', 'renderPreview.ts'), 'utf8');
+  assert.ok(previewSrc.includes('.editor-frame') && previewSrc.includes('.ed-ring'), 'the preview mirrors the frame and the rings');
+  assert.ok(previewSrc.includes("font-family: 'Times New Roman', Times, serif"), 'the preview Italic tool wears Times too');
+  assert.ok(previewSrc.includes('function __edParse'), 'the preview carries the block model mirror');
+  assert.ok(!previewSrc.includes('editor-area'), 'the old preview textarea editor is gone');
+});

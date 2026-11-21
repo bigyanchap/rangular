@@ -21,6 +21,12 @@ export const COLOR_SWATCHES: string[] = [
   '#5f6368', '#80868b', '#202124', '#ffffff',
 ];
 
+// The block editor's checklist amber (framework 0.5.0): the ring
+// a checklist block wears, filled when the item is done. It is
+// the palette's own amber swatch, named for its one job so the
+// primitives file still holds no hex of its own.
+export const CHECKLIST_COLOR = '#f9ab00';
+
 /**
  * Avatar tones (Gmail light round, 2026-11-17): pastel background
  * and foreground pairs for row avatar tiles that vary by label,

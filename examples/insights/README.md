@@ -1,6 +1,6 @@
 # Recipe: Insights, the Tier 3 display pieces
 
-**Intent**: One dashboard screen that proves the Stage 15 Tier 3 pieces together: breadcrumbs, an avatar group, three charts, a calendar month view, a timeline, a photo with a lightbox, a small marked-up text editor, a colour picker, and a masonry grid, closing with an empty state.
+**Intent**: One dashboard screen that proves the Stage 15 Tier 3 pieces together: breadcrumbs, an avatar group, three charts, a calendar month view, a timeline, a photo with a lightbox, a small block editor, a colour picker, and a masonry grid, closing with an empty state.
 
 **Source**
 
@@ -141,7 +141,7 @@ Key lines of the generated `insights.component.tsx`:
 - **The calendar is a month view, not a picker.** It renders as a screen element for looking at a month and tapping a day; `[value]` and `(change)` carry the selected day as an ISO string, the picker's language. Choosing a moment inside a form stays the wheel `<datetime-picker>`'s job, a different component on purpose.
 - **A timeline is a rail of items.** `<timeline-item title time>` declarations stack on a dotted rail; the last item's line stops at its dot. Anything else inside `<timeline>` warns `GEN_CONTROL_NESTING`.
 - **Images declare their size.** `<image src width height>` is the contract, and the doctor enforces it (`DOC_IMG_SIZE`): the layout is known before the picture loads. `resize` is `cover` (default), `contain` or `stretch`. The photo's `(click)` opens the lightbox, an overlay on the sheet and dialog contract: `[open]` in, `(close)` out, its children as the caption. Pinch zoom comes from the scroll view on iOS; Android pinch zoom is not part of this version.
-- **The editor's value is marked-up text.** Bold is double star, italic single star, a list line starts with a dash and a space; the toolbar acts on the current selection. Scope limit, stated plainly: this is a marked-up text field with helpers, not a WYSIWYG engine, and the stored value is the marked text.
+- **The editor is a block editor whose value stays one string.** One block per line: `# ` title, `## ` heading, `> ` quote, `- [ ] ` checklist, `- ` bullet, `1. ` numbered, no prefix body; inside a block, double stars are bold, a single star italic, double plus underline, double tilde strikethrough. The style chips and the parameter tools sit inside the editor's frame, above the blocks; blocks render styled at rest and show their marks only while being edited. Scope limit, stated plainly: no tables, no pictures, no nested marks.
 - **The colour picker's value is a hex string.** The field shows a swatch of the current colour; the sheet offers the shared data palette plus one custom hex row. The palette is data, the same in both themes, like chart colours.
 - **Masonry is a mode of grid-list.** `mode="masonry"` keeps the same tag, tiles and `cols`, and deals the tiles into column stacks so uneven heights stagger; the preview uses CSS columns for the same arrangement.
 - **An empty state is one named block.** Icon, title, body line, and the projected action. Its button does something real, the only meaningful buttons rule; here it goes Home.
